@@ -59,14 +59,11 @@ npm run verify
 - 명단 일괄 변경 전에는 guard 백업을 남긴다 (`createBackup(reason, 'guard')`)
 - 번호 중복은 저장 전에 막고, 이미 깨진 데이터는 `validateAndRepair`가 고친다
 
-## 결정 대기 (사용자 확인 필요)
+## 저장소
 
-- [ ] **GitHub 저장소 생성** — `G-classroom-suite`를 공개로 만들지 비공개로 만들지 미정.
-      결정 전까지 로컬 커밋만 쌓는다. 결정되면 아래로 진행:
-      ```bash
-      gh repo create G-classroom-suite --private --source=. --remote=origin --push
-      ```
-      (공개로 할 경우 `--private`를 `--public`으로)
+- <https://github.com/limhs06082-eng/G-classroom-suite> — **비공개**, 기본 브랜치 `main`
+- 완성 후 공개로 전환하면 연수생이 fork할 수 있다 (Settings → General → Change visibility)
+- 각 단계 커밋 후 `git push origin main`
 
 ## 재개 방법
 
