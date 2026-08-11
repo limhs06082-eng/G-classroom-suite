@@ -15,7 +15,8 @@ import { PageLoader } from './PageLoader';
 export function AppShell() {
   return (
     <div className="flex min-h-full flex-col">
-      <header className="no-print sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
+      {/* 반투명 헤더는 스크롤할 때 본문 한글이 비쳐 읽기 어려워진다. 불투명으로 둔다. */}
+      <header className="no-print sticky top-0 z-20 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
           <span className="text-base font-bold tracking-tight text-slate-900">우리 반</span>
 

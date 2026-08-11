@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 
 import { AppShell } from './AppShell';
 import { NotFoundPage } from './NotFoundPage';
@@ -21,6 +21,22 @@ const SettingsPage = lazy(() => import('../features/settings/SettingsPage'));
 const SetupPage = lazy(() => import('../shared/setup/SetupPage'));
 const BoardPage = lazy(() => import('../features/board/BoardPage'));
 
+/*
+ * 개발 전용 컴포넌트 갤러리.
+ *
+ * lazy() 호출을 이 조건 안에 두는 것이 중요하다. 바깥에 두면 동적 import가
+ * 무조건 실행되는 것으로 취급되어, 라우트를 등록하지 않아도 청크가 배포된다.
+ * import.meta.env.DEV는 빌드 시 false로 치환되므로 이 가지 전체가 사라진다.
+ */
+const devRoutes: RouteObject[] = import.meta.env.DEV
+  ? [
+      {
+        path: 'dev/gallery',
+        Component: lazy(() => import('../features/dev/GalleryPage')),
+      },
+    ]
+  : [];
+
 export const router = createBrowserRouter([
   {
     element: <AppShell />,
@@ -34,6 +50,7 @@ export const router = createBrowserRouter([
       { path: 'roster', element: <RosterPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'setup', element: <SetupPage /> },
+      ...devRoutes,
       { path: '*', element: <NotFoundPage /> },
     ],
   },

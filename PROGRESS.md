@@ -21,8 +21,8 @@ npm run verify
 | 1 | 프로젝트 스캐폴딩 — Vite/TS/Tailwind/Router/Vitest, 앱 셸 | ✅ `487dcbd` |
 | 2 | `shared/domain` — 타입·불변조건 + 테스트 | ✅ `7bae477` |
 | 3 | `shared/storage` — 어댑터·백업·스키마 + 테스트 | ✅ `2d6fa90` |
-| 4 | `shared/ui` — 디자인 토큰·공통 컴포넌트·BoardScreen·PrintLayout | ⬜ **다음** |
-| 5 | `shared/roster` + `setup` — 명단 단일 원본, CSV, 설정 마법사 | ⬜ |
+| 4 | `shared/ui` — 디자인 토큰·공통 컴포넌트·BoardScreen·PrintLayout | ✅ 완료 (테스트 85개, 갤러리 `/dev/gallery`) |
+| 5 | `shared/roster` + `setup` — 명단 단일 원본, CSV, 설정 마법사 | ⬜ **다음** |
 | 6 | `features/home` — 새 홈 골격 | ⬜ |
 | 7 | `features/seating` 이식 | ⬜ |
 | 8 | `features/duty` 이식 | ⬜ |
@@ -31,34 +31,33 @@ npm run verify
 | 11 | `features/tools` + dashboard 카드, 홈 요약 카드 연결 | ⬜ |
 | 12 | 마이그레이션 + 배포 설정 + README | ⬜ |
 
-현재 테스트 61개 (도메인 21 · 저장소 34 · 라우팅 6).
+현재 테스트 85개 (도메인 21 · 저장소 34 · UI 24 · 라우팅 6).
 
-## 다음 작업: 4단계 `shared/ui`
+개발 중 컴포넌트 확인: `npm run dev` 후 <http://localhost:3000/dev/gallery>
+(프로덕션 빌드에서는 제외된다)
 
-**목표** — 5개 앱의 화면을 얹을 공통 컴포넌트 세트를 만든다. 여기가 없으면
-기능을 이식할 때마다 Toast·Modal·인쇄가 또 4벌씩 생긴다.
+## 다음 작업: 5단계 `shared/roster` + `setup`
+
+**목표** — 학생 명단을 단일 원본으로 만든다. 통합의 실질 가치가 여기에 몰려 있다.
+지금은 교사가 같은 명단을 4번 입력해야 한다.
 
 **만들 것**
 
-1. `src/index.css`의 `@theme` 토큰 확장 (지금은 최소 골격만 있음)
-   - 이중 스케일: `desk`(교사 노트북) / `board`(전자칠판, 3~8m 거리 판독)
-2. `src/shared/ui/` 컴포넌트
-   - `Button` `Modal` `ConfirmDialog` `Toast`(+ ToastProvider) `Card` `Table` `EmptyState` `Badge` `Tabs`
-   - `BoardScreen` — 전자칠판 프레임. `/board/:feature` 라우트가 쓴다
-   - `PrintLayout` — 인쇄 프레임. 원본 3개 앱의 PrintModal을 대체한다
-3. 컴포넌트 확인용 갤러리 라우트 (개발 전용, 프로덕션 빌드에서 제외)
-
-**참고할 원본** (읽기 전용)
-- Toast 4종 비교: `seating/src/components/Toast.tsx`, `duty/.../Toast.tsx`,
-  `reward/.../Toast.tsx`, `assignment/.../ToastContainer.tsx`
-- 인쇄: `seating/src/components/PrintDocument.tsx` + `PrintModal.tsx` (가장 완성도 높음)
-- 전자칠판: `duty/src/components/SmartboardModal.tsx`,
-  `seating/src/components/StudentPublicViewModal.tsx`,
-  `dashboard/src/components/tools/FocusScreenModal.tsx`
+1. `src/shared/roster/`
+   - `RosterProvider` — StorageAdapter를 물고 SuiteData를 앱 전역에 공급.
+     저장은 디바운스, 실패 시 Toast로 알림
+   - `RosterManager` — 명단 관리 UI. 원본 4곳(seating StudentManagerModal,
+     duty StudentManager, assignment ClassManagement+StudentView, reward studentUtils) 통합
+   - `csvImport.ts` — CSV·붙여넣기 파서. 원본 seating/assignment 두 곳 참고
+   - 전입·전출 처리: `status: 'inactive'`로만 두고 기록은 절대 지우지 않는다
+2. `src/shared/setup/SetupWizard` — 최초 1회 설정.
+   학교/학년/반 → 명단 붙여넣기 → 완료. `reward`의 `InitialSetupWizard` 확장 재활용
+3. 활성 학기·학급 전환 UI를 AppShell 헤더에 연결 (지금은 '학급 정보 미설정' 고정 문구)
 
 **주의**
-- 색상 하드코딩 금지. 반드시 `@theme` 토큰 경유
-- 원본의 화면 구조와 용어는 유지하고 시각 요소만 통일한다 (설계 문서 §16-2)
+- `Group.studentIds` 방향이므로 "한 학생 = 한 모둠" 불변조건을 UI에서도 지켜야 한다
+- 명단 일괄 변경 전에는 guard 백업을 남긴다 (`createBackup(reason, 'guard')`)
+- 번호 중복은 저장 전에 막고, 이미 깨진 데이터는 `validateAndRepair`가 고친다
 
 ## 결정 대기 (사용자 확인 필요)
 
