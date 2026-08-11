@@ -1,0 +1,410 @@
+import { createClassRoom, createTerm } from './factories';
+import type { ClassRoom, Group, Student, SuiteData, Term } from './types';
+
+/**
+ * 도메인 불변조건 검사 및 자동 복구.
+ *
+ * localStorage 데이터는 브라우저 사고, 수동 편집, 이전 버전 마이그레이션으로
+ * 언제든 깨질 수 있다. 앱이 깨진 데이터로 흰 화면을 띄우는 대신,
+ * 최대한 살려서 열고 무엇을 고쳤는지 교사에게 알린다.
+ *
+ * 원칙:
+ *   1. **학생을 삭제하지 않는다.** 1년치 기록의 주인이다.
+ *      갈 곳이 없으면 복구용 학급을 만들어서라도 살린다.
+ *   2. 파생 데이터(프로필, 모둠 소속)는 삭제해도 된다. 다시 만들 수 있다.
+ *   3. 고친 내용은 전부 사용자에게 보고한다. 조용히 고치지 않는다.
+ *
+ * 설계 근거: 설계 문서 §6.2
+ */
+
+export type RepairCode =
+  | 'ORPHAN_CLASSROOM'
+  | 'ORPHAN_STUDENT'
+  | 'ORPHAN_GROUP'
+  | 'DUPLICATE_STUDENT_NUMBER'
+  | 'STUDENT_IN_MULTIPLE_GROUPS'
+  | 'GROUP_MEMBER_NOT_FOUND'
+  | 'INVALID_GROUP_LEADER'
+  | 'ORPHAN_PROFILE'
+  | 'DUPLICATE_PROFILE'
+  | 'INVALID_ACTIVE_TERM'
+  | 'INVALID_ACTIVE_CLASS';
+
+export interface RepairLog {
+  code: RepairCode;
+  /** 교사가 읽을 한국어 설명 */
+  message: string;
+  /** warning은 교사가 확인해야 하는 것, info는 알리기만 하면 되는 것 */
+  severity: 'info' | 'warning';
+  entityIds: string[];
+}
+
+export interface RepairResult {
+  data: SuiteData;
+  repairs: RepairLog[];
+}
+
+const RECOVERY_TERM_SEMESTER = '복구된 기간';
+const RECOVERY_CLASS_NAME = '미분류';
+
+/** YYYY-MM-DD */
+function toDateOnly(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+/**
+ * 정렬 순서를 고정한다.
+ * "첫 번째를 남긴다"는 복구 규칙이 실행할 때마다 다른 결과를 내면 안 된다.
+ */
+function byCreatedAtThenId<T extends { createdAt: string; id: string }>(a: T, b: T): number {
+  return a.createdAt === b.createdAt ? a.id.localeCompare(b.id) : a.createdAt.localeCompare(b.createdAt);
+}
+
+export function validateAndRepair(input: SuiteData, now: string = new Date().toISOString()): RepairResult {
+  const repairs: RepairLog[] = [];
+
+  const terms: Term[] = [...input.terms];
+  let classRooms: ClassRoom[] = [...input.classRooms];
+  const students: Student[] = input.students.map((s) => ({ ...s }));
+  let groups: Group[] = input.groups.map((g) => ({ ...g, studentIds: [...g.studentIds] }));
+
+  // 복구용 학기·학급은 실제로 필요할 때만 만든다.
+  let recoveryTerm: Term | null = null;
+  let recoveryClass: ClassRoom | null = null;
+
+  function ensureRecoveryTerm(): Term {
+    if (recoveryTerm) return recoveryTerm;
+
+    const existing = terms.find((t) => t.semester === RECOVERY_TERM_SEMESTER);
+    if (existing) {
+      recoveryTerm = existing;
+      return existing;
+    }
+
+    const created = createTerm(
+      {
+        schoolYear: String(new Date(now).getFullYear()),
+        semester: RECOVERY_TERM_SEMESTER,
+        startDate: toDateOnly(now),
+        endDate: toDateOnly(now),
+      },
+      now,
+    );
+    terms.push(created);
+    recoveryTerm = created;
+    return created;
+  }
+
+  function ensureRecoveryClass(): ClassRoom {
+    if (recoveryClass) return recoveryClass;
+
+    const existing = classRooms.find((c) => c.name === RECOVERY_CLASS_NAME);
+    if (existing) {
+      recoveryClass = existing;
+      return existing;
+    }
+
+    // 살아 있는 학급이 있으면 그 학기에, 없으면 복구 학기를 만들어 붙인다.
+    const hostTermId = classRooms[0]?.termId ?? input.activeTermId ?? terms[0]?.id ?? ensureRecoveryTerm().id;
+
+    const created = createClassRoom({ termId: hostTermId, name: RECOVERY_CLASS_NAME }, now);
+    classRooms.push(created);
+    recoveryClass = created;
+    return created;
+  }
+
+  // ── 1. ClassRoom.termId가 존재하는 Term을 가리키는가 ──────────
+  {
+    const termIds = new Set(terms.map((t) => t.id));
+    const orphans = classRooms.filter((c) => !termIds.has(c.termId));
+
+    if (orphans.length > 0) {
+      const target = ensureRecoveryTerm();
+      classRooms = classRooms.map((c) =>
+        termIds.has(c.termId) ? c : { ...c, termId: target.id, updatedAt: now },
+      );
+      repairs.push({
+        code: 'ORPHAN_CLASSROOM',
+        severity: 'warning',
+        entityIds: orphans.map((c) => c.id),
+        message: `학기 정보가 없는 학급 ${orphans.length}개를 '${target.name}'으로 옮겼습니다. 설정에서 올바른 학기로 다시 지정해 주세요.`,
+      });
+    }
+  }
+
+  // ── 2. Student.classId가 존재하는 ClassRoom을 가리키는가 ──────
+  //    학생은 절대 삭제하지 않는다. 갈 곳이 없으면 만들어서라도 살린다.
+  {
+    const classIds = new Set(classRooms.map((c) => c.id));
+    const orphans = students.filter((s) => !classIds.has(s.classId));
+
+    if (orphans.length > 0) {
+      const target = ensureRecoveryClass();
+      for (const student of students) {
+        if (!classIds.has(student.classId)) {
+          student.classId = target.id;
+          student.updatedAt = now;
+        }
+      }
+      repairs.push({
+        code: 'ORPHAN_STUDENT',
+        severity: 'warning',
+        entityIds: orphans.map((s) => s.id),
+        message: `학급 정보가 없는 학생 ${orphans.length}명을 '${target.name}' 학급으로 옮겼습니다. 기록은 그대로 남아 있습니다. 명단 관리에서 올바른 반으로 옮겨 주세요.`,
+      });
+    }
+  }
+
+  // ── 3. Group.classId가 존재하는 ClassRoom을 가리키는가 ────────
+  //    모둠은 파생 데이터다. 소속 학생으로 학급을 추정하고, 그마저 없으면 버린다.
+  {
+    const classIds = new Set(classRooms.map((c) => c.id));
+    const studentById = new Map(students.map((s) => [s.id, s]));
+    const reassigned: string[] = [];
+    const dropped: string[] = [];
+
+    groups = groups.flatMap((group) => {
+      if (classIds.has(group.classId)) return [group];
+
+      const inferredClassId = group.studentIds
+        .map((id) => studentById.get(id)?.classId)
+        .find((classId): classId is string => classId !== undefined && classIds.has(classId));
+
+      if (inferredClassId === undefined) {
+        dropped.push(group.id);
+        return [];
+      }
+
+      reassigned.push(group.id);
+      return [{ ...group, classId: inferredClassId, updatedAt: now }];
+    });
+
+    if (reassigned.length > 0) {
+      repairs.push({
+        code: 'ORPHAN_GROUP',
+        severity: 'info',
+        entityIds: reassigned,
+        message: `학급 정보가 없던 모둠 ${reassigned.length}개를 소속 학생의 학급으로 되돌렸습니다.`,
+      });
+    }
+    if (dropped.length > 0) {
+      repairs.push({
+        code: 'ORPHAN_GROUP',
+        severity: 'warning',
+        entityIds: dropped,
+        message: `학급과 학생이 모두 없는 빈 모둠 ${dropped.length}개를 정리했습니다.`,
+      });
+    }
+  }
+
+  // ── 4. 모둠 구성원이 실제 학생인가 ───────────────────────────
+  {
+    const studentIds = new Set(students.map((s) => s.id));
+    const affected: string[] = [];
+
+    groups = groups.map((group) => {
+      const kept = group.studentIds.filter((id) => studentIds.has(id));
+      if (kept.length === group.studentIds.length) return group;
+
+      affected.push(group.id);
+      return { ...group, studentIds: kept, updatedAt: now };
+    });
+
+    if (affected.length > 0) {
+      repairs.push({
+        code: 'GROUP_MEMBER_NOT_FOUND',
+        severity: 'info',
+        entityIds: affected,
+        message: `모둠 ${affected.length}개에서 존재하지 않는 학생 참조를 정리했습니다.`,
+      });
+    }
+  }
+
+  // ── 5. 한 학생은 같은 반에서 최대 한 모둠에만 속한다 ───────────
+  //    Group.studentIds[] 방향을 택한 대가. 타입으로 못 막으니 여기서 막는다.
+  {
+    const seen = new Map<string, string>(); // studentId → 최초로 차지한 groupId
+    const affected = new Set<string>();
+
+    // 생성 순서가 이른 모둠이 학생을 갖는다. 실행마다 결과가 같아야 한다.
+    const ordered = [...groups].sort(byCreatedAtThenId);
+
+    for (const group of ordered) {
+      const kept: string[] = [];
+      for (const studentId of group.studentIds) {
+        const owner = seen.get(studentId);
+        if (owner === undefined) {
+          seen.set(studentId, group.id);
+          kept.push(studentId);
+        } else {
+          affected.add(group.id);
+        }
+      }
+      if (kept.length !== group.studentIds.length) {
+        group.studentIds = kept;
+        group.updatedAt = now;
+      }
+    }
+
+    if (affected.size > 0) {
+      repairs.push({
+        code: 'STUDENT_IN_MULTIPLE_GROUPS',
+        severity: 'warning',
+        entityIds: [...affected],
+        message: `여러 모둠에 중복으로 들어간 학생이 있어, 먼저 만든 모둠에만 남겼습니다. 모둠 편성을 확인해 주세요.`,
+      });
+    }
+  }
+
+  // ── 6. 모둠장은 그 모둠의 구성원이어야 한다 ──────────────────
+  {
+    const affected: string[] = [];
+
+    groups = groups.map((group) => {
+      if (group.leaderId === null || group.studentIds.includes(group.leaderId)) return group;
+
+      affected.push(group.id);
+      return { ...group, leaderId: null, updatedAt: now };
+    });
+
+    if (affected.length > 0) {
+      repairs.push({
+        code: 'INVALID_GROUP_LEADER',
+        severity: 'info',
+        entityIds: affected,
+        message: `모둠 ${affected.length}개에서 구성원이 아닌 모둠장을 해제했습니다.`,
+      });
+    }
+  }
+
+  // ── 7. 학생 번호는 같은 반 안에서 유일하다 ────────────────────
+  //    번호가 겹치면 정렬·명렬표·CSV 대조가 전부 어긋난다.
+  {
+    const renumbered: string[] = [];
+    const byClass = new Map<string, Student[]>();
+
+    for (const student of students) {
+      const bucket = byClass.get(student.classId);
+      if (bucket) bucket.push(student);
+      else byClass.set(student.classId, [student]);
+    }
+
+    for (const bucket of byClass.values()) {
+      const taken = new Set<number>();
+      // 먼저 등록된 학생이 원래 번호를 지킨다.
+      for (const student of [...bucket].sort(byCreatedAtThenId)) {
+        if (!taken.has(student.number)) {
+          taken.add(student.number);
+          continue;
+        }
+        let next = 1;
+        while (taken.has(next)) next += 1;
+        taken.add(next);
+        student.number = next;
+        student.updatedAt = now;
+        renumbered.push(student.id);
+      }
+    }
+
+    if (renumbered.length > 0) {
+      repairs.push({
+        code: 'DUPLICATE_STUDENT_NUMBER',
+        severity: 'warning',
+        entityIds: renumbered,
+        message: `번호가 겹친 학생 ${renumbered.length}명에게 비어 있는 번호를 새로 부여했습니다. 명단에서 번호를 확인해 주세요.`,
+      });
+    }
+  }
+
+  // ── 8. 기능별 프로필은 실제 학생을 가리키고 중복되지 않는다 ────
+  const studentIdSet = new Set(students.map((s) => s.id));
+
+  function cleanProfiles<T extends { studentId: string }>(
+    list: readonly T[],
+    label: string,
+  ): { kept: T[]; orphanCount: number; duplicateCount: number } {
+    const kept: T[] = [];
+    const seen = new Set<string>();
+    let orphanCount = 0;
+    let duplicateCount = 0;
+
+    for (const profile of list) {
+      if (!studentIdSet.has(profile.studentId)) {
+        orphanCount += 1;
+        continue;
+      }
+      if (seen.has(profile.studentId)) {
+        duplicateCount += 1;
+        continue;
+      }
+      seen.add(profile.studentId);
+      kept.push(profile);
+    }
+
+    if (orphanCount > 0) {
+      repairs.push({
+        code: 'ORPHAN_PROFILE',
+        severity: 'info',
+        entityIds: [],
+        message: `${label} 설정 ${orphanCount}건이 없는 학생을 가리켜 정리했습니다.`,
+      });
+    }
+    if (duplicateCount > 0) {
+      repairs.push({
+        code: 'DUPLICATE_PROFILE',
+        severity: 'info',
+        entityIds: [],
+        message: `${label} 설정 ${duplicateCount}건이 중복되어 정리했습니다.`,
+      });
+    }
+
+    return { kept, orphanCount, duplicateCount };
+  }
+
+  const seatingProfiles = cleanProfiles(input.seatingProfiles, '자리배치').kept;
+  const dutyProfiles = cleanProfiles(input.dutyProfiles, '당번').kept;
+  const rewardProfiles = cleanProfiles(input.rewardProfiles, '보상').kept;
+
+  // ── 9. 활성 학기·학급이 실제로 존재하는가 ────────────────────
+  let activeTermId = input.activeTermId;
+  let activeClassId = input.activeClassId;
+
+  if (activeTermId !== null && !terms.some((t) => t.id === activeTermId)) {
+    activeTermId = terms.find((t) => t.status === 'active')?.id ?? terms[0]?.id ?? null;
+    repairs.push({
+      code: 'INVALID_ACTIVE_TERM',
+      severity: 'info',
+      entityIds: [],
+      message: '선택돼 있던 학기가 없어져 다른 학기로 전환했습니다.',
+    });
+  }
+
+  const selectableClasses =
+    activeTermId === null ? classRooms : classRooms.filter((c) => c.termId === activeTermId);
+
+  if (activeClassId !== null && !selectableClasses.some((c) => c.id === activeClassId)) {
+    activeClassId = selectableClasses[0]?.id ?? null;
+    repairs.push({
+      code: 'INVALID_ACTIVE_CLASS',
+      severity: 'info',
+      entityIds: [],
+      message: '선택돼 있던 학급이 없어져 다른 학급으로 전환했습니다.',
+    });
+  }
+
+  return {
+    data: {
+      ...input,
+      terms,
+      classRooms,
+      students,
+      groups,
+      seatingProfiles,
+      dutyProfiles,
+      rewardProfiles,
+      activeTermId,
+      activeClassId,
+    },
+    repairs,
+  };
+}

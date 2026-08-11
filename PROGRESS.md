@@ -16,9 +16,9 @@ npm run verify   # = lint(tsc --noEmit) && test(vitest) && build(vite)
 | 단계 | 내용 | 상태 |
 |---:|---|---|
 | 0 | 설계 문서 | ✅ 완료 (`4e572ba`) |
-| 1 | 프로젝트 스캐폴딩 — Vite/TS/Tailwind/Router/Vitest, 앱 셸 | ✅ 완료 |
-| 2 | `shared/domain` — 타입·불변조건 + 테스트 | ⬜ 다음 |
-| 3 | `shared/storage` — 어댑터·백업·스키마 + 테스트 | ⬜ |
+| 1 | 프로젝트 스캐폴딩 — Vite/TS/Tailwind/Router/Vitest, 앱 셸 | ✅ 완료 (`487dcbd`) |
+| 2 | `shared/domain` — 타입·불변조건 + 테스트 | ✅ 완료 (테스트 27개, 변이검증 3/3) |
+| 3 | `shared/storage` — 어댑터·백업·스키마 + 테스트 | ⬜ 다음 |
 | 4 | `shared/ui` — 디자인 토큰·공통 컴포넌트·BoardScreen·PrintLayout | ⬜ |
 | 5 | `shared/roster` + `setup` — 명단 단일 원본, CSV, 설정 마법사 | ⬜ |
 | 6 | `features/home` — 새 홈 골격 | ⬜ |
