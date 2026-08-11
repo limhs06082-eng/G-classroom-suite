@@ -18,6 +18,11 @@ import type { ClassRoom, Group, Student, SuiteData, Term } from './types';
  */
 
 export type RepairCode =
+  /** 저장소 계층(schema.ts)에서 쓰는 코드 */
+  | 'MALFORMED_RECORD'
+  | 'MISSING_SECTION'
+  | 'SCHEMA_VERSION_AHEAD'
+  /** 도메인 불변조건 코드 */
   | 'ORPHAN_CLASSROOM'
   | 'ORPHAN_STUDENT'
   | 'ORPHAN_GROUP'
