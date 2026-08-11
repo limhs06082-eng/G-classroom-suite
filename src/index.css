@@ -1,0 +1,83 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   디자인 토큰
+   - 하드코딩 색상 금지. 반드시 이 토큰을 경유한다.
+   - 4단계에서 확장하며, 여기가 유일한 색·타이포 정의 지점이다.
+   ============================================================ */
+@theme {
+  /* 브랜드 */
+  --color-brand-50: oklch(0.97 0.02 235);
+  --color-brand-100: oklch(0.93 0.04 235);
+  --color-brand-200: oklch(0.87 0.07 235);
+  --color-brand-300: oklch(0.78 0.1 235);
+  --color-brand-400: oklch(0.68 0.13 235);
+  --color-brand-500: oklch(0.58 0.15 235);
+  --color-brand-600: oklch(0.5 0.14 235);
+  --color-brand-700: oklch(0.42 0.12 235);
+  --color-brand-800: oklch(0.35 0.09 235);
+  --color-brand-900: oklch(0.28 0.06 235);
+
+  /* 기능 영역 구분색 — 홈 카드·네비에서 기능을 식별한다 */
+  --color-seating-500: oklch(0.62 0.15 265); /* 자리·모둠 */
+  --color-duty-500: oklch(0.65 0.14 155); /* 역할·당번 */
+  --color-reward-500: oklch(0.72 0.15 75); /* 활동·보상 */
+  --color-assignment-500: oklch(0.62 0.16 25); /* 과제 제출 */
+
+  /* 의미색 */
+  --color-success-500: oklch(0.65 0.15 150);
+  --color-warning-500: oklch(0.75 0.15 80);
+  --color-danger-500: oklch(0.58 0.19 27);
+  --color-info-500: oklch(0.62 0.13 235);
+
+  /* 타이포 — desk 스케일(교사 노트북 기본) */
+  --font-sans:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI',
+    'Malgun Gothic', sans-serif;
+  --font-mono: 'D2Coding', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* 타이포 — board 스케일(전자칠판, 3~8m 거리 판독) */
+  --text-board-sm: 1.75rem;
+  --text-board-base: 2.5rem;
+  --text-board-lg: 3.5rem;
+  --text-board-xl: 5rem;
+  --text-board-2xl: 7rem;
+
+  /* 모양 */
+  --radius-card: 0.875rem;
+  --radius-control: 0.5rem;
+}
+
+/* ============================================================
+   기본 스타일
+   ============================================================ */
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+  font-family: var(--font-sans);
+}
+
+/* 키보드 사용자에게만 포커스 링을 보인다 — 교사는 단축키를 많이 쓴다 */
+:focus-visible {
+  @apply outline-2 outline-offset-2 outline-brand-500;
+}
+
+/* 인쇄: 화면 전용 요소를 숨기고 흑백 대비를 확보한다 */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    @apply bg-white text-black;
+  }
+}
