@@ -1,7 +1,10 @@
 import {
   CURRENT_SCHEMA_VERSION,
   type ClassRoom,
+  type DutyCompletion,
   type DutyProfile,
+  type DutyRole,
+  type DutyRound,
   type Gender,
   type Group,
   type RewardProfile,
@@ -141,6 +144,67 @@ export function createSeatingState(classId: string, now: string = nowIso()): Sea
   };
 }
 
+/**
+ * 처음 만들 때 제안하는 역할 묶음.
+ *
+ * 빈 화면에서 역할을 처음부터 만들게 하면 대부분 포기한다.
+ * 실제 학급에서 흔한 것만 골라 기본으로 깔아 준다. 교사가 지우거나 고치면 된다.
+ */
+export const STARTER_ROLES: ReadonlyArray<
+  Pick<DutyRole, 'name' | 'category' | 'neededCount' | 'cycle'>
+> = [
+  { name: '칠판 지우기', category: '칠판', neededCount: 2, cycle: 'weekly' },
+  { name: '교실 바닥', category: '청소구역', neededCount: 4, cycle: 'weekly' },
+  { name: '복도·계단', category: '청소구역', neededCount: 2, cycle: 'weekly' },
+  { name: '급식 배식 도우미', category: '급식', neededCount: 2, cycle: 'weekly' },
+  { name: '우유·재활용', category: '학급 운영', neededCount: 2, cycle: 'weekly' },
+];
+
+export function createDutyRole(
+  input: Pick<DutyRole, 'classId' | 'name' | 'category' | 'neededCount' | 'cycle'> &
+    Partial<Pick<DutyRole, 'id' | 'description' | 'activeDays' | 'isActive'>>,
+  now: string = nowIso(),
+): DutyRole {
+  return {
+    id: input.id ?? createId(),
+    classId: input.classId,
+    name: input.name,
+    category: input.category,
+    description: input.description ?? '',
+    neededCount: input.neededCount,
+    cycle: input.cycle,
+    activeDays: input.activeDays ?? [],
+    isActive: input.isActive ?? true,
+    fixedStudentIds: [],
+    excludedStudentIds: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function createDutyRound(
+  input: Pick<DutyRound, 'classId' | 'startDate' | 'endDate' | 'label'> &
+    Partial<Pick<DutyRound, 'id' | 'status' | 'assignments' | 'lockedRoleIds'>>,
+  now: string = nowIso(),
+): DutyRound {
+  return {
+    id: input.id ?? createId(),
+    classId: input.classId,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    label: input.label,
+    status: input.status ?? 'active',
+    assignments: input.assignments ?? [],
+    lockedRoleIds: input.lockedRoleIds ?? [],
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function createDutyCompletion(classId: string, date: string): DutyCompletion {
+  return { classId, date, completed: [], substitutions: [] };
+}
+
 export const DEFAULT_SCORE_CYCLE: ScoreCycle = {
   weeklyStartDay: 1, // 월요일 시작 — 학교 주간 운영에 맞춘다
   weeklyStartDayApplyMode: 'next_period',
@@ -162,6 +226,9 @@ export function createEmptySuiteData(): SuiteData {
     dutyProfiles: [],
     rewardProfiles: [],
     seatingStates: [],
+    dutyRoles: [],
+    dutyRounds: [],
+    dutyCompletions: [],
     scoreCycle: { ...DEFAULT_SCORE_CYCLE },
     activeTermId: null,
     activeClassId: null,

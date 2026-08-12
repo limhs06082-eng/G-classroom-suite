@@ -192,6 +192,82 @@ export const MIN_SEAT_COLS = 1;
 export const MAX_SEAT_COLS = 12;
 
 // ─────────────────────────────────────────────────────────────
+// 역할·당번 (features/duty)
+// ─────────────────────────────────────────────────────────────
+
+export const ROLE_CATEGORIES = [
+  '청소구역',
+  '급식',
+  '칠판',
+  '기기 관리',
+  '학급 운영',
+  '기타',
+] as const;
+export type RoleCategory = (typeof ROLE_CATEGORIES)[number];
+
+export type RoleCycle = 'daily' | 'weekly' | 'biweekly' | 'monthly';
+
+export interface DutyRole {
+  id: string;
+  classId: string;
+  name: string;
+  category: RoleCategory;
+  description: string;
+  /** 이 역할에 필요한 인원 */
+  neededCount: number;
+  cycle: RoleCycle;
+  /** 이 역할이 필요한 요일. 비어 있으면 매일. 0=일 … 6=토 */
+  activeDays: number[];
+  isActive: boolean;
+  /** 항상 이 역할을 맡는 학생 */
+  fixedStudentIds: string[];
+  /** 이 역할에서 빼는 학생 */
+  excludedStudentIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RoleAssignment {
+  roleId: string;
+  studentIds: string[];
+}
+
+export type DutyRoundStatus = 'draft' | 'active' | 'ended';
+
+/**
+ * 한 차례의 당번 배정.
+ *
+ * 원본의 AssignmentRecord에 해당한다. 주간·격주·월간 어느 주기든
+ * "언제부터 언제까지 누가 무엇을 맡는가" 한 덩어리로 본다.
+ */
+export interface DutyRound {
+  id: string;
+  classId: string;
+  /** YYYY-MM-DD */
+  startDate: string;
+  /** YYYY-MM-DD, 포함 */
+  endDate: string;
+  /** "2026년 8월 2주차" */
+  label: string;
+  status: DutyRoundStatus;
+  assignments: RoleAssignment[];
+  /** 다시 배정해도 그대로 둘 역할 */
+  lockedRoleIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 그날 누가 역할을 수행했는지. 날짜·학급마다 하나. */
+export interface DutyCompletion {
+  classId: string;
+  /** YYYY-MM-DD */
+  date: string;
+  completed: Array<{ roleId: string; studentId: string }>;
+  /** 결석 등으로 그날만 대신한 경우 */
+  substitutions: Array<{ roleId: string; originalStudentId: string; substituteStudentId: string }>;
+}
+
+// ─────────────────────────────────────────────────────────────
 // 점수 주기
 // reward.PeriodSettings의 개명.
 // 원본의 이름은 '학기(Period)'와 혼동되어 사고를 부른다.
@@ -232,6 +308,10 @@ export interface SuiteData {
 
   /** 학급마다 최대 하나. 자리 배치를 한 번도 안 한 학급은 없을 수도 있다. */
   seatingStates: SeatingState[];
+
+  dutyRoles: DutyRole[];
+  dutyRounds: DutyRound[];
+  dutyCompletions: DutyCompletion[];
 
   scoreCycle: ScoreCycle;
 

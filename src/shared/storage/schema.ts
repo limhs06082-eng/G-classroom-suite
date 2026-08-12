@@ -7,12 +7,18 @@ import {
 import { validateAndRepair, type RepairLog } from '../domain/invariants';
 import {
   CURRENT_SCHEMA_VERSION,
+  ROLE_CATEGORIES,
   MAX_SEAT_COLS,
   MAX_SEAT_ROWS,
   MIN_SEAT_COLS,
   MIN_SEAT_ROWS,
   type ClassRoom,
+  type DutyCompletion,
   type DutyProfile,
+  type DutyRole,
+  type DutyRound,
+  type RoleCycle,
+  type DutyRoundStatus,
   type Gender,
   type Group,
   type RewardProfile,
@@ -85,6 +91,8 @@ function asArray(value: unknown): unknown[] {
 const TERM_STATUSES: readonly TermStatus[] = ['active', 'ended', 'archived'];
 const STUDENT_STATUSES: readonly StudentStatus[] = ['active', 'inactive'];
 const GENDERS: readonly Gender[] = ['male', 'female', 'other', 'none'];
+const ROLE_CYCLES: readonly RoleCycle[] = ['daily', 'weekly', 'biweekly', 'monthly'];
+const ROUND_STATUSES: readonly DutyRoundStatus[] = ['draft', 'active', 'ended'];
 
 function parseTerm(raw: unknown, now: string): Term | null {
   if (!isRecord(raw)) return null;
@@ -242,6 +250,83 @@ function parseSeatingState(raw: unknown, now: string): SeatingState | null {
   };
 }
 
+function parseDutyRole(raw: unknown, now: string): DutyRole | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  const classId = requiredStr(raw['classId']);
+  if (id === null || classId === null) return null;
+
+  return {
+    id,
+    classId,
+    name: str(raw['name'], '이름 없는 역할'),
+    category: oneOf(raw['category'], ROLE_CATEGORIES, '기타'),
+    description: str(raw['description']),
+    // 인원이 0이면 아무도 배정되지 않아 역할이 조용히 사라진다.
+    neededCount: Math.max(1, Math.round(num(raw['neededCount'], 1))),
+    cycle: oneOf(raw['cycle'], ROLE_CYCLES, 'weekly'),
+    activeDays: numArray(raw['activeDays']).filter((d) => d >= 0 && d <= 6),
+    isActive: bool(raw['isActive'], true),
+    fixedStudentIds: strArray(raw['fixedStudentIds']),
+    excludedStudentIds: strArray(raw['excludedStudentIds']),
+    createdAt: str(raw['createdAt'], now),
+    updatedAt: str(raw['updatedAt'], now),
+  };
+}
+
+function parseDutyRound(raw: unknown, now: string): DutyRound | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  const classId = requiredStr(raw['classId']);
+  if (id === null || classId === null) return null;
+
+  const assignments = asArray(raw['assignments']).flatMap((entry) => {
+    if (!isRecord(entry)) return [];
+    const roleId = requiredStr(entry['roleId']);
+    if (roleId === null) return [];
+    return [{ roleId, studentIds: strArray(entry['studentIds']) }];
+  });
+
+  return {
+    id,
+    classId,
+    startDate: str(raw['startDate']),
+    endDate: str(raw['endDate']),
+    label: str(raw['label'], '당번'),
+    status: oneOf(raw['status'], ROUND_STATUSES, 'active'),
+    assignments,
+    lockedRoleIds: strArray(raw['lockedRoleIds']),
+    createdAt: str(raw['createdAt'], now),
+    updatedAt: str(raw['updatedAt'], now),
+  };
+}
+
+function parseDutyCompletion(raw: unknown): DutyCompletion | null {
+  if (!isRecord(raw)) return null;
+  const classId = requiredStr(raw['classId']);
+  const date = requiredStr(raw['date']);
+  if (classId === null || date === null) return null;
+
+  const completed = asArray(raw['completed']).flatMap((entry) => {
+    if (!isRecord(entry)) return [];
+    const roleId = requiredStr(entry['roleId']);
+    const studentId = requiredStr(entry['studentId']);
+    if (roleId === null || studentId === null) return [];
+    return [{ roleId, studentId }];
+  });
+
+  const substitutions = asArray(raw['substitutions']).flatMap((entry) => {
+    if (!isRecord(entry)) return [];
+    const roleId = requiredStr(entry['roleId']);
+    const originalStudentId = requiredStr(entry['originalStudentId']);
+    const substituteStudentId = requiredStr(entry['substituteStudentId']);
+    if (roleId === null || originalStudentId === null || substituteStudentId === null) return [];
+    return [{ roleId, originalStudentId, substituteStudentId }];
+  });
+
+  return { classId, date, completed, substitutions };
+}
+
 function parseScoreCycle(raw: unknown): ScoreCycle {
   if (!isRecord(raw)) return { ...DEFAULT_SCORE_CYCLE };
 
@@ -335,6 +420,9 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     dutyProfiles: parseList('dutyProfiles', '당번 설정', parseDutyProfile),
     rewardProfiles: parseList('rewardProfiles', '보상 설정', parseRewardProfile),
     seatingStates: parseList('seatingStates', '자리 배치', (r) => parseSeatingState(r, now)),
+    dutyRoles: parseList('dutyRoles', '역할', (r) => parseDutyRole(r, now)),
+    dutyRounds: parseList('dutyRounds', '당번 배정', (r) => parseDutyRound(r, now)),
+    dutyCompletions: parseList('dutyCompletions', '당번 수행 기록', parseDutyCompletion),
     scoreCycle: parseScoreCycle(root['scoreCycle']),
     activeTermId: typeof root['activeTermId'] === 'string' ? root['activeTermId'] : null,
     activeClassId: typeof root['activeClassId'] === 'string' ? root['activeClassId'] : null,
