@@ -159,6 +159,34 @@ export interface RewardProfile {
 }
 
 // ─────────────────────────────────────────────────────────────
+// 자리 배치 (features/seating)
+//
+// 좌석 자체는 rows·cols에서 계산으로 만들기 때문에 저장하지 않는다.
+// 저장할 것은 교실 모양과 누가 어디 앉는지뿐이다.
+// ─────────────────────────────────────────────────────────────
+
+export interface StudentPosition {
+  studentId: string;
+  /** `r{row}c{col}` 형식 */
+  seatId: string;
+}
+
+export interface SeatingState {
+  classId: string;
+  rows: number;
+  cols: number;
+  /** 책상이 없거나 쓰지 않는 자리 */
+  disabledSeatIds: string[];
+  positions: StudentPosition[];
+  updatedAt: string;
+}
+
+export const MIN_SEAT_ROWS = 1;
+export const MAX_SEAT_ROWS = 12;
+export const MIN_SEAT_COLS = 1;
+export const MAX_SEAT_COLS = 12;
+
+// ─────────────────────────────────────────────────────────────
 // 점수 주기
 // reward.PeriodSettings의 개명.
 // 원본의 이름은 '학기(Period)'와 혼동되어 사고를 부른다.
@@ -196,6 +224,9 @@ export interface SuiteData {
   seatingProfiles: SeatingProfile[];
   dutyProfiles: DutyProfile[];
   rewardProfiles: RewardProfile[];
+
+  /** 학급마다 최대 하나. 자리 배치를 한 번도 안 한 학급은 없을 수도 있다. */
+  seatingStates: SeatingState[];
 
   scoreCycle: ScoreCycle;
 

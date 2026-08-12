@@ -7,6 +7,7 @@ import {
   type RewardProfile,
   type ScoreCycle,
   type SeatingProfile,
+  type SeatingState,
   type Student,
   type SuiteData,
   type Term,
@@ -125,6 +126,21 @@ export function createRewardProfile(studentId: string, nickname = ''): RewardPro
 
 // ─────────────────────────────────────────────────────────────
 
+/** 교실 기본 크기. 25명 안팎의 학급이 여유 있게 들어간다. */
+export const DEFAULT_SEAT_ROWS = 5;
+export const DEFAULT_SEAT_COLS = 6;
+
+export function createSeatingState(classId: string, now: string = nowIso()): SeatingState {
+  return {
+    classId,
+    rows: DEFAULT_SEAT_ROWS,
+    cols: DEFAULT_SEAT_COLS,
+    disabledSeatIds: [],
+    positions: [],
+    updatedAt: now,
+  };
+}
+
 export const DEFAULT_SCORE_CYCLE: ScoreCycle = {
   weeklyStartDay: 1, // 월요일 시작 — 학교 주간 운영에 맞춘다
   weeklyStartDayApplyMode: 'next_period',
@@ -145,6 +161,7 @@ export function createEmptySuiteData(): SuiteData {
     seatingProfiles: [],
     dutyProfiles: [],
     rewardProfiles: [],
+    seatingStates: [],
     scoreCycle: { ...DEFAULT_SCORE_CYCLE },
     activeTermId: null,
     activeClassId: null,

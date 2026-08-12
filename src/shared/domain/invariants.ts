@@ -33,7 +33,9 @@ export type RepairCode =
   | 'ORPHAN_PROFILE'
   | 'DUPLICATE_PROFILE'
   | 'INVALID_ACTIVE_TERM'
-  | 'INVALID_ACTIVE_CLASS';
+  | 'INVALID_ACTIVE_CLASS'
+  | 'ORPHAN_SEATING_STATE'
+  | 'INVALID_SEAT_POSITION';
 
 export interface RepairLog {
   code: RepairCode;
@@ -370,6 +372,79 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
   const dutyProfiles = cleanProfiles(input.dutyProfiles, '당번').kept;
   const rewardProfiles = cleanProfiles(input.rewardProfiles, '보상').kept;
 
+  // ── 8-2. 자리 배치가 실제 학급·학생·좌석을 가리키는가 ─────────
+  //     잘못된 배치를 그대로 두면 교실 그림에 학생이 겹쳐 그려지거나 사라진다.
+  const seatingStates = (() => {
+    const classIds = new Set(classRooms.map((c) => c.id));
+    const studentById = new Map(students.map((s) => [s.id, s]));
+
+    const droppedStates: string[] = [];
+    const fixedStates: string[] = [];
+
+    const kept = input.seatingStates.flatMap((state) => {
+      if (!classIds.has(state.classId)) {
+        droppedStates.push(state.classId);
+        return [];
+      }
+
+      const usedSeats = new Set<string>();
+      const usedStudents = new Set<string>();
+      let changed = false;
+
+      const positions = state.positions.filter((position) => {
+        const student = studentById.get(position.studentId);
+        const match = /^r(\d+)c(\d+)$/.exec(position.seatId);
+        const row = match ? Number(match[1]) : 0;
+        const col = match ? Number(match[2]) : 0;
+
+        const valid =
+          student !== undefined &&
+          student.classId === state.classId &&
+          match !== null &&
+          row >= 1 &&
+          row <= state.rows &&
+          col >= 1 &&
+          col <= state.cols &&
+          !state.disabledSeatIds.includes(position.seatId) &&
+          !usedSeats.has(position.seatId) &&
+          !usedStudents.has(position.studentId);
+
+        if (!valid) {
+          changed = true;
+          return false;
+        }
+
+        usedSeats.add(position.seatId);
+        usedStudents.add(position.studentId);
+        return true;
+      });
+
+      if (!changed) return [state];
+
+      fixedStates.push(state.classId);
+      return [{ ...state, positions, updatedAt: now }];
+    });
+
+    if (droppedStates.length > 0) {
+      repairs.push({
+        code: 'ORPHAN_SEATING_STATE',
+        severity: 'info',
+        entityIds: droppedStates,
+        message: `없는 학급의 자리 배치 ${droppedStates.length}건을 정리했습니다.`,
+      });
+    }
+    if (fixedStates.length > 0) {
+      repairs.push({
+        code: 'INVALID_SEAT_POSITION',
+        severity: 'warning',
+        entityIds: fixedStates,
+        message: `자리 배치에서 잘못된 좌석 지정을 정리했습니다. 자리·모둠 화면에서 다시 배치해 주세요.`,
+      });
+    }
+
+    return kept;
+  })();
+
   // ── 9. 활성 학기·학급이 실제로 존재하는가 ────────────────────
   let activeTermId = input.activeTermId;
   let activeClassId = input.activeClassId;
@@ -407,6 +482,7 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       seatingProfiles,
       dutyProfiles,
       rewardProfiles,
+      seatingStates,
       activeTermId,
       activeClassId,
     },

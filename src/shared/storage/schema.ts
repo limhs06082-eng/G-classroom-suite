@@ -1,7 +1,16 @@
-import { createEmptySuiteData, DEFAULT_SCORE_CYCLE } from '../domain/factories';
+import {
+  createEmptySuiteData,
+  DEFAULT_SCORE_CYCLE,
+  DEFAULT_SEAT_COLS,
+  DEFAULT_SEAT_ROWS,
+} from '../domain/factories';
 import { validateAndRepair, type RepairLog } from '../domain/invariants';
 import {
   CURRENT_SCHEMA_VERSION,
+  MAX_SEAT_COLS,
+  MAX_SEAT_ROWS,
+  MIN_SEAT_COLS,
+  MIN_SEAT_ROWS,
   type ClassRoom,
   type DutyProfile,
   type Gender,
@@ -9,6 +18,7 @@ import {
   type RewardProfile,
   type ScoreCycle,
   type SeatingProfile,
+  type SeatingState,
   type Student,
   type StudentStatus,
   type SuiteData,
@@ -204,6 +214,33 @@ function parseRewardProfile(raw: unknown): RewardProfile | null {
   return { studentId, nickname: str(raw['nickname']) };
 }
 
+function parseSeatingState(raw: unknown, now: string): SeatingState | null {
+  if (!isRecord(raw)) return null;
+  const classId = requiredStr(raw['classId']);
+  if (classId === null) return null;
+
+  const positions = asArray(raw['positions']).flatMap((entry) => {
+    if (!isRecord(entry)) return [];
+    const studentId = requiredStr(entry['studentId']);
+    const seatIdValue = requiredStr(entry['seatId']);
+    if (studentId === null || seatIdValue === null) return [];
+    return [{ studentId, seatId: seatIdValue }];
+  });
+
+  // 교실 크기가 망가지면 화면이 아예 그려지지 않는다. 범위 안으로 끌어온다.
+  const clamp = (value: unknown, fallback: number, min: number, max: number): number =>
+    Math.max(min, Math.min(max, Math.round(num(value, fallback))));
+
+  return {
+    classId,
+    rows: clamp(raw['rows'], DEFAULT_SEAT_ROWS, MIN_SEAT_ROWS, MAX_SEAT_ROWS),
+    cols: clamp(raw['cols'], DEFAULT_SEAT_COLS, MIN_SEAT_COLS, MAX_SEAT_COLS),
+    disabledSeatIds: strArray(raw['disabledSeatIds']),
+    positions,
+    updatedAt: str(raw['updatedAt'], now),
+  };
+}
+
 function parseScoreCycle(raw: unknown): ScoreCycle {
   if (!isRecord(raw)) return { ...DEFAULT_SCORE_CYCLE };
 
@@ -296,6 +333,7 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     seatingProfiles: parseList('seatingProfiles', '자리배치 설정', parseSeatingProfile),
     dutyProfiles: parseList('dutyProfiles', '당번 설정', parseDutyProfile),
     rewardProfiles: parseList('rewardProfiles', '보상 설정', parseRewardProfile),
+    seatingStates: parseList('seatingStates', '자리 배치', (r) => parseSeatingState(r, now)),
     scoreCycle: parseScoreCycle(root['scoreCycle']),
     activeTermId: typeof root['activeTermId'] === 'string' ? root['activeTermId'] : null,
     activeClassId: typeof root['activeClassId'] === 'string' ? root['activeClassId'] : null,

@@ -1,11 +1,19 @@
 /**
  * 자리배치·모둠 편성 전용 타입.
  *
- * 학생·모둠·학급은 shared/domain의 것을 쓴다. 여기에는 좌석처럼
- * 이 기능에서만 의미가 있는 것만 둔다.
+ * 학생·모둠·학급·저장되는 배치 상태는 shared/domain의 것을 쓴다.
+ * 여기에는 계산으로 만들어지고 저장하지 않는 것만 둔다.
  */
 
-/** 교실 좌석 한 자리. id는 `r{row}c{col}` 형식이다. */
+// 저장되는 배치는 도메인이 소유한다. 여기서 다시 정의하면 또 갈라진다.
+export type { SeatingState, StudentPosition } from '../../shared/domain/types';
+
+/**
+ * 교실 좌석 한 자리.
+ *
+ * 저장하지 않는다. rows·cols·disabledSeatIds에서 매번 만들어 쓴다.
+ * 좌석을 저장하면 교실 크기를 바꿀 때마다 두 곳이 어긋난다.
+ */
 export interface Seat {
   id: string;
   /** 1부터 */
@@ -14,18 +22,6 @@ export interface Seat {
   column: number;
   /** 책상이 없거나 쓰지 않는 자리 */
   isDisabled: boolean;
-}
-
-export interface StudentPosition {
-  studentId: string;
-  seatId: string;
-}
-
-export interface SeatLayout {
-  classId: string;
-  rows: number;
-  cols: number;
-  disabledSeatIds: string[];
 }
 
 /**
