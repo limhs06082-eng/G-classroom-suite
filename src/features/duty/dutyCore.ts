@@ -103,6 +103,51 @@ export function isExcluded(
   return false;
 }
 
+function toDateOnly(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export function addDays(dateStr: string, days: number): string {
+  const date = parseLocalDate(dateStr);
+  if (date === null) return dateStr;
+
+  date.setDate(date.getDate() + days);
+  return toDateOnly(date);
+}
+
+export interface DutyWeek {
+  /** 그 주 월요일 */
+  startDate: string;
+  /** 그 주 금요일. 학교 당번은 주 5일이 기본이다. */
+  endDate: string;
+  /** "2026년 3월 1주차" */
+  label: string;
+}
+
+/** 주어진 날짜가 속한 주(월~금)를 돌려준다. */
+export function weekOf(dateStr: string): DutyWeek {
+  const date = parseLocalDate(dateStr);
+  if (date === null) return { startDate: dateStr, endDate: dateStr, label: '이번 주' };
+
+  // 일요일(0)은 지난 주로 본다. 학교 주간은 월요일에 시작한다.
+  const weekday = date.getDay();
+  const offsetToMonday = weekday === 0 ? -6 : 1 - weekday;
+  const startDate = addDays(dateStr, offsetToMonday);
+  const endDate = addDays(startDate, 4);
+
+  const monday = parseLocalDate(startDate);
+  const month = (monday?.getMonth() ?? 0) + 1;
+  const weekIndex = Math.floor(((monday?.getDate() ?? 1) - 1) / 7) + 1;
+
+  return {
+    startDate,
+    endDate,
+    label: `${monday?.getFullYear() ?? ''}년 ${month}월 ${weekIndex}주차`,
+  };
+}
+
 /** 이 역할이 이 날짜에 필요한가. activeDays가 비어 있으면 매일 필요하다. */
 export function roleAppliesOn(role: DutyRole, dateStr: string): boolean {
   if (!role.isActive) return false;

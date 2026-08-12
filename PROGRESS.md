@@ -25,8 +25,8 @@ npm run verify
 | 5 | `shared/roster` + `setup` — 명단 단일 원본, CSV, 설정 마법사 | ✅ 완료 (테스트 148개) |
 | 6 | `features/home` — 새 홈 골격 | ✅ 완료 (테스트 154개) |
 | 7 | `features/seating` 이식 | ✅ 완료 (자리배치·모둠편성·전자칠판) |
-| 8 | `features/duty` 이식 | ⬜ **다음** |
-| 9 | `features/reward` 이식 (seating 모둠 소비) | ⬜ |
+| 8 | `features/duty` 이식 | ✅ 완료 (배정·공정성·전자칠판) |
+| 9 | `features/reward` 이식 (seating 모둠 소비) | ⬜ **다음** |
 | 10 | `features/assignment` 이식 | ⬜ |
 | 11 | `features/tools` + dashboard 카드, 홈 요약 카드 연결 | ⬜ |
 | 12 | 마이그레이션 + 배포 설정 + README | ⬜ |

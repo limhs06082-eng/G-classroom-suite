@@ -18,6 +18,7 @@ import {
   useSuite,
 } from '../../shared/roster/SuiteDataProvider';
 import { Button, Card, EmptyState, useToast } from '../../shared/ui';
+import { DutySummary } from '../duty/DutySummary';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
 import { BigStat, PendingNote, SummaryCard } from './SummaryCard';
 
@@ -92,10 +93,9 @@ export default function HomePage() {
           icon={Wand2}
           accentClass="text-duty-500"
           tintClass="bg-duty-50"
-          pending
           cta="역할·당번 열기"
         >
-          <PendingNote>역할을 만들고 배정하면 오늘 당번이 여기 표시됩니다.</PendingNote>
+          <DutySummary />
         </SummaryCard>
 
         <SummaryCard

@@ -35,7 +35,9 @@ export type RepairCode =
   | 'INVALID_ACTIVE_TERM'
   | 'INVALID_ACTIVE_CLASS'
   | 'ORPHAN_SEATING_STATE'
-  | 'INVALID_SEAT_POSITION';
+  | 'INVALID_SEAT_POSITION'
+  | 'ORPHAN_DUTY_RECORD'
+  | 'INVALID_DUTY_ASSIGNMENT';
 
 export interface RepairLog {
   code: RepairCode;
@@ -445,6 +447,121 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
     return kept;
   })();
 
+  // ── 8-3. 역할·당번이 실제 학급·학생·역할을 가리키는가 ─────────
+  //     잘못된 배정을 두면 오늘의 당번에 빈칸이나 유령 이름이 뜬다.
+  const duty = (() => {
+    const classIds = new Set(classRooms.map((c) => c.id));
+    const studentById = new Map(students.map((s) => [s.id, s]));
+
+    const droppedRoles: string[] = [];
+    const dutyRoles = input.dutyRoles.flatMap((role) => {
+      if (!classIds.has(role.classId)) {
+        droppedRoles.push(role.id);
+        return [];
+      }
+
+      // 다른 반 학생이나 없는 학생이 고정·제외 목록에 남아 있으면 정리한다.
+      const belongs = (studentId: string): boolean =>
+        studentById.get(studentId)?.classId === role.classId;
+
+      const fixedStudentIds = role.fixedStudentIds.filter(belongs);
+      const excludedStudentIds = role.excludedStudentIds.filter(belongs);
+
+      if (
+        fixedStudentIds.length === role.fixedStudentIds.length &&
+        excludedStudentIds.length === role.excludedStudentIds.length
+      ) {
+        return [role];
+      }
+      return [{ ...role, fixedStudentIds, excludedStudentIds, updatedAt: now }];
+    });
+
+    const roleIdsByClass = new Map<string, Set<string>>();
+    for (const role of dutyRoles) {
+      const bucket = roleIdsByClass.get(role.classId) ?? new Set<string>();
+      bucket.add(role.id);
+      roleIdsByClass.set(role.classId, bucket);
+    }
+
+    const droppedRounds: string[] = [];
+    const fixedRounds: string[] = [];
+
+    const dutyRounds = input.dutyRounds.flatMap((round) => {
+      if (!classIds.has(round.classId)) {
+        droppedRounds.push(round.id);
+        return [];
+      }
+
+      const validRoleIds = roleIdsByClass.get(round.classId) ?? new Set<string>();
+      let changed = false;
+
+      const assignments = round.assignments.flatMap((assignment) => {
+        if (!validRoleIds.has(assignment.roleId)) {
+          changed = true;
+          return [];
+        }
+
+        const seen = new Set<string>();
+        const studentIds = assignment.studentIds.filter((studentId) => {
+          const ok =
+            studentById.get(studentId)?.classId === round.classId && !seen.has(studentId);
+          if (ok) seen.add(studentId);
+          else changed = true;
+          return ok;
+        });
+
+        return [{ ...assignment, studentIds }];
+      });
+
+      const lockedRoleIds = round.lockedRoleIds.filter((roleId) => {
+        const ok = validRoleIds.has(roleId);
+        if (!ok) changed = true;
+        return ok;
+      });
+
+      if (!changed) return [round];
+
+      fixedRounds.push(round.id);
+      return [{ ...round, assignments, lockedRoleIds, updatedAt: now }];
+    });
+
+    const dutyCompletions = input.dutyCompletions
+      .filter((completion) => classIds.has(completion.classId))
+      .map((completion) => ({
+        ...completion,
+        completed: completion.completed.filter(
+          (entry) => studentById.get(entry.studentId)?.classId === completion.classId,
+        ),
+        substitutions: completion.substitutions.filter(
+          (entry) =>
+            studentById.get(entry.originalStudentId)?.classId === completion.classId &&
+            studentById.get(entry.substituteStudentId)?.classId === completion.classId,
+        ),
+      }));
+
+    const droppedCompletions = input.dutyCompletions.length - dutyCompletions.length;
+
+    if (droppedRoles.length + droppedRounds.length + droppedCompletions > 0) {
+      repairs.push({
+        code: 'ORPHAN_DUTY_RECORD',
+        severity: 'info',
+        entityIds: [...droppedRoles, ...droppedRounds],
+        message: '없는 학급의 역할·당번 기록을 정리했습니다.',
+      });
+    }
+    if (fixedRounds.length > 0) {
+      repairs.push({
+        code: 'INVALID_DUTY_ASSIGNMENT',
+        severity: 'warning',
+        entityIds: fixedRounds,
+        message:
+          '당번 배정에서 없는 역할이나 학생을 가리키던 부분을 정리했습니다. 역할·당번 화면에서 다시 배정해 주세요.',
+      });
+    }
+
+    return { dutyRoles, dutyRounds, dutyCompletions };
+  })();
+
   // ── 9. 활성 학기·학급이 실제로 존재하는가 ────────────────────
   let activeTermId = input.activeTermId;
   let activeClassId = input.activeClassId;
@@ -483,6 +600,9 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       dutyProfiles,
       rewardProfiles,
       seatingStates,
+      dutyRoles: duty.dutyRoles,
+      dutyRounds: duty.dutyRounds,
+      dutyCompletions: duty.dutyCompletions,
       activeTermId,
       activeClassId,
     },
