@@ -22,8 +22,8 @@ npm run verify
 | 2 | `shared/domain` — 타입·불변조건 + 테스트 | ✅ `7bae477` |
 | 3 | `shared/storage` — 어댑터·백업·스키마 + 테스트 | ✅ `2d6fa90` |
 | 4 | `shared/ui` — 디자인 토큰·공통 컴포넌트·BoardScreen·PrintLayout | ✅ 완료 (테스트 85개, 갤러리 `/dev/gallery`) |
-| 5 | `shared/roster` + `setup` — 명단 단일 원본, CSV, 설정 마법사 | ⬜ **다음** |
-| 6 | `features/home` — 새 홈 골격 | ⬜ |
+| 5 | `shared/roster` + `setup` — 명단 단일 원본, CSV, 설정 마법사 | ✅ 완료 (테스트 148개) |
+| 6 | `features/home` — 새 홈 골격 | ⬜ **다음** |
 | 7 | `features/seating` 이식 | ⬜ |
 | 8 | `features/duty` 이식 | ⬜ |
 | 9 | `features/reward` 이식 (seating 모둠 소비) | ⬜ |
@@ -31,33 +31,25 @@ npm run verify
 | 11 | `features/tools` + dashboard 카드, 홈 요약 카드 연결 | ⬜ |
 | 12 | 마이그레이션 + 배포 설정 + README | ⬜ |
 
-현재 테스트 85개 (도메인 21 · 저장소 34 · UI 24 · 라우팅 6).
+현재 테스트 148개 (도메인 21 · 저장소 34 · UI 24 · 명단 54 · 상태 9 · 라우팅 6).
 
 개발 중 컴포넌트 확인: `npm run dev` 후 <http://localhost:3000/dev/gallery>
 (프로덕션 빌드에서는 제외된다)
 
-## 다음 작업: 5단계 `shared/roster` + `setup`
+## 다음 작업: 6단계 `features/home`
 
-**목표** — 학생 명단을 단일 원본으로 만든다. 통합의 실질 가치가 여기에 몰려 있다.
-지금은 교사가 같은 명단을 4번 입력해야 한다.
+**목표** — 5개 기능 요약을 얹은 새 홈. 지금은 자리표시자다.
 
 **만들 것**
+1. 요약 카드 5종 — 오늘의 당번 / 이번 주 자리·모둠 / 학급 점수 / 마감 임박 과제 / 급식·시간표
+   각 카드는 해당 기능으로 가는 링크이자 요약 위젯이다
+2. 기능이 아직 이식되지 않은 카드는 "준비 중" 상태로 두고, 7~10단계에서 실데이터를 연결한다
+3. 명단이 비어 있으면 홈 전체를 설정 유도 화면으로 바꾼다 (isFirstRun 활용)
+4. 하단 도구 툴바 자리만 잡아 둔다 (실제 도구는 11단계)
 
-1. `src/shared/roster/`
-   - `RosterProvider` — StorageAdapter를 물고 SuiteData를 앱 전역에 공급.
-     저장은 디바운스, 실패 시 Toast로 알림
-   - `RosterManager` — 명단 관리 UI. 원본 4곳(seating StudentManagerModal,
-     duty StudentManager, assignment ClassManagement+StudentView, reward studentUtils) 통합
-   - `csvImport.ts` — CSV·붙여넣기 파서. 원본 seating/assignment 두 곳 참고
-   - 전입·전출 처리: `status: 'inactive'`로만 두고 기록은 절대 지우지 않는다
-2. `src/shared/setup/SetupWizard` — 최초 1회 설정.
-   학교/학년/반 → 명단 붙여넣기 → 완료. `reward`의 `InitialSetupWizard` 확장 재활용
-3. 활성 학기·학급 전환 UI를 AppShell 헤더에 연결 (지금은 '학급 정보 미설정' 고정 문구)
-
-**주의**
-- `Group.studentIds` 방향이므로 "한 학생 = 한 모둠" 불변조건을 UI에서도 지켜야 한다
-- 명단 일괄 변경 전에는 guard 백업을 남긴다 (`createBackup(reason, 'guard')`)
-- 번호 중복은 저장 전에 막고, 이미 깨진 데이터는 `validateAndRepair`가 고친다
+**참고할 원본**
+- `dashboard/src/components/dashboard/*` — 급식·시간표·공지·준비물 카드
+- `dashboard/src/services/neis/*` — NEIS 클라이언트 (프록시는 12단계에 api/neis.ts로)
 
 ## 저장소
 

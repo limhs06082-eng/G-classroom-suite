@@ -1,7 +1,8 @@
-import { Settings } from 'lucide-react';
+import { Settings, Users } from 'lucide-react';
 import { Suspense } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 
+import { ClassSwitcher } from './ClassSwitcher';
 import { ErrorBoundary } from './ErrorBoundary';
 import { FEATURE_NAV } from './navigation';
 import { PageLoader } from './PageLoader';
@@ -18,10 +19,11 @@ export function AppShell() {
       {/* 반투명 헤더는 스크롤할 때 본문 한글이 비쳐 읽기 어려워진다. 불투명으로 둔다. */}
       <header className="no-print sticky top-0 z-20 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
-          <span className="text-base font-bold tracking-tight text-slate-900">우리 반</span>
+          <Link to="/" className="shrink-0 text-base font-bold tracking-tight text-slate-900">
+            우리 반
+          </Link>
 
-          {/* 5단계에서 실제 학기·학급 정보로 대체 */}
-          <span className="hidden text-sm text-slate-500 sm:inline">학급 정보 미설정</span>
+          <ClassSwitcher />
 
           <nav className="ml-auto flex items-center gap-1">
             {FEATURE_NAV.map(({ id, path, label, icon: Icon }) => (
@@ -44,6 +46,21 @@ export function AppShell() {
                 <span className="hidden md:inline">{label}</span>
               </NavLink>
             ))}
+
+            <NavLink
+              to="/roster"
+              aria-label="학생 명단"
+              className={({ isActive }) =>
+                [
+                  'ml-1 rounded-control p-1.5 transition-colors',
+                  isActive
+                    ? 'bg-brand-50 text-brand-700'
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+                ].join(' ')
+              }
+            >
+              <Users className="size-4" aria-hidden />
+            </NavLink>
 
             <NavLink
               to="/settings"

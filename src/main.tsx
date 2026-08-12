@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 
 import { router } from './app/router';
+import { SuiteDataProvider } from './shared/roster/SuiteDataProvider';
 import { ToastProvider } from './shared/ui';
 import './index.css';
 
@@ -14,9 +15,14 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    {/* 전자칠판 라우트는 AppShell 밖에 있으므로 알림은 라우터 바깥에서 감싼다 */}
+    {/*
+      전자칠판 라우트는 AppShell 밖에 있으므로 알림·데이터를 라우터 바깥에서 감싼다.
+      Toast가 바깥이어야 SuiteDataProvider가 복구 내역을 알릴 수 있다.
+    */}
     <ToastProvider>
-      <RouterProvider router={router} />
+      <SuiteDataProvider>
+        <RouterProvider router={router} />
+      </SuiteDataProvider>
     </ToastProvider>
   </StrictMode>,
 );
