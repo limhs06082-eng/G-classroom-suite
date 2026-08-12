@@ -1,6 +1,7 @@
 import {
   CURRENT_SCHEMA_VERSION,
   type ClassRoom,
+  type BehaviorPreset,
   type DutyCompletion,
   type DutyProfile,
   type DutyRole,
@@ -9,6 +10,9 @@ import {
   type Group,
   type RewardProfile,
   type ScoreCycle,
+  type ScoreEntry,
+  type ScoreGoal,
+  type ScoreTargetUnit,
   type SeatingProfile,
   type SeatingState,
   type Student,
@@ -205,6 +209,82 @@ export function createDutyCompletion(classId: string, date: string): DutyComplet
   return { classId, date, completed: [], substitutions: [] };
 }
 
+/**
+ * 처음 만들 때 제안하는 행동 항목.
+ *
+ * 빈 화면에서 항목을 처음부터 만들게 하면 수업 중에 쓸 수 없다.
+ * 칭찬 위주로 깔고, 지도 항목은 하나만 둔다.
+ */
+export const STARTER_PRESETS: ReadonlyArray<
+  Pick<BehaviorPreset, 'name' | 'defaultPoints' | 'targetUnit' | 'color'>
+> = [
+  { name: '도움 주기', defaultPoints: 1, targetUnit: 'student', color: 'emerald' },
+  { name: '발표·참여', defaultPoints: 1, targetUnit: 'student', color: 'sky' },
+  { name: '정리 정돈', defaultPoints: 1, targetUnit: 'student', color: 'teal' },
+  { name: '모둠 협력', defaultPoints: 2, targetUnit: 'group', color: 'purple' },
+  { name: '학급 목표 달성', defaultPoints: 5, targetUnit: 'class', color: 'amber' },
+  { name: '약속 지키기 지도', defaultPoints: -1, targetUnit: 'student', color: 'orange' },
+];
+
+export function createBehaviorPreset(
+  input: Pick<BehaviorPreset, 'classId' | 'name' | 'defaultPoints' | 'targetUnit' | 'color'> &
+    Partial<Pick<BehaviorPreset, 'id' | 'isActive' | 'order'>>,
+  now: string = nowIso(),
+): BehaviorPreset {
+  return {
+    id: input.id ?? createId(),
+    classId: input.classId,
+    name: input.name,
+    defaultPoints: input.defaultPoints,
+    targetUnit: input.targetUnit,
+    color: input.color,
+    isActive: input.isActive ?? true,
+    order: input.order ?? 0,
+    createdAt: now,
+  };
+}
+
+export function createScoreEntry(
+  input: Pick<ScoreEntry, 'classId' | 'targetUnit' | 'targetId' | 'points' | 'reason'> &
+    Partial<Pick<ScoreEntry, 'id' | 'presetId' | 'occurredAt'>>,
+  now: string = nowIso(),
+): ScoreEntry {
+  return {
+    id: input.id ?? createId(),
+    classId: input.classId,
+    occurredAt: input.occurredAt ?? now,
+    targetUnit: input.targetUnit,
+    targetId: input.targetId,
+    points: input.points,
+    reason: input.reason,
+    ...(input.presetId === undefined ? {} : { presetId: input.presetId }),
+  };
+}
+
+export function createScoreGoal(
+  input: Pick<ScoreGoal, 'classId' | 'title' | 'targetUnit' | 'targetId' | 'targetPoints'> &
+    Partial<Pick<ScoreGoal, 'id' | 'reward' | 'startDate'>>,
+  now: string = nowIso(),
+): ScoreGoal {
+  return {
+    id: input.id ?? createId(),
+    classId: input.classId,
+    title: input.title,
+    targetUnit: input.targetUnit,
+    targetId: input.targetId,
+    targetPoints: input.targetPoints,
+    reward: input.reward ?? '',
+    startDate: input.startDate ?? now.slice(0, 10),
+    createdAt: now,
+  };
+}
+
+export const CLASS_TARGET_ID = 'class';
+
+export function targetIdFor(unit: ScoreTargetUnit, id: string): string {
+  return unit === 'class' ? CLASS_TARGET_ID : id;
+}
+
 export const DEFAULT_SCORE_CYCLE: ScoreCycle = {
   weeklyStartDay: 1, // 월요일 시작 — 학교 주간 운영에 맞춘다
   weeklyStartDayApplyMode: 'next_period',
@@ -229,6 +309,9 @@ export function createEmptySuiteData(): SuiteData {
     dutyRoles: [],
     dutyRounds: [],
     dutyCompletions: [],
+    behaviorPresets: [],
+    scoreEntries: [],
+    scoreGoals: [],
     scoreCycle: { ...DEFAULT_SCORE_CYCLE },
     activeTermId: null,
     activeClassId: null,

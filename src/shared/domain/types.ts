@@ -268,6 +268,69 @@ export interface DutyCompletion {
 }
 
 // ─────────────────────────────────────────────────────────────
+// 활동·보상 (features/reward)
+//
+// 원본은 누적 점수와 거래 로그를 둘 다 저장했다. 되돌리기·수정에서
+// 둘이 어긋나면 화면의 점수와 기록이 달라지고, 어느 쪽이 맞는지 알 수 없다.
+// 통합본은 **기록이 유일한 원본**이고 점수는 매번 합산해서 만든다.
+// 한 해 기록이 수천 건이어도 합산 비용은 무시할 수 있다.
+// ─────────────────────────────────────────────────────────────
+
+export type ScoreTargetUnit = 'student' | 'group' | 'class';
+
+export interface BehaviorPreset {
+  id: string;
+  classId: string;
+  /** "도움 주기", "정리 정돈" */
+  name: string;
+  /** 양수는 칭찬, 음수는 지도 */
+  defaultPoints: number;
+  /** 이 항목을 어디에 줄 수 있는가 */
+  targetUnit: ScoreTargetUnit;
+  color: string;
+  isActive: boolean;
+  order: number;
+  createdAt: string;
+}
+
+export interface ScoreEntry {
+  id: string;
+  classId: string;
+  /** 점수를 준 시각 */
+  occurredAt: string;
+  targetUnit: ScoreTargetUnit;
+  /** studentId · groupId · classId */
+  targetId: string;
+  points: number;
+  /** 프리셋 이름이거나 교사가 직접 적은 사유 */
+  reason: string;
+  presetId?: string;
+  /**
+   * 되돌린 시각.
+   *
+   * 기록을 지우지 않고 표시만 한다. 지워 버리면 "왜 점수가 줄었지"를
+   * 나중에 확인할 수 없다.
+   */
+  revokedAt?: string;
+}
+
+export interface ScoreGoal {
+  id: string;
+  classId: string;
+  title: string;
+  targetUnit: ScoreTargetUnit;
+  /** studentId · groupId · classId */
+  targetId: string;
+  targetPoints: number;
+  /** 달성하면 무엇을 하는지 */
+  reward: string;
+  /** YYYY-MM-DD */
+  startDate: string;
+  achievedAt?: string;
+  createdAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────
 // 점수 주기
 // reward.PeriodSettings의 개명.
 // 원본의 이름은 '학기(Period)'와 혼동되어 사고를 부른다.
@@ -312,6 +375,10 @@ export interface SuiteData {
   dutyRoles: DutyRole[];
   dutyRounds: DutyRound[];
   dutyCompletions: DutyCompletion[];
+
+  behaviorPresets: BehaviorPreset[];
+  scoreEntries: ScoreEntry[];
+  scoreGoals: ScoreGoal[];
 
   scoreCycle: ScoreCycle;
 

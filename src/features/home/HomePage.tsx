@@ -19,6 +19,7 @@ import {
 } from '../../shared/roster/SuiteDataProvider';
 import { Button, Card, EmptyState, useToast } from '../../shared/ui';
 import { DutySummary } from '../duty/DutySummary';
+import { RewardSummary } from '../reward/RewardSummary';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
 import { BigStat, PendingNote, SummaryCard } from './SummaryCard';
 
@@ -120,10 +121,9 @@ export default function HomePage() {
           icon={Sparkles}
           accentClass="text-reward-500"
           tintClass="bg-reward-50"
-          pending
           cta="활동·보상 열기"
         >
-          <PendingNote>점수 항목을 만들면 이번 주 현황이 여기 표시됩니다.</PendingNote>
+          <RewardSummary />
         </SummaryCard>
 
         <SummaryCard

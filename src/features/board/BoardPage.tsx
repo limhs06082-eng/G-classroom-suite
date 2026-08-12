@@ -4,6 +4,7 @@ import { findFeature } from '../../app/navigation';
 import { useActiveClass, useActiveTerm } from '../../shared/roster/SuiteDataProvider';
 import { BoardScreen, EmptyState } from '../../shared/ui';
 import { DutyBoard } from '../duty/DutyBoard';
+import { RewardBoard } from '../reward/RewardBoard';
 import { SeatingBoard } from '../seating/SeatingBoard';
 
 /**
@@ -43,6 +44,8 @@ export default function BoardPage() {
         <SeatingBoard />
       ) : item.id === 'duty' ? (
         <DutyBoard />
+      ) : item.id === 'reward' ? (
+        <RewardBoard />
       ) : (
         <p className="text-slate-500">
           이 화면은 {item.label} 기능을 이식할 때 실제 내용으로 채워집니다.

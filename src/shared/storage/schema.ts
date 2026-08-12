@@ -13,6 +13,7 @@ import {
   MIN_SEAT_COLS,
   MIN_SEAT_ROWS,
   type ClassRoom,
+  type BehaviorPreset,
   type DutyCompletion,
   type DutyProfile,
   type DutyRole,
@@ -23,6 +24,9 @@ import {
   type Group,
   type RewardProfile,
   type ScoreCycle,
+  type ScoreEntry,
+  type ScoreGoal,
+  type ScoreTargetUnit,
   type SeatingProfile,
   type SeatingState,
   type Student,
@@ -93,6 +97,7 @@ const STUDENT_STATUSES: readonly StudentStatus[] = ['active', 'inactive'];
 const GENDERS: readonly Gender[] = ['male', 'female', 'other', 'none'];
 const ROLE_CYCLES: readonly RoleCycle[] = ['daily', 'weekly', 'biweekly', 'monthly'];
 const ROUND_STATUSES: readonly DutyRoundStatus[] = ['draft', 'active', 'ended'];
+const SCORE_UNITS: readonly ScoreTargetUnit[] = ['student', 'group', 'class'];
 
 function parseTerm(raw: unknown, now: string): Term | null {
   if (!isRecord(raw)) return null;
@@ -327,6 +332,70 @@ function parseDutyCompletion(raw: unknown): DutyCompletion | null {
   return { classId, date, completed, substitutions };
 }
 
+function parseBehaviorPreset(raw: unknown, now: string): BehaviorPreset | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  const classId = requiredStr(raw['classId']);
+  if (id === null || classId === null) return null;
+
+  return {
+    id,
+    classId,
+    name: str(raw['name'], '이름 없는 항목'),
+    defaultPoints: Math.round(num(raw['defaultPoints'], 1)),
+    targetUnit: oneOf(raw['targetUnit'], SCORE_UNITS, 'student'),
+    color: str(raw['color'], 'slate'),
+    isActive: bool(raw['isActive'], true),
+    order: num(raw['order'], 0),
+    createdAt: str(raw['createdAt'], now),
+  };
+}
+
+function parseScoreEntry(raw: unknown, now: string): ScoreEntry | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  const classId = requiredStr(raw['classId']);
+  const targetId = requiredStr(raw['targetId']);
+  if (id === null || classId === null || targetId === null) return null;
+
+  // 점수가 숫자가 아니면 합계가 NaN이 되어 화면 전체가 망가진다.
+  const points = num(raw['points'], 0);
+  if (!Number.isFinite(points)) return null;
+
+  return {
+    id,
+    classId,
+    occurredAt: str(raw['occurredAt'], now),
+    targetUnit: oneOf(raw['targetUnit'], SCORE_UNITS, 'student'),
+    targetId,
+    points: Math.round(points),
+    reason: str(raw['reason']),
+    ...(typeof raw['presetId'] === 'string' ? { presetId: raw['presetId'] } : {}),
+    ...(typeof raw['revokedAt'] === 'string' ? { revokedAt: raw['revokedAt'] } : {}),
+  };
+}
+
+function parseScoreGoal(raw: unknown, now: string): ScoreGoal | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  const classId = requiredStr(raw['classId']);
+  const targetId = requiredStr(raw['targetId']);
+  if (id === null || classId === null || targetId === null) return null;
+
+  return {
+    id,
+    classId,
+    title: str(raw['title'], '이름 없는 목표'),
+    targetUnit: oneOf(raw['targetUnit'], SCORE_UNITS, 'class'),
+    targetId,
+    targetPoints: Math.round(num(raw['targetPoints'], 1)),
+    reward: str(raw['reward']),
+    startDate: str(raw['startDate'], now.slice(0, 10)),
+    ...(typeof raw['achievedAt'] === 'string' ? { achievedAt: raw['achievedAt'] } : {}),
+    createdAt: str(raw['createdAt'], now),
+  };
+}
+
 function parseScoreCycle(raw: unknown): ScoreCycle {
   if (!isRecord(raw)) return { ...DEFAULT_SCORE_CYCLE };
 
@@ -423,6 +492,9 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     dutyRoles: parseList('dutyRoles', '역할', (r) => parseDutyRole(r, now)),
     dutyRounds: parseList('dutyRounds', '당번 배정', (r) => parseDutyRound(r, now)),
     dutyCompletions: parseList('dutyCompletions', '당번 수행 기록', parseDutyCompletion),
+    behaviorPresets: parseList('behaviorPresets', '행동 항목', (r) => parseBehaviorPreset(r, now)),
+    scoreEntries: parseList('scoreEntries', '점수 기록', (r) => parseScoreEntry(r, now)),
+    scoreGoals: parseList('scoreGoals', '공동 목표', (r) => parseScoreGoal(r, now)),
     scoreCycle: parseScoreCycle(root['scoreCycle']),
     activeTermId: typeof root['activeTermId'] === 'string' ? root['activeTermId'] : null,
     activeClassId: typeof root['activeClassId'] === 'string' ? root['activeClassId'] : null,
