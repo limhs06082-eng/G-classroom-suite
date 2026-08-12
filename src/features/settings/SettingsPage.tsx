@@ -1,11 +1,12 @@
 import { Download, RotateCcw, School, Shield, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { importLegacyRoster, scanLegacy, type LegacyScanResult } from '../../shared/migration/legacyImport';
 import { useSuite } from '../../shared/roster/SuiteDataProvider';
 import type { BackupSummary } from '../../shared/storage/StorageAdapter';
 import { Badge, Button, Card, ConfirmDialog, EmptyState, Tabs, useToast } from '../../shared/ui';
 
-type SettingsTab = 'school' | 'backup';
+type SettingsTab = 'school' | 'backup' | 'legacy';
 
 /**
  * 설정.
@@ -24,11 +25,12 @@ export default function SettingsPage() {
         items={[
           { id: 'school', label: '학교 정보' },
           { id: 'backup', label: '백업·복원' },
+          { id: 'legacy', label: '기존 앱에서 가져오기' },
         ]}
         activeId={tab}
         onChange={(id) => setTab(id as SettingsTab)}
       >
-        {tab === 'school' ? <SchoolTab /> : <BackupTab />}
+        {tab === 'school' ? <SchoolTab /> : tab === 'backup' ? <BackupTab /> : <LegacyTab />}
       </Tabs>
     </div>
   );
@@ -285,5 +287,111 @@ function BackupTab() {
         }}
       />
     </div>
+  );
+}
+
+
+/**
+ * 기존 앱에서 가져오기.
+ *
+ * 원본 5개 앱은 같은 브라우저의 다른 키에 자료를 남겨 두었다.
+ * 명단만 옮긴다. 자리 배치·점수·당번 이력은 원본마다 구조가 크게 달라
+ * 잘못 옮기면 조용히 틀린 기록이 생긴다.
+ */
+function LegacyTab() {
+  const { update, guard } = useSuite();
+  const toast = useToast();
+  const [scan, setScan] = useState<LegacyScanResult | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    setScan(scanLegacy(window.localStorage));
+  }, []);
+
+  if (scan === null) return null;
+
+  if (scan.sources.length === 0) {
+    return (
+      <Card title="기존 앱에서 가져오기">
+        <EmptyState
+          title="이 브라우저에서 원본 앱 자료를 찾지 못했습니다"
+          description="원본 앱을 쓰던 브라우저에서 이 화면을 열어야 합니다. 다른 기기라면 그쪽에서 백업 파일을 내려받아 위의 백업·복원 탭에서 가져오세요."
+        />
+      </Card>
+    );
+  }
+
+  return (
+    <Card title="기존 앱에서 가져오기">
+      <div className="flex flex-col gap-3">
+        <p className="text-sm text-slate-600">
+          이 브라우저에서 원본 앱 자료를 찾았습니다.{' '}
+          <strong className="font-semibold">학생 명단만</strong> 가져옵니다. 자리 배치·점수·당번
+          이력은 원본마다 구조가 달라 잘못 옮기면 틀린 기록이 남습니다.
+        </p>
+
+        <ul className="flex flex-col gap-1">
+          {scan.sources.map((source) => (
+            <li
+              key={source.key}
+              className="flex items-center gap-2 rounded-control border border-slate-200 px-2.5 py-1.5 text-sm"
+            >
+              <span className="min-w-0 flex-1 truncate">{source.label}</span>
+              <Badge tone={source.studentCount > 0 ? 'success' : 'neutral'}>
+                학생 {source.studentCount}명
+              </Badge>
+            </li>
+          ))}
+        </ul>
+
+        <p className="text-sm text-slate-500">
+          학생이 가장 많은 자료를 기준으로 가져옵니다. 이미 있는 학생은 다시 넣지 않습니다.
+          원본 자료는 지우지 않으므로 언제든 원래 앱으로 돌아갈 수 있습니다.
+        </p>
+
+        <Button
+          variant="primary"
+          icon={Upload}
+          disabled={scan.totalStudents === 0}
+          className="self-start"
+          onClick={() => setConfirming(true)}
+        >
+          명단 가져오기
+        </Button>
+      </div>
+
+      <ConfirmDialog
+        open={confirming}
+        title="기존 앱의 명단을 가져올까요?"
+        description="지금 명단에 없는 학생만 추가됩니다. 가져오기 직전 상태는 자동으로 백업됩니다."
+        confirmLabel="가져오기"
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => {
+          void (async () => {
+            await guard('기존 앱 명단 가져오기 직전');
+
+            let imported = 0;
+            let skipped = 0;
+            update((current) => {
+              const result = importLegacyRoster(current, window.localStorage);
+              imported = result.importedStudents;
+              skipped = result.skipped;
+              return result.data;
+            });
+
+            setConfirming(false);
+            if (imported === 0) {
+              toast.warning('새로 가져올 학생이 없습니다.');
+            } else {
+              toast.success(
+                skipped > 0
+                  ? `${imported}명을 가져왔습니다. ${skipped}명은 이미 있거나 이름이 없어 건너뛰었습니다.`
+                  : `${imported}명을 가져왔습니다.`,
+              );
+            }
+          })();
+        }}
+      />
+    </Card>
   );
 }

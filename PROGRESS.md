@@ -29,35 +29,19 @@ npm run verify
 | 9 | `features/reward` 이식 (seating 모둠 소비) | ✅ 완료 (점수·목표·전자칠판) |
 | 10 | `features/assignment` 이식 | ✅ 완료 (제출 체크·지연·전자칠판) |
 | 11 | `features/tools` + 설정·백업 화면 | ✅ 완료 |
-| 12 | 마이그레이션 + 배포 설정 + README | ⬜ **다음** |
+| 12 | 마이그레이션 + 배포 설정 + README + Firebase 안내 | ✅ 완료 |
 
 현재 테스트 154개 (도메인 21 · 저장소 34 · UI 24 · 명단 54 · 상태 9 · 홈 6 · 라우팅 6).
 
 개발 중 컴포넌트 확인: `npm run dev` 후 <http://localhost:3000/dev/gallery>
 (프로덕션 빌드에서는 제외된다)
 
-## 다음 작업: 7단계 `features/seating` 이식
+## 1단계 완료
 
-**목표** — 원본 `G-seat-group-maker`(11,998줄, 최대 규모)를 이식한다.
-이식 순서가 seating부터인 이유는 **모둠을 만드는 쪽**이기 때문이다.
-9단계 reward가 그 모둠을 소비한다.
+12단계까지 모두 끝났습니다. 남은 일은 아래 두 가지입니다.
 
-**해야 할 일**
-1. 원본 `src/components/*`를 `src/features/seating/`으로 옮기고
-   Student·Group·ClassRoom을 `shared/domain`의 것으로 교체
-2. 원본의 `Student.gender/tags/note/isLocked`는 `SeatingProfile`에서 읽는다
-3. 원본 `Toast`/`ConfirmDialog`/`PrintModal`/`StudentPublicViewModal`을
-   `shared/ui`의 것으로 교체 (중복 제거의 첫 실전)
-4. `services/storage/LocalStorageService`는 버린다. `useSuite().update`로 대체
-5. 순수 알고리즘(`grouping.ts`, `conditionAlgorithms.ts`, `shuffle.ts`)에
-   테스트를 먼저 붙인다 — 조용히 틀린 결과를 내는 부분이다
-6. `/board/seating` 전자칠판 화면을 `BoardScreen`으로 연결
-7. 홈의 자리·모둠 카드에 실제 모둠 수를 연결
-
-**주의**
-- 원본은 `Student.gender`를 직접 들고 있었다. 코어에는 성별이 없다.
-  자리 배치 조건에서만 쓰이므로 `SeatingProfile`에 있는 것이 맞다
-- 모둠 편성 결과를 저장할 때 "한 학생 = 한 모둠" 불변조건을 지켜야 한다
+- **저장소 공개 전환** — 연수 직전에 Settings → General → Change visibility
+- **2단계 `G-teacher-toolkit`** — 명단이 필요 없는 4개 앱 통합 (별도 spec 필요)
 
 ## 저장소
 
