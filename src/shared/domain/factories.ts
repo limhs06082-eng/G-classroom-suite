@@ -1,7 +1,9 @@
 import {
   CURRENT_SCHEMA_VERSION,
   type ClassRoom,
+  type Assignment,
   type BehaviorPreset,
+  type Submission,
   type DutyCompletion,
   type DutyProfile,
   type DutyRole,
@@ -285,6 +287,32 @@ export function targetIdFor(unit: ScoreTargetUnit, id: string): string {
   return unit === 'class' ? CLASS_TARGET_ID : id;
 }
 
+export function createAssignment(
+  input: Pick<Assignment, 'classId' | 'title'> &
+    Partial<Pick<Assignment, 'id' | 'description' | 'dueDate' | 'status'>>,
+  now: string = nowIso(),
+): Assignment {
+  return {
+    id: input.id ?? createId(),
+    classId: input.classId,
+    title: input.title,
+    description: input.description ?? '',
+    dueDate: input.dueDate ?? '',
+    status: input.status ?? 'active',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function createSubmission(
+  assignmentId: string,
+  studentId: string,
+  status: Submission['status'] = 'unsubmitted',
+  now: string = nowIso(),
+): Submission {
+  return { assignmentId, studentId, status, note: '', updatedAt: now };
+}
+
 export const DEFAULT_SCORE_CYCLE: ScoreCycle = {
   weeklyStartDay: 1, // 월요일 시작 — 학교 주간 운영에 맞춘다
   weeklyStartDayApplyMode: 'next_period',
@@ -312,6 +340,8 @@ export function createEmptySuiteData(): SuiteData {
     behaviorPresets: [],
     scoreEntries: [],
     scoreGoals: [],
+    assignments: [],
+    submissions: [],
     scoreCycle: { ...DEFAULT_SCORE_CYCLE },
     activeTermId: null,
     activeClassId: null,

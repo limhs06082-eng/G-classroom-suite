@@ -18,6 +18,7 @@ import {
   useSuite,
 } from '../../shared/roster/SuiteDataProvider';
 import { Button, Card, EmptyState, useToast } from '../../shared/ui';
+import { AssignmentSummary } from '../assignment/AssignmentSummary';
 import { DutySummary } from '../duty/DutySummary';
 import { RewardSummary } from '../reward/RewardSummary';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
@@ -132,10 +133,9 @@ export default function HomePage() {
           icon={ClipboardCheck}
           accentClass="text-assignment-500"
           tintClass="bg-assignment-50"
-          pending
           cta="과제 제출 열기"
         >
-          <PendingNote>과제를 등록하면 마감이 가까운 순으로 여기 표시됩니다.</PendingNote>
+          <AssignmentSummary />
         </SummaryCard>
 
         <SummaryCard

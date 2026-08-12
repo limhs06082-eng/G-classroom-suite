@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { findFeature } from '../../app/navigation';
 import { useActiveClass, useActiveTerm } from '../../shared/roster/SuiteDataProvider';
 import { BoardScreen, EmptyState } from '../../shared/ui';
+import { AssignmentBoard } from '../assignment/AssignmentBoard';
 import { DutyBoard } from '../duty/DutyBoard';
 import { RewardBoard } from '../reward/RewardBoard';
 import { SeatingBoard } from '../seating/SeatingBoard';
@@ -46,6 +47,8 @@ export default function BoardPage() {
         <DutyBoard />
       ) : item.id === 'reward' ? (
         <RewardBoard />
+      ) : item.id === 'assignment' ? (
+        <AssignmentBoard />
       ) : (
         <p className="text-slate-500">
           이 화면은 {item.label} 기능을 이식할 때 실제 내용으로 채워집니다.

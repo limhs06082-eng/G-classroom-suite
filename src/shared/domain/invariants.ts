@@ -37,7 +37,9 @@ export type RepairCode =
   | 'ORPHAN_SEATING_STATE'
   | 'INVALID_SEAT_POSITION'
   | 'ORPHAN_DUTY_RECORD'
-  | 'INVALID_DUTY_ASSIGNMENT';
+  | 'INVALID_DUTY_ASSIGNMENT'
+  | 'ORPHAN_REWARD_RECORD'
+  | 'ORPHAN_ASSIGNMENT_RECORD';
 
 export interface RepairLog {
   code: RepairCode;
@@ -562,6 +564,83 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
     return { dutyRoles, dutyRounds, dutyCompletions };
   })();
 
+  // ── 8-4. 보상·과제 기록이 실제 학급·학생을 가리키는가 ─────────
+  const reward = (() => {
+    const classIds = new Set(classRooms.map((c) => c.id));
+    const studentById = new Map(students.map((s) => [s.id, s]));
+    const groupIds = new Set(groups.map((g) => g.id));
+
+    const behaviorPresets = input.behaviorPresets.filter((preset) => classIds.has(preset.classId));
+
+    /** 점수·목표 대상이 아직 살아 있는가 */
+    const targetAlive = (unit: string, targetId: string, classId: string): boolean => {
+      if (unit === 'class') return true;
+      if (unit === 'group') return groupIds.has(targetId);
+      return studentById.get(targetId)?.classId === classId;
+    };
+
+    const scoreEntries = input.scoreEntries.filter(
+      (entry) =>
+        classIds.has(entry.classId) && targetAlive(entry.targetUnit, entry.targetId, entry.classId),
+    );
+    const scoreGoals = input.scoreGoals.filter(
+      (goal) =>
+        classIds.has(goal.classId) && targetAlive(goal.targetUnit, goal.targetId, goal.classId),
+    );
+
+    const dropped =
+      input.behaviorPresets.length -
+      behaviorPresets.length +
+      (input.scoreEntries.length - scoreEntries.length) +
+      (input.scoreGoals.length - scoreGoals.length);
+
+    if (dropped > 0) {
+      repairs.push({
+        code: 'ORPHAN_REWARD_RECORD',
+        severity: 'info',
+        entityIds: [],
+        message: `없어진 학급·학생·모둠을 가리키던 점수 기록 ${dropped}건을 정리했습니다.`,
+      });
+    }
+
+    return { behaviorPresets, scoreEntries, scoreGoals };
+  })();
+
+  const assignmentData = (() => {
+    const classIds = new Set(classRooms.map((c) => c.id));
+    const studentById = new Map(students.map((s) => [s.id, s]));
+
+    const assignments = input.assignments.filter((item) => classIds.has(item.classId));
+    const assignmentClassById = new Map(assignments.map((item) => [item.id, item.classId]));
+
+    // 같은 (과제, 학생) 조합이 둘이면 어느 상태가 맞는지 알 수 없다. 첫 것만 남긴다.
+    const seen = new Set<string>();
+    const submissions = input.submissions.filter((submission) => {
+      const classId = assignmentClassById.get(submission.assignmentId);
+      if (classId === undefined) return false;
+      if (studentById.get(submission.studentId)?.classId !== classId) return false;
+
+      const key = `${submission.assignmentId}:${submission.studentId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    const dropped =
+      input.assignments.length - assignments.length + (input.submissions.length - submissions.length);
+
+    if (dropped > 0) {
+      repairs.push({
+        code: 'ORPHAN_ASSIGNMENT_RECORD',
+        severity: 'info',
+        entityIds: [],
+        message: `없어진 학급·학생·과제를 가리키던 제출 기록 ${dropped}건을 정리했습니다.`,
+      });
+    }
+
+    return { assignments, submissions };
+  })();
+
   // ── 9. 활성 학기·학급이 실제로 존재하는가 ────────────────────
   let activeTermId = input.activeTermId;
   let activeClassId = input.activeClassId;
@@ -603,6 +682,11 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       dutyRoles: duty.dutyRoles,
       dutyRounds: duty.dutyRounds,
       dutyCompletions: duty.dutyCompletions,
+      behaviorPresets: reward.behaviorPresets,
+      scoreEntries: reward.scoreEntries,
+      scoreGoals: reward.scoreGoals,
+      assignments: assignmentData.assignments,
+      submissions: assignmentData.submissions,
       activeTermId,
       activeClassId,
     },

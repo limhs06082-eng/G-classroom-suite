@@ -331,6 +331,38 @@ export interface ScoreGoal {
 }
 
 // ─────────────────────────────────────────────────────────────
+// 과제 제출 현황 (features/assignment)
+//
+// 원본은 과제 하나가 여러 학급을 대상으로 할 수 있었다(targetClassIds).
+// 통합본은 학급 하나에 속하는 것으로 단순화했다. 담임이 주 사용자이고,
+// 여러 반을 맡는 경우에는 헤더의 학급 전환으로 오가면 된다.
+// ─────────────────────────────────────────────────────────────
+
+export type SubmissionStatus = 'unsubmitted' | 'submitted' | 'supplement' | 'completed';
+export type AssignmentStatus = 'active' | 'closed' | 'archived';
+
+export interface Assignment {
+  id: string;
+  classId: string;
+  title: string;
+  description: string;
+  /** YYYY-MM-DD. 기한이 없으면 빈 문자열. */
+  dueDate: string;
+  status: AssignmentStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Submission {
+  assignmentId: string;
+  studentId: string;
+  status: SubmissionStatus;
+  /** 보완 사유 등 */
+  note: string;
+  updatedAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────
 // 점수 주기
 // reward.PeriodSettings의 개명.
 // 원본의 이름은 '학기(Period)'와 혼동되어 사고를 부른다.
@@ -379,6 +411,9 @@ export interface SuiteData {
   behaviorPresets: BehaviorPreset[];
   scoreEntries: ScoreEntry[];
   scoreGoals: ScoreGoal[];
+
+  assignments: Assignment[];
+  submissions: Submission[];
 
   scoreCycle: ScoreCycle;
 

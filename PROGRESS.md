@@ -27,8 +27,8 @@ npm run verify
 | 7 | `features/seating` 이식 | ✅ 완료 (자리배치·모둠편성·전자칠판) |
 | 8 | `features/duty` 이식 | ✅ 완료 (배정·공정성·전자칠판) |
 | 9 | `features/reward` 이식 (seating 모둠 소비) | ✅ 완료 (점수·목표·전자칠판) |
-| 10 | `features/assignment` 이식 | ⬜ **다음** |
-| 11 | `features/tools` + dashboard 카드, 홈 요약 카드 연결 | ⬜ |
+| 10 | `features/assignment` 이식 | ✅ 완료 (제출 체크·지연·전자칠판) |
+| 11 | `features/tools` + dashboard 카드, 홈 요약 카드 연결 | ⬜ **다음** |
 | 12 | 마이그레이션 + 배포 설정 + README | ⬜ |
 
 현재 테스트 154개 (도메인 21 · 저장소 34 · UI 24 · 명단 54 · 상태 9 · 홈 6 · 라우팅 6).

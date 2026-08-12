@@ -1,0 +1,159 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  byDueDate,
+  daysBetween,
+  nextStatus,
+  statusOf,
+  summarize,
+} from '../../src/features/assignment/assignmentCore';
+import { createAssignment, createStudent, createSubmission } from '../../src/shared/domain/factories';
+import type { Student, Submission } from '../../src/shared/domain/types';
+
+const NOW = '2026-03-02T09:00:00.000Z';
+const TODAY = '2026-03-02';
+
+function roster(count: number): Student[] {
+  return Array.from({ length: count }, (_, i) =>
+    createStudent({ id: `stu-${i + 1}`, classId: 'class-1', number: i + 1, name: `학생${i + 1}` }, NOW),
+  );
+}
+
+const task = (dueDate = '') =>
+  createAssignment({ id: 'a-1', classId: 'class-1', title: '독서록', dueDate }, NOW);
+
+function subs(list: Array<[string, Submission['status']]>): Submission[] {
+  return list.map(([studentId, status]) => createSubmission('a-1', studentId, status, NOW));
+}
+
+describe('nextStatus', () => {
+  it('누를 때마다 미제출 → 제출 → 보완 → 완료 → 미제출로 돈다', () => {
+    expect(nextStatus('unsubmitted')).toBe('submitted');
+    expect(nextStatus('submitted')).toBe('supplement');
+    expect(nextStatus('supplement')).toBe('completed');
+    expect(nextStatus('completed')).toBe('unsubmitted');
+  });
+});
+
+describe('statusOf', () => {
+  it('기록이 없으면 미제출이다', () => {
+    // 기록을 미리 만들지 않는 설계. 학생이 늘어도 맞출 것이 없다.
+    expect(statusOf([], 'a-1', 'stu-1')).toBe('unsubmitted');
+  });
+
+  it('기록이 있으면 그 상태를 쓴다', () => {
+    expect(statusOf(subs([['stu-1', 'completed']]), 'a-1', 'stu-1')).toBe('completed');
+  });
+
+  it('다른 과제의 기록과 섞이지 않는다', () => {
+    const other = createSubmission('a-2', 'stu-1', 'completed', NOW);
+
+    expect(statusOf([other], 'a-1', 'stu-1')).toBe('unsubmitted');
+  });
+});
+
+describe('daysBetween', () => {
+  it('남은 일수를 센다', () => {
+    expect(daysBetween('2026-03-02', '2026-03-05')).toBe(3);
+    expect(daysBetween('2026-03-05', '2026-03-02')).toBe(-3);
+    expect(daysBetween('2026-03-02', '2026-03-02')).toBe(0);
+  });
+
+  it('월을 넘어가도 정확하다', () => {
+    expect(daysBetween('2026-02-27', '2026-03-02')).toBe(3);
+  });
+
+  it('읽을 수 없는 날짜는 null', () => {
+    expect(daysBetween('아무거나', '2026-03-02')).toBeNull();
+  });
+});
+
+describe('summarize', () => {
+  it('상태별 인원을 센다', () => {
+    const progress = summarize(
+      task(),
+      roster(4),
+      subs([
+        ['stu-1', 'submitted'],
+        ['stu-2', 'completed'],
+        ['stu-3', 'supplement'],
+      ]),
+      TODAY,
+    );
+
+    expect(progress.counts).toEqual({ unsubmitted: 1, submitted: 1, supplement: 1, completed: 1 });
+    expect(progress.total).toBe(4);
+  });
+
+  it('보완은 끝난 것으로 세지 않는다', () => {
+    // 보완은 다시 내야 하는 상태다. 완료율에 넣으면 교사가 놓친다.
+    const progress = summarize(task(), roster(2), subs([['stu-1', 'supplement']]), TODAY);
+
+    expect(progress.doneRatio).toBe(0);
+  });
+
+  it('기한이 지났는데 안 낸 학생이 있으면 지연으로 표시한다', () => {
+    const progress = summarize(task('2026-03-01'), roster(2), subs([['stu-1', 'completed']]), TODAY);
+
+    expect(progress.daysLeft).toBe(-1);
+    expect(progress.isOverdue).toBe(true);
+  });
+
+  it('기한이 지나도 전원이 냈으면 지연이 아니다', () => {
+    const progress = summarize(
+      task('2026-03-01'),
+      roster(2),
+      subs([
+        ['stu-1', 'completed'],
+        ['stu-2', 'submitted'],
+      ]),
+      TODAY,
+    );
+
+    expect(progress.isOverdue).toBe(false);
+  });
+
+  it('보완 상태가 남아 있으면 기한 후에는 지연이다', () => {
+    const progress = summarize(
+      task('2026-03-01'),
+      roster(2),
+      subs([
+        ['stu-1', 'completed'],
+        ['stu-2', 'supplement'],
+      ]),
+      TODAY,
+    );
+
+    expect(progress.isOverdue).toBe(true);
+  });
+
+  it('기한이 없으면 남은 일수도 지연도 없다', () => {
+    const progress = summarize(task(), roster(2), [], TODAY);
+
+    expect(progress.daysLeft).toBeNull();
+    expect(progress.isOverdue).toBe(false);
+  });
+
+  it('학생이 없어도 나눗셈이 깨지지 않는다', () => {
+    const progress = summarize(task(), [], [], TODAY);
+
+    expect(progress.doneRatio).toBe(0);
+    expect(Number.isNaN(progress.doneRatio)).toBe(false);
+  });
+});
+
+describe('byDueDate', () => {
+  it('마감이 가까운 순으로 정렬한다', () => {
+    const a = createAssignment({ id: 'a', classId: 'c', title: 'A', dueDate: '2026-03-10' }, NOW);
+    const b = createAssignment({ id: 'b', classId: 'c', title: 'B', dueDate: '2026-03-05' }, NOW);
+
+    expect([a, b].sort(byDueDate).map((x) => x.id)).toEqual(['b', 'a']);
+  });
+
+  it('기한 없는 과제는 뒤로 보낸다', () => {
+    const dated = createAssignment({ id: 'a', classId: 'c', title: 'A', dueDate: '2026-03-10' }, NOW);
+    const undated = createAssignment({ id: 'b', classId: 'c', title: 'B' }, NOW);
+
+    expect([undated, dated].sort(byDueDate).map((x) => x.id)).toEqual(['a', 'b']);
+  });
+});

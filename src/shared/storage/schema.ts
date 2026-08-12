@@ -13,7 +13,11 @@ import {
   MIN_SEAT_COLS,
   MIN_SEAT_ROWS,
   type ClassRoom,
+  type Assignment,
+  type AssignmentStatus,
   type BehaviorPreset,
+  type Submission,
+  type SubmissionStatus,
   type DutyCompletion,
   type DutyProfile,
   type DutyRole,
@@ -98,6 +102,13 @@ const GENDERS: readonly Gender[] = ['male', 'female', 'other', 'none'];
 const ROLE_CYCLES: readonly RoleCycle[] = ['daily', 'weekly', 'biweekly', 'monthly'];
 const ROUND_STATUSES: readonly DutyRoundStatus[] = ['draft', 'active', 'ended'];
 const SCORE_UNITS: readonly ScoreTargetUnit[] = ['student', 'group', 'class'];
+const ASSIGNMENT_STATUSES: readonly AssignmentStatus[] = ['active', 'closed', 'archived'];
+const SUBMISSION_STATUSES: readonly SubmissionStatus[] = [
+  'unsubmitted',
+  'submitted',
+  'supplement',
+  'completed',
+];
 
 function parseTerm(raw: unknown, now: string): Term | null {
   if (!isRecord(raw)) return null;
@@ -396,6 +407,39 @@ function parseScoreGoal(raw: unknown, now: string): ScoreGoal | null {
   };
 }
 
+function parseAssignment(raw: unknown, now: string): Assignment | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  const classId = requiredStr(raw['classId']);
+  if (id === null || classId === null) return null;
+
+  return {
+    id,
+    classId,
+    title: str(raw['title'], '이름 없는 과제'),
+    description: str(raw['description']),
+    dueDate: str(raw['dueDate']),
+    status: oneOf(raw['status'], ASSIGNMENT_STATUSES, 'active'),
+    createdAt: str(raw['createdAt'], now),
+    updatedAt: str(raw['updatedAt'], now),
+  };
+}
+
+function parseSubmission(raw: unknown, now: string): Submission | null {
+  if (!isRecord(raw)) return null;
+  const assignmentId = requiredStr(raw['assignmentId']);
+  const studentId = requiredStr(raw['studentId']);
+  if (assignmentId === null || studentId === null) return null;
+
+  return {
+    assignmentId,
+    studentId,
+    status: oneOf(raw['status'], SUBMISSION_STATUSES, 'unsubmitted'),
+    note: str(raw['note']),
+    updatedAt: str(raw['updatedAt'], now),
+  };
+}
+
 function parseScoreCycle(raw: unknown): ScoreCycle {
   if (!isRecord(raw)) return { ...DEFAULT_SCORE_CYCLE };
 
@@ -495,6 +539,8 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     behaviorPresets: parseList('behaviorPresets', '행동 항목', (r) => parseBehaviorPreset(r, now)),
     scoreEntries: parseList('scoreEntries', '점수 기록', (r) => parseScoreEntry(r, now)),
     scoreGoals: parseList('scoreGoals', '공동 목표', (r) => parseScoreGoal(r, now)),
+    assignments: parseList('assignments', '과제', (r) => parseAssignment(r, now)),
+    submissions: parseList('submissions', '제출 현황', (r) => parseSubmission(r, now)),
     scoreCycle: parseScoreCycle(root['scoreCycle']),
     activeTermId: typeof root['activeTermId'] === 'string' ? root['activeTermId'] : null,
     activeClassId: typeof root['activeClassId'] === 'string' ? root['activeClassId'] : null,
