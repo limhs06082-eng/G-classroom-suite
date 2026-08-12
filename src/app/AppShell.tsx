@@ -2,6 +2,7 @@ import { Settings, Users } from 'lucide-react';
 import { Suspense } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 
+import { ToolsBar } from '../features/tools/ToolsBar';
 import { ClassSwitcher } from './ClassSwitcher';
 import { ErrorBoundary } from './ErrorBoundary';
 import { FEATURE_NAV } from './navigation';
@@ -88,6 +89,8 @@ export function AppShell() {
           </Suspense>
         </ErrorBoundary>
       </main>
+
+      <ToolsBar />
     </div>
   );
 }
