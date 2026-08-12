@@ -8,9 +8,10 @@ import {
   MIN_SEAT_COLS,
   MIN_SEAT_ROWS,
 } from '../../shared/domain/types';
-import { useActiveClass } from '../../shared/roster/SuiteDataProvider';
-import { Badge, Button, Card, ConfirmDialog, cx, EmptyState, useToast } from '../../shared/ui';
+import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
+import { Badge, Button, Card, ConfirmDialog, cx, EmptyState, Tabs, useToast } from '../../shared/ui';
 import { ClassroomGrid, type GridMode } from './ClassroomGrid';
+import { GroupingPanel } from './GroupingPanel';
 import { useSeating } from './useSeating';
 
 /**
@@ -20,11 +21,15 @@ import { useSeating } from './useSeating';
  * 원본은 끌어다 놓기(drag & drop)였는데, 전자칠판은 손가락으로 누르고
  * 교사는 서서 조작한다. 눌러서 고르고 눌러서 바꾸는 방식이 더 잘 맞는다.
  */
+type SeatingTab = 'seats' | 'groups';
+
 export default function SeatingPage() {
   const activeClass = useActiveClass();
+  const { data } = useSuite();
   const toast = useToast();
   const seating = useSeating();
 
+  const [tab, setTab] = useState<SeatingTab>('seats');
   const [mode, setMode] = useState<GridMode>('assign');
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -72,6 +77,7 @@ export default function SeatingPage() {
 
   const availableSeats = seating.seats.filter((seat) => !seat.isDisabled).length;
   const shortage = seating.roster.length - availableSeats;
+  const groupCount = data.groups.filter((group) => group.classId === activeClass.id).length;
 
   const handleSeatClick = (seatId: string): void => {
     if (mode === 'layout') {
@@ -118,8 +124,21 @@ export default function SeatingPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <h1 className="text-xl font-bold text-slate-900">자리·모둠</h1>
+
+      <Tabs
+        items={[
+          { id: 'seats', label: '자리 배치' },
+          { id: 'groups', label: '모둠 편성', count: groupCount },
+        ]}
+        activeId={tab}
+        onChange={(id) => setTab(id === 'groups' ? 'groups' : 'seats')}
+      >
+        {tab === 'groups' ? (
+          <GroupingPanel />
+        ) : (
+          <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-xl font-bold text-slate-900">자리 배치</h1>
         <Badge tone="neutral">
           학생 {seating.roster.length}명 · 자리 {availableSeats}개
         </Badge>
@@ -244,6 +263,9 @@ export default function SeatingPage() {
           </ul>
         </Card>
       ) : null}
+          </div>
+        )}
+      </Tabs>
 
       <ConfirmDialog
         open={confirmClear}

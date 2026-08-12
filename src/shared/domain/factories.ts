@@ -106,7 +106,7 @@ export function createGroup(
 // ─────────────────────────────────────────────────────────────
 
 export function createSeatingProfile(studentId: string, gender: Gender = 'none'): SeatingProfile {
-  return { studentId, gender, tags: [], note: '', isLocked: false };
+  return { studentId, gender, tags: [], note: '', isLocked: false, isGroupLocked: false };
 }
 
 export function createDutyProfile(studentId: string, order: number): DutyProfile {

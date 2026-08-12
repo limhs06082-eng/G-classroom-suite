@@ -24,8 +24,8 @@ npm run verify
 | 4 | `shared/ui` — 디자인 토큰·공통 컴포넌트·BoardScreen·PrintLayout | ✅ 완료 (테스트 85개, 갤러리 `/dev/gallery`) |
 | 5 | `shared/roster` + `setup` — 명단 단일 원본, CSV, 설정 마법사 | ✅ 완료 (테스트 148개) |
 | 6 | `features/home` — 새 홈 골격 | ✅ 완료 (테스트 154개) |
-| 7 | `features/seating` 이식 | ⬜ **다음** |
-| 8 | `features/duty` 이식 | ⬜ |
+| 7 | `features/seating` 이식 | ✅ 완료 (자리배치·모둠편성·전자칠판) |
+| 8 | `features/duty` 이식 | ⬜ **다음** |
 | 9 | `features/reward` 이식 (seating 모둠 소비) | ⬜ |
 | 10 | `features/assignment` 이식 | ⬜ |
 | 11 | `features/tools` + dashboard 카드, 홈 요약 카드 연결 | ⬜ |

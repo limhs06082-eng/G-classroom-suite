@@ -173,6 +173,7 @@ function parseSeatingProfile(raw: unknown): SeatingProfile | null {
     tags: strArray(raw['tags']),
     note: str(raw['note']),
     isLocked: bool(raw['isLocked'], false),
+    isGroupLocked: bool(raw['isGroupLocked'], false),
   };
 }
 

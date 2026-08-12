@@ -123,8 +123,13 @@ export interface SeatingProfile {
   /** 배치 조건에 쓰는 특성 태그 */
   tags: string[];
   note: string;
-  /** 자리 고정 여부 */
+  /** 자리 고정. 재배치해도 이 학생은 자리를 지킨다. */
   isLocked: boolean;
+  /**
+   * 모둠 고정. 자리 고정과 다른 개념이다.
+   * 시력 때문에 앞자리로 고정한 학생과, 모둠을 그대로 두고 싶은 학생은 다르다.
+   */
+  isGroupLocked: boolean;
 }
 
 export interface ExclusionPeriod {
