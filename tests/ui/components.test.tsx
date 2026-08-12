@@ -123,6 +123,58 @@ describe('Toast', () => {
     expect(screen.getByText('알림 6')).toBeInTheDocument();
   });
 
+  it('같은 말을 여러 번 띄워도 한 줄만 남는다', () => {
+    // 복구 알림이 연달아 발생하면 같은 문장이 쌓여 고장처럼 보였다.
+    renderToast((toast) => {
+      toast.warning('잘못된 좌석 지정을 정리했습니다.');
+      toast.warning('잘못된 좌석 지정을 정리했습니다.');
+      toast.warning('잘못된 좌석 지정을 정리했습니다.');
+    });
+
+    expect(screen.getAllByText('잘못된 좌석 지정을 정리했습니다.')).toHaveLength(1);
+  });
+
+  it('같은 말이라도 종류가 다르면 따로 띄운다', () => {
+    renderToast((toast) => {
+      toast.success('처리했습니다.');
+      toast.error('처리했습니다.');
+    });
+
+    expect(screen.getAllByText('처리했습니다.')).toHaveLength(2);
+  });
+
+  it('실행 취소가 달린 알림은 합치지 않는다', () => {
+    // 되돌릴 대상이 각각 다르므로 합치면 한쪽을 되돌릴 수 없다.
+    renderToast((toast) => {
+      toast.info('+1점을 주었습니다.', { actionLabel: '실행 취소', onAction: () => {} });
+      toast.info('+1점을 주었습니다.', { actionLabel: '실행 취소', onAction: () => {} });
+    });
+
+    expect(screen.getAllByText('+1점을 주었습니다.')).toHaveLength(2);
+  });
+
+  it('중복 알림은 사라지는 시간이 다시 늘어난다', async () => {
+    renderToast((toast) => toast.success('저장했습니다.'));
+
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(screen.getByText('저장했습니다.')).toBeInTheDocument();
+
+    // 같은 알림을 다시 띄우면 타이머가 새로 시작된다
+    fireEvent.click(screen.getByRole('button', { name: '실행' }));
+
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(screen.getByText('저장했습니다.')).toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(screen.queryByText('저장했습니다.')).not.toBeInTheDocument();
+  });
+
   it('Provider 밖에서 useToast를 쓰면 명확히 실패한다', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(() => render(<ToastHarness run={() => {}} />)).toThrow(/ToastProvider/);

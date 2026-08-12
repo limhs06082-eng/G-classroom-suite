@@ -1,19 +1,21 @@
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { findFeature } from '../../app/navigation';
+import { useActiveClass, useActiveTerm } from '../../shared/roster/SuiteDataProvider';
 import { BoardScreen, EmptyState } from '../../shared/ui';
+import { SeatingBoard } from '../seating/SeatingBoard';
 
 /**
  * 전자칠판 화면.
  *
  * /board/:feature 로 열린다. 앱 셸(헤더·네비) 밖에 있어서 별도 창이나
  * 보조 모니터에 URL로 바로 띄울 수 있다.
- *
- * 각 기능의 실제 칠판 내용은 7~10단계에서 이식하며 여기에 연결된다.
  */
 export default function BoardPage() {
   const { feature } = useParams<{ feature: string }>();
   const navigate = useNavigate();
+  const activeClass = useActiveClass();
+  const term = useActiveTerm();
 
   const item = feature === undefined ? undefined : findFeature(feature);
 
@@ -28,11 +30,21 @@ export default function BoardPage() {
     );
   }
 
+  const subtitle = [term?.name, activeClass?.name].filter(Boolean).join(' · ');
+
   return (
-    <BoardScreen title={item.label} subtitle="학급 정보 미설정" onExit={() => void navigate(item.path)}>
-      <p className="text-slate-500">
-        이 화면은 {item.label} 기능을 이식할 때 실제 내용으로 채워집니다.
-      </p>
+    <BoardScreen
+      title={item.label}
+      {...(subtitle === '' ? {} : { subtitle })}
+      onExit={() => void navigate(item.path)}
+    >
+      {item.id === 'seating' ? (
+        <SeatingBoard />
+      ) : (
+        <p className="text-slate-500">
+          이 화면은 {item.label} 기능을 이식할 때 실제 내용으로 채워집니다.
+        </p>
+      )}
     </BoardScreen>
   );
 }

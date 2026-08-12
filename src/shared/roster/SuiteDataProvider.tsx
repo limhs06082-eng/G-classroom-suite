@@ -77,6 +77,15 @@ export function SuiteDataProvider({ adapter: injected, children }: Props) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** 저장 대기 중인 최신 상태. 디바운스 도중 값이 또 바뀔 수 있다. */
   const pendingRef = useRef<SuiteData | null>(null);
+  /**
+   * 최신 상태의 거울.
+   *
+   * setData의 함수형 갱신 안에서 복구 결과를 알리면 부수효과가 렌더 중에 일어나고,
+   * StrictMode에서 갱신 함수가 두 번 불려 알림이 두 번 뜬다.
+   * 그래서 다음 상태를 갱신 함수 밖에서 계산한다. 연속 호출에도 값이 밀리지 않도록
+   * 여기에 즉시 반영한다.
+   */
+  const dataRef = useRef<SuiteData>(data);
 
   // ── 최초 로딩 ─────────────────────────────────────────────
   useEffect(() => {
@@ -87,6 +96,7 @@ export function SuiteDataProvider({ adapter: injected, children }: Props) {
         const result = await adapter.load();
         if (cancelled) return;
 
+        dataRef.current = result.data;
         setData(result.data);
         setIsFirstRun(result.isFirstRun);
 
@@ -142,23 +152,33 @@ export function SuiteDataProvider({ adapter: injected, children }: Props) {
 
   const update = useCallback(
     (recipe: (current: SuiteData) => SuiteData): void => {
-      setData((current) => {
-        // 화면에서 만든 변경도 불변조건을 지켜야 한다. 여기가 마지막 관문이다.
-        const { data: next } = validateAndRepair(recipe(current));
+      // 화면에서 만든 변경도 불변조건을 지켜야 한다. 여기가 마지막 관문이다.
+      const { data: next, repairs } = validateAndRepair(recipe(dataRef.current));
 
-        pendingRef.current = next;
-        if (timerRef.current !== null) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => {
-          timerRef.current = null;
-          const pending = pendingRef.current;
-          pendingRef.current = null;
-          if (pending !== null) void persist(pending);
-        }, SAVE_DEBOUNCE_MS);
+      dataRef.current = next;
+      setData(next);
 
-        return next;
-      });
+      /*
+       * 여기서 고친 내용도 반드시 알린다.
+       *
+       * 예: 교실 행 수를 줄이면 밖으로 밀려난 학생의 자리가 비워진다.
+       * 알리지 않으면 교사는 학생 몇 명이 왜 갑자기 미배치가 됐는지 알 수 없다.
+       * 복구는 멱등이므로 같은 알림이 반복해서 뜨지 않는다.
+       */
+      for (const repair of repairs) {
+        if (repair.severity === 'warning') toast.warning(repair.message);
+      }
+
+      pendingRef.current = next;
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        const pending = pendingRef.current;
+        pendingRef.current = null;
+        if (pending !== null) void persist(pending);
+      }, SAVE_DEBOUNCE_MS);
     },
-    [persist],
+    [persist, toast],
   );
 
   const guard = useCallback(

@@ -84,23 +84,62 @@ const TONE_ICONS = {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  /** 현재 떠 있는 알림의 거울. 중복 판정을 갱신 함수 밖에서 하기 위해 둔다. */
+  const toastsRef = useRef<ToastItem[]>([]);
 
-  const dismiss = useCallback((id: string): void => {
-    const timer = timers.current.get(id);
-    if (timer !== undefined) {
-      clearTimeout(timer);
-      timers.current.delete(id);
-    }
-    setToasts((current) => current.filter((toast) => toast.id !== id));
+  const commit = useCallback((next: ToastItem[]): void => {
+    toastsRef.current = next;
+    setToasts(next);
   }, []);
+
+  const dismiss = useCallback(
+    (id: string): void => {
+      const timer = timers.current.get(id);
+      if (timer !== undefined) {
+        clearTimeout(timer);
+        timers.current.delete(id);
+      }
+      commit(toastsRef.current.filter((toast) => toast.id !== id));
+    },
+    [commit],
+  );
 
   const show = useCallback(
     (message: string, options: ToastOptions = {}): string => {
       const tone = options.tone ?? 'info';
       const hasAction = options.actionLabel !== undefined && options.onAction !== undefined;
       const durationMs = options.durationMs ?? defaultDuration(tone, hasAction);
-      const id = createId();
 
+      const setTimer = (targetId: string): void => {
+        const previous = timers.current.get(targetId);
+        if (previous !== undefined) clearTimeout(previous);
+
+        if (durationMs > 0) {
+          timers.current.set(
+            targetId,
+            setTimeout(() => dismiss(targetId), durationMs),
+          );
+        }
+      };
+
+      /*
+       * 같은 말이 이미 떠 있으면 하나 더 쌓지 않고 표시 시간만 늘린다.
+       *
+       * 예: 교실 행 수를 두 칸 줄이면 복구가 두 번 일어나 같은 문장이 두 줄로 쌓였다.
+       * 교사 눈에는 고장으로 보인다. 실행 취소가 달린 알림은 각각 되돌릴 대상이
+       * 다르므로 합치지 않는다.
+       */
+      if (!hasAction) {
+        const duplicate = toastsRef.current.find(
+          (toast) => toast.message === message && toast.tone === tone && toast.onAction === undefined,
+        );
+        if (duplicate !== undefined) {
+          setTimer(duplicate.id);
+          return duplicate.id;
+        }
+      }
+
+      const id = createId();
       const item: ToastItem = {
         id,
         message,
@@ -111,18 +150,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       };
 
       // 화면을 알림으로 덮지 않는다. 오래된 것부터 밀어낸다.
-      setToasts((current) => [...current, item].slice(-4));
+      const next = [...toastsRef.current, item].slice(-4);
 
-      if (durationMs > 0) {
-        timers.current.set(
-          id,
-          setTimeout(() => dismiss(id), durationMs),
-        );
+      // 밀려난 알림의 타이머는 남겨 두면 새는 자원이 된다.
+      for (const dropped of toastsRef.current) {
+        if (!next.includes(dropped)) {
+          const timer = timers.current.get(dropped.id);
+          if (timer !== undefined) {
+            clearTimeout(timer);
+            timers.current.delete(dropped.id);
+          }
+        }
       }
+
+      commit(next);
+      setTimer(id);
 
       return id;
     },
-    [dismiss],
+    [commit, dismiss],
   );
 
   // 언마운트 시 남은 타이머를 정리한다.

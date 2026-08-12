@@ -8,7 +8,8 @@ export default defineConfig({
   base: '/',
   plugins: [react(), tailwindcss()],
   server: {
-    port: 3000,
+    // 포트가 이미 쓰이는 환경이 흔하다. PORT가 있으면 그것을 따른다.
+    port: Number(process.env.PORT ?? 3000),
   },
   build: {
     // 기능별 lazy 청크가 늘어나므로 경고 임계값을 현실적으로 잡는다.

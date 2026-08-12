@@ -233,6 +233,47 @@ describe('SuiteDataProvider', () => {
     expect(new Set(numbers).size).toBe(numbers.length);
   });
 
+  it('화면 조작 중에 고친 내용도 사용자에게 알린다', async () => {
+    /*
+     * 불러올 때만 알리고 조작 중에는 조용했던 결함이 있었다.
+     * 예를 들어 교실 행 수를 줄이면 밖으로 밀려난 학생의 자리가 비워지는데,
+     * 알리지 않으면 교사는 왜 미배치가 됐는지 알 수 없다.
+     */
+    renderProvider(adapter);
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'));
+
+    await act(async () => {
+      screen.getByRole('button', { name: '학급 만들기' }).click();
+      // 같은 번호로 두 번 추가 → 번호 중복 복구가 일어난다
+      screen.getByRole('button', { name: '학생 추가' }).click();
+      screen.getByRole('button', { name: '학생 추가' }).click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/번호가 겹친 학생/)).toBeInTheDocument();
+    });
+  });
+
+  it('같은 복구 알림이 반복해서 쌓이지 않는다', async () => {
+    // 복구는 멱등이다. 한 번 고쳐진 뒤에는 같은 알림이 다시 뜨지 않아야 한다.
+    renderProvider(adapter);
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'));
+
+    await act(async () => {
+      screen.getByRole('button', { name: '학급 만들기' }).click();
+      screen.getByRole('button', { name: '학생 추가' }).click();
+      screen.getByRole('button', { name: '학생 추가' }).click();
+    });
+    await waitFor(() => expect(screen.getByText(/번호가 겹친 학생/)).toBeInTheDocument());
+
+    await act(async () => {
+      // 관계없는 변경을 한 번 더 일으킨다
+      screen.getByRole('button', { name: '학급 만들기' }).click();
+    });
+
+    expect(screen.getAllByText(/번호가 겹친 학생/)).toHaveLength(1);
+  });
+
   it('useSuite를 Provider 밖에서 쓰면 명확히 실패한다', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect(() =>

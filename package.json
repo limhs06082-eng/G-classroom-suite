@@ -5,7 +5,7 @@
   "type": "module",
   "description": "우리 반 — 학급 운영 통합 앱",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev": "vite --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
