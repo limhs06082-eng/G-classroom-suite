@@ -5,8 +5,9 @@ import { importLegacyRoster, scanLegacy, type LegacyScanResult } from '../../sha
 import { useSuite } from '../../shared/roster/SuiteDataProvider';
 import type { BackupSummary } from '../../shared/storage/StorageAdapter';
 import { Badge, Button, Card, ConfirmDialog, EmptyState, Tabs, useToast } from '../../shared/ui';
+import { ClassTermTab } from './ClassTermTab';
 
-type SettingsTab = 'school' | 'backup' | 'legacy';
+type SettingsTab = 'school' | 'classes' | 'backup' | 'legacy';
 
 /**
  * 설정.
@@ -24,13 +25,17 @@ export default function SettingsPage() {
       <Tabs
         items={[
           { id: 'school', label: '학교 정보' },
+          { id: 'classes', label: '학급·학기' },
           { id: 'backup', label: '백업·복원' },
           { id: 'legacy', label: '기존 앱에서 가져오기' },
         ]}
         activeId={tab}
         onChange={(id) => setTab(id as SettingsTab)}
       >
-        {tab === 'school' ? <SchoolTab /> : tab === 'backup' ? <BackupTab /> : <LegacyTab />}
+        {tab === 'school' ? <SchoolTab /> : null}
+        {tab === 'classes' ? <ClassTermTab /> : null}
+        {tab === 'backup' ? <BackupTab /> : null}
+        {tab === 'legacy' ? <LegacyTab /> : null}
       </Tabs>
     </div>
   );

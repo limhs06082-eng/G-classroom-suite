@@ -62,11 +62,19 @@ export function ClassSwitcher() {
   );
 
   if (siblings.length <= 1) {
+    /*
+     * 학급이 하나뿐이면 전환할 것이 없다. 그래도 누를 수 있게 둔다.
+     * 학급을 추가하러 갈 길이 여기 말고 없다.
+     */
     return (
-      <div className="hidden min-w-0 items-baseline gap-1.5 text-sm sm:flex">
+      <Link
+        to="/settings"
+        title="학급·학기 관리"
+        className="hidden min-w-0 items-baseline gap-1.5 rounded-control px-2 py-1 text-sm hover:bg-slate-100 sm:flex"
+      >
         {term === null ? null : <span className="truncate text-slate-500">{term.name}</span>}
         <span className="truncate">{summary}</span>
-      </div>
+      </Link>
     );
   }
 
@@ -121,6 +129,17 @@ export function ClassSwitcher() {
               </li>
             );
           })}
+
+          {/* 학급을 바꾸러 온 교사가 "새 학급은 어디서 만드나"를 묻지 않게 한다. */}
+          <li className="mt-1 border-t border-slate-100 pt-1">
+            <Link
+              to="/settings"
+              onClick={() => setOpen(false)}
+              className="block px-3 py-2 text-sm text-brand-600 hover:bg-slate-50 hover:text-brand-700"
+            >
+              학급·학기 관리
+            </Link>
+          </li>
         </ul>
       ) : null}
     </div>
