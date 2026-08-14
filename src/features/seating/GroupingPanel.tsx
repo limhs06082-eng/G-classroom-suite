@@ -1,4 +1,4 @@
-import { Crown, Eraser, Lock, Shuffle, Users } from 'lucide-react';
+import { Crown, Eraser, Lock, Scale, Shuffle, Users } from 'lucide-react';
 import { useState } from 'react';
 
 import type { Group, Student } from '../../shared/domain/types';
@@ -42,6 +42,23 @@ export function GroupingPanel() {
       grouping.lockedStudentIds.size > 0
         ? `모둠을 새로 편성했습니다. 고정한 ${grouping.lockedStudentIds.size}명은 그대로 두었습니다.`
         : '모둠을 새로 편성했습니다.',
+    );
+
+    if (lockCleared) {
+      toast.warning(
+        '모둠 수가 줄어 갈 곳이 없어진 고정 학생이 있어 고정이 풀렸습니다. 편성을 확인해 주세요.',
+      );
+    }
+    setMovingStudentId(null);
+  };
+
+  const handleBalance = (): void => {
+    const { lockCleared } = grouping.balanceGroups(targetCount);
+
+    toast.success(
+      grouping.lockedStudentIds.size > 0
+        ? `성별과 특성을 고르게 나눴습니다. 고정한 ${grouping.lockedStudentIds.size}명은 그대로 두었습니다.`
+        : '성별과 특성을 고르게 나눠 편성했습니다.',
     );
 
     if (lockCleared) {
@@ -106,8 +123,11 @@ export function GroupingPanel() {
         ) : null}
 
         <div className="ml-auto flex gap-2">
+          <Button icon={Scale} variant="secondary" onClick={handleBalance}>
+            균형 편성
+          </Button>
           <Button icon={Shuffle} variant="primary" onClick={handleShuffle}>
-            모둠 편성
+            무작위 편성
           </Button>
           {grouping.groups.length > 0 ? (
             <Button icon={Eraser} variant="ghost" onClick={() => setConfirmClear(true)}>
@@ -115,6 +135,11 @@ export function GroupingPanel() {
             </Button>
           ) : null}
         </div>
+
+        <p className="w-full text-xs text-slate-500">
+          균형 편성은 성별과 특성 태그를 고르게 나눕니다. 태그는 명단에서 학생 정보를 수정해
+          넣습니다. 인원이 맞지 않으면 완전히 고르지 않을 수 있어, 편성 뒤 손으로 옮길 수 있습니다.
+        </p>
       </div>
 
       {movingStudentId !== null ? (

@@ -6,10 +6,12 @@ import {
   createDefaultGroups,
   MAX_GROUP_COUNT,
   MIN_GROUP_COUNT,
+  performBalancedGrouping,
   performRandomGrouping,
+  type BalancedInput,
 } from '../../src/features/seating/groupingCore';
 import { createSeededRng } from '../../src/features/seating/rng';
-import type { Group } from '../../src/shared/domain/types';
+import type { Gender, Group } from '../../src/shared/domain/types';
 
 const NOW = '2026-03-02T09:00:00.000Z';
 const EARLIER = '2026-03-01T09:00:00.000Z';
@@ -223,5 +225,173 @@ describe('performRandomGrouping', () => {
 
     expect(result.groups).toHaveLength(3);
     expect(result.groups.every((g) => g.studentIds.length === 0)).toBe(true);
+  });
+});
+
+describe('performBalancedGrouping', () => {
+  const person = (id: string, gender: Gender, tags: string[] = []): BalancedInput => ({
+    studentId: id,
+    gender,
+    tags,
+  });
+
+  /** 남녀 번갈아 24명 */
+  const mixed = (): BalancedInput[] =>
+    Array.from({ length: 24 }, (_, i) => person(`stu-${i + 1}`, i % 2 === 0 ? 'male' : 'female'));
+
+  const memberCount = (groups: Group[]): number =>
+    groups.reduce((sum, g) => sum + g.studentIds.length, 0);
+
+  it('총원이 보존된다 — 빠지거나 겹치지 않는다', () => {
+    const all = performBalancedGrouping(mixed(), 'class-1', 4, [], [], NOW, rng()).groups.flatMap(
+      (g) => g.studentIds,
+    );
+
+    expect(all).toHaveLength(24);
+    expect(new Set(all).size).toBe(24);
+  });
+
+  it('성별이 모둠마다 고르게 퍼진다', () => {
+    const people = mixed();
+    const male = new Set(people.filter((p) => p.gender === 'male').map((p) => p.studentId));
+    const { groups } = performBalancedGrouping(people, 'class-1', 4, [], [], NOW, rng());
+
+    // 남 12명을 4모둠에 나누므로 정확히 3명씩이어야 한다.
+    for (const g of groups) {
+      expect(g.studentIds.filter((id) => male.has(id))).toHaveLength(3);
+    }
+  });
+
+  it('같은 태그를 가진 학생이 서로 다른 모둠으로 흩어진다', () => {
+    const people: BalancedInput[] = [
+      ...Array.from({ length: 3 }, (_, i) => person(`care-${i + 1}`, 'male', ['도움 필요'])),
+      ...Array.from({ length: 9 }, (_, i) => person(`plain-${i + 1}`, 'female')),
+    ];
+
+    const { groups } = performBalancedGrouping(people, 'class-1', 3, [], [], NOW, rng());
+
+    for (const g of groups) {
+      expect(g.studentIds.filter((id) => id.startsWith('care-'))).toHaveLength(1);
+    }
+  });
+
+  it('고정된 학생은 원래 모둠에 남는다', () => {
+    const existing = [group('g-1', '1모둠', ['stu-1', 'stu-2']), group('g-2', '2모둠', ['stu-3'])];
+
+    const { groups, lockedStudentIds } = performBalancedGrouping(
+      mixed(),
+      'class-1',
+      4,
+      existing,
+      ['stu-1', 'stu-3'],
+      NOW,
+      rng(),
+    );
+
+    expect(groups[0]?.studentIds).toContain('stu-1');
+    expect(groups[1]?.studentIds).toContain('stu-3');
+    expect(lockedStudentIds).toEqual(['stu-1', 'stu-3']);
+  });
+
+  it('모둠 수가 줄어 갈 곳이 없어진 고정은 알린다', () => {
+    const existing = [
+      group('g-1', '1모둠', []),
+      group('g-2', '2모둠', []),
+      group('g-3', '3모둠', ['stu-5']),
+    ];
+
+    const { lockCleared } = performBalancedGrouping(
+      mixed(),
+      'class-1',
+      2,
+      existing,
+      ['stu-5'],
+      NOW,
+      rng(),
+    );
+
+    expect(lockCleared).toBe(true);
+  });
+
+  it('태그가 하나도 없어도 동작한다', () => {
+    const { groups } = performBalancedGrouping(mixed(), 'class-1', 3, [], [], NOW, rng());
+
+    expect(memberCount(groups)).toBe(24);
+  });
+
+  it('한쪽 성별만 있어도 깨지지 않는다', () => {
+    const people = Array.from({ length: 10 }, (_, i) => person(`stu-${i + 1}`, 'male'));
+    const { groups } = performBalancedGrouping(people, 'class-1', 3, [], [], NOW, rng());
+
+    expect(memberCount(groups)).toBe(10);
+    expect(groups.map((g) => g.studentIds.length).sort()).toEqual([3, 3, 4]);
+  });
+
+  it('성별이 지정되지 않아도(none) 인원은 고르게 나뉜다', () => {
+    const people = Array.from({ length: 9 }, (_, i) => person(`stu-${i + 1}`, 'none'));
+    const { groups } = performBalancedGrouping(people, 'class-1', 3, [], [], NOW, rng());
+
+    expect(groups.map((g) => g.studentIds.length)).toEqual([3, 3, 3]);
+  });
+
+  it('모둠 수가 학생 수보다 많아도 깨지지 않는다', () => {
+    const people = [person('stu-1', 'male'), person('stu-2', 'female')];
+    const { groups } = performBalancedGrouping(people, 'class-1', 5, [], [], NOW, rng());
+
+    expect(groups).toHaveLength(5);
+    expect(memberCount(groups)).toBe(2);
+  });
+
+  it('학생이 없어도 빈 모둠을 돌려준다', () => {
+    const { groups } = performBalancedGrouping([], 'class-1', 3, [], [], NOW, rng());
+
+    expect(groups).toHaveLength(3);
+    expect(memberCount(groups)).toBe(0);
+  });
+
+  it('같은 씨앗이면 같은 편성이 나온다', () => {
+    const people = mixed();
+    const a = performBalancedGrouping(people, 'class-1', 4, [], [], NOW, createSeededRng(7));
+    const b = performBalancedGrouping(people, 'class-1', 4, [], [], NOW, createSeededRng(7));
+
+    expect(a.groups.map((g) => g.studentIds)).toEqual(b.groups.map((g) => g.studentIds));
+  });
+
+  it('기존 모둠의 이름·색·id는 유지한다', () => {
+    const existing = [group('g-1', '독수리', []), group('g-2', '호랑이', [])];
+    const { groups } = performBalancedGrouping(mixed(), 'class-1', 2, existing, [], NOW, rng());
+
+    expect(groups.map((g) => g.name)).toEqual(['독수리', '호랑이']);
+    expect(groups[0]?.id).toBe('g-1');
+  });
+
+  it('어떤 조합에서도 학생이 누락되거나 겹치지 않는다', () => {
+    for (const total of [1, 7, 24, 25, 31]) {
+      for (const count of [2, 3, 4, 6]) {
+        const people = Array.from({ length: total }, (_, i) =>
+          person(
+            `stu-${i + 1}`,
+            (['male', 'female', 'other', 'none'] as const)[i % 4] ?? 'none',
+            i % 3 === 0 ? ['도움 필요'] : [],
+          ),
+        );
+
+        const { groups } = performBalancedGrouping(
+          people,
+          'class-1',
+          count,
+          [],
+          [],
+          NOW,
+          createSeededRng(total * 100 + count),
+        );
+
+        const assigned = groups.flatMap((g) => g.studentIds);
+        const label = `학생 ${total}명 / ${count}모둠`;
+
+        expect(assigned.length, `${label} — 누락`).toBe(total);
+        expect(new Set(assigned).size, `${label} — 중복`).toBe(total);
+      }
+    }
   });
 });

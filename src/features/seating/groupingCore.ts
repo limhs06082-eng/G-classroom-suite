@@ -1,5 +1,5 @@
 import { createId } from '../../shared/domain/factories';
-import type { Group } from '../../shared/domain/types';
+import type { Gender, Group } from '../../shared/domain/types';
 import { shuffle, systemRng, type Rng } from './rng';
 import type { GroupingMode } from './types';
 
@@ -67,6 +67,85 @@ export interface GroupingResult {
   lockCleared: boolean;
 }
 
+// ── 무작위 편성과 균형 편성이 함께 쓰는 부분 ──────────────────
+//    두 벌로 두면 한쪽만 고쳐지는 날이 온다.
+
+/** 기존 모둠은 이름·색·id를 유지하고 구성원만 비운다. 교사가 붙인 이름이 사라지면 안 된다. */
+function buildGroupShells(
+  groupCount: number,
+  classId: string,
+  existingGroups: readonly Group[],
+  now: string,
+): Group[] {
+  return Array.from({ length: groupCount }, (_, index) => {
+    const existing = existingGroups[index];
+    if (existing) return { ...existing, studentIds: [], updatedAt: now };
+
+    const color = GROUP_COLORS[index % GROUP_COLORS.length];
+    return {
+      id: createId(),
+      classId,
+      name: `${index + 1}모둠`,
+      color: color?.id ?? 'slate',
+      studentIds: [],
+      leaderId: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
+}
+
+interface LockOutcome {
+  placed: Set<string>;
+  keptLocked: string[];
+  lockCleared: boolean;
+}
+
+/** 고정된 학생을 원래 모둠에 먼저 앉힌다. groups를 직접 고친다. */
+function seatLockedStudents(
+  groups: Group[],
+  studentIds: readonly string[],
+  existingGroups: readonly Group[],
+  lockedStudentIds: readonly string[],
+): LockOutcome {
+  const previousGroupIndex = new Map<string, number>();
+  existingGroups.forEach((group, index) => {
+    for (const studentId of group.studentIds) previousGroupIndex.set(studentId, index);
+  });
+
+  const locked = new Set(lockedStudentIds);
+  const keptLocked: string[] = [];
+  const placed = new Set<string>();
+  let lockCleared = false;
+
+  for (const studentId of studentIds) {
+    if (!locked.has(studentId)) continue;
+
+    const index = previousGroupIndex.get(studentId);
+    if (index !== undefined && index < groups.length) {
+      groups[index]?.studentIds.push(studentId);
+      placed.add(studentId);
+      keptLocked.push(studentId);
+    } else {
+      // 모둠 수를 줄이면 갈 곳이 없어진다. 조용히 흘리지 않고 알린다.
+      lockCleared = true;
+    }
+  }
+
+  return { placed, keptLocked, lockCleared };
+}
+
+/** 모둠장은 그 모둠에 남아 있을 때만 유지한다. groups를 직접 고친다. */
+function restoreLeaders(groups: Group[], existingGroups: readonly Group[]): void {
+  for (const [index, group] of groups.entries()) {
+    const previousLeader = existingGroups[index]?.leaderId ?? null;
+    group.leaderId =
+      previousLeader !== null && group.studentIds.includes(previousLeader) ? previousLeader : null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+
 export function createDefaultGroups(count: number, classId: string, now: string): Group[] {
   return Array.from({ length: count }, (_, index) => {
     const color = GROUP_COLORS[index % GROUP_COLORS.length];
@@ -93,48 +172,13 @@ export function performRandomGrouping(
   rng: Rng = systemRng,
 ): GroupingResult {
   const groupCount = Math.max(1, targetGroupCount);
-
-  // 기존 모둠은 이름·색·id를 유지하고 구성원만 비운다. 교사가 붙인 이름이 사라지면 안 된다.
-  const groups: Group[] = Array.from({ length: groupCount }, (_, index) => {
-    const existing = existingGroups[index];
-    if (existing) return { ...existing, studentIds: [], updatedAt: now };
-
-    const color = GROUP_COLORS[index % GROUP_COLORS.length];
-    return {
-      id: createId(),
-      classId,
-      name: `${index + 1}모둠`,
-      color: color?.id ?? 'slate',
-      studentIds: [],
-      leaderId: null,
-      createdAt: now,
-      updatedAt: now,
-    };
-  });
-
-  const previousGroupIndex = new Map<string, number>();
-  existingGroups.forEach((group, index) => {
-    for (const studentId of group.studentIds) previousGroupIndex.set(studentId, index);
-  });
-
-  const locked = new Set(lockedStudentIds);
-  const keptLocked: string[] = [];
-  const placed = new Set<string>();
-  let lockCleared = false;
-
-  for (const studentId of studentIds) {
-    if (!locked.has(studentId)) continue;
-
-    const index = previousGroupIndex.get(studentId);
-    if (index !== undefined && index < groupCount) {
-      groups[index]?.studentIds.push(studentId);
-      placed.add(studentId);
-      keptLocked.push(studentId);
-    } else {
-      // 모둠 수를 줄이면 갈 곳이 없어진다. 조용히 흘리지 않고 알린다.
-      lockCleared = true;
-    }
-  }
+  const groups = buildGroupShells(groupCount, classId, existingGroups, now);
+  const { placed, keptLocked, lockCleared } = seatLockedStudents(
+    groups,
+    studentIds,
+    existingGroups,
+    lockedStudentIds,
+  );
 
   const capacities = computeTargetCapacities(studentIds.length, groupCount);
   const remaining = shuffle(
@@ -149,10 +193,7 @@ export function performRandomGrouping(
     );
 
     if (target === -1) leftover.push(studentId);
-    else {
-      groups[target]?.studentIds.push(studentId);
-      placed.add(studentId);
-    }
+    else groups[target]?.studentIds.push(studentId);
   }
 
   /*
@@ -173,15 +214,121 @@ export function performRandomGrouping(
       0,
     );
     groups[smallest]?.studentIds.push(studentId);
-    placed.add(studentId);
   }
 
-  // 모둠장은 그 모둠에 남아 있을 때만 유지한다.
-  for (const [index, group] of groups.entries()) {
-    const previousLeader = existingGroups[index]?.leaderId ?? null;
-    group.leaderId =
-      previousLeader !== null && group.studentIds.includes(previousLeader) ? previousLeader : null;
+  restoreLeaders(groups, existingGroups);
+
+  return { groups, lockedStudentIds: keptLocked, lockCleared };
+}
+
+// ── 균형 편성 ─────────────────────────────────────────────────
+
+export interface BalancedInput {
+  studentId: string;
+  gender: Gender;
+  tags: readonly string[];
+}
+
+interface Fit {
+  /** 이 학생의 태그와 겹치는 인원 */
+  tagClash: number;
+  /** 같은 성별 인원 */
+  sameGender: number;
+  size: number;
+}
+
+function fitOf(group: Group, student: BalancedInput, byId: Map<string, BalancedInput>): Fit {
+  const tags = new Set(student.tags);
+  let tagClash = 0;
+  let sameGender = 0;
+
+  for (const memberId of group.studentIds) {
+    const member = byId.get(memberId);
+    // 명단에서 빠졌는데 고정 자리에 남아 있는 학생. 균형 계산에서는 뺀다.
+    if (member === undefined) continue;
+
+    if (member.gender === student.gender) sameGender += 1;
+    if (member.tags.some((tag) => tags.has(tag))) tagClash += 1;
   }
+
+  return { tagClash, sameGender, size: group.studentIds.length };
+}
+
+/** 앞 기준에서 갈리면 뒤는 보지 않는다. 전부 같으면 false — 먼저 본 모둠이 이긴다. */
+function isBetterFit(candidate: Fit, best: Fit): boolean {
+  if (candidate.tagClash !== best.tagClash) return candidate.tagClash < best.tagClash;
+  if (candidate.sameGender !== best.sameGender) return candidate.sameGender < best.sameGender;
+  return candidate.size < best.size;
+}
+
+/**
+ * 성별과 특성 태그를 고르게 나누는 편성.
+ *
+ * performRandomGrouping을 대체하지 않는다. "그냥 무작위"도 교사가 고를 수 있어야 한다.
+ *
+ * 한 명씩 보며 가장 아쉬운 모둠에 넣는다. 성별로 미리 나눠 뱀 순서로 돌리는
+ * 방법도 있지만 이쪽을 쓴다. 성별과 태그가 같은 저울에 올라가기 때문이다.
+ * 성별로 먼저 나누면 태그는 그 안에서만 조정되고, 성별이 치우친 학급에서 태그가 뭉친다.
+ *
+ * 완벽한 균형은 약속하지 않는다. 25명을 4모둠으로 나누면 6·6·6·7이고,
+ * 남학생이 3명뿐이면 한 모둠은 남학생이 없다. 화면에서 교사가 고칠 수 있다.
+ */
+export function performBalancedGrouping(
+  students: readonly BalancedInput[],
+  classId: string,
+  targetGroupCount: number,
+  existingGroups: readonly Group[],
+  lockedStudentIds: readonly string[],
+  now: string,
+  rng: Rng = systemRng,
+): GroupingResult {
+  const groupCount = Math.max(1, targetGroupCount);
+  const groups = buildGroupShells(groupCount, classId, existingGroups, now);
+
+  const studentIds = students.map((student) => student.studentId);
+  const { placed, keptLocked, lockCleared } = seatLockedStudents(
+    groups,
+    studentIds,
+    existingGroups,
+    lockedStudentIds,
+  );
+
+  const byId = new Map(students.map((student) => [student.studentId, student]));
+  const capacities = computeTargetCapacities(students.length, groupCount);
+
+  // 순서가 고정이면 매번 같은 편성이 나온다.
+  const remaining = shuffle(
+    students.filter((student) => !placed.has(student.studentId)),
+    rng,
+  );
+
+  for (const student of remaining) {
+    const roomy: number[] = [];
+    groups.forEach((group, index) => {
+      if (group.studentIds.length < (capacities[index] ?? 0)) roomy.push(index);
+    });
+
+    // 고정 학생이 한 모둠에 몰려 정원이 다 찬 경우. 그래도 반드시 어딘가에 넣는다.
+    const candidates = roomy.length > 0 ? roomy : groups.map((_, index) => index);
+
+    let bestIndex = -1;
+    let bestFit: Fit | null = null;
+
+    for (const index of candidates) {
+      const group = groups[index];
+      if (group === undefined) continue;
+
+      const fit = fitOf(group, student, byId);
+      if (bestFit === null || isBetterFit(fit, bestFit)) {
+        bestIndex = index;
+        bestFit = fit;
+      }
+    }
+
+    groups[bestIndex]?.studentIds.push(student.studentId);
+  }
+
+  restoreLeaders(groups, existingGroups);
 
   return { groups, lockedStudentIds: keptLocked, lockCleared };
 }

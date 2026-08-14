@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 
 import type { Group, Student, SuiteData } from '../../shared/domain/types';
 import { useActiveClass, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
-import { computeGroupCount, performRandomGrouping } from './groupingCore';
+import { computeGroupCount, performBalancedGrouping, performRandomGrouping } from './groupingCore';
 import type { GroupingMode } from './types';
 
 /**
@@ -33,6 +33,8 @@ export interface GroupingView {
   suggestGroupCount: (mode: GroupingMode, groupCount: number, membersPerGroup: number) => number;
 
   shuffleGroups: (targetCount: number) => { lockCleared: boolean };
+  /** 성별·특성 태그를 고르게 나눠 편성한다. */
+  balanceGroups: (targetCount: number) => { lockCleared: boolean };
   renameGroup: (groupId: string, name: string) => void;
   setLeader: (groupId: string, studentId: string | null) => void;
   toggleGroupLock: (studentId: string) => void;
@@ -93,6 +95,36 @@ export function useGrouping(): GroupingView {
       return { lockCleared: result.lockCleared };
     },
     [classId, roster, groups, lockedStudentIds, update],
+  );
+
+  const balanceGroups = useCallback(
+    (targetCount: number): { lockCleared: boolean } => {
+      if (classId === null) return { lockCleared: false };
+
+      const profileById = new Map(data.seatingProfiles.map((p) => [p.studentId, p]));
+      const now = new Date().toISOString();
+
+      const result = performBalancedGrouping(
+        roster.map((student) => {
+          // 명단에만 있고 프로필이 아직 없는 학생은 성별 미지정으로 본다.
+          const profile = profileById.get(student.id);
+          return {
+            studentId: student.id,
+            gender: profile?.gender ?? 'none',
+            tags: profile?.tags ?? [],
+          };
+        }),
+        classId,
+        targetCount,
+        groups,
+        [...lockedStudentIds],
+        now,
+      );
+
+      update((current) => replaceClassGroups(current, classId, result.groups));
+      return { lockCleared: result.lockCleared };
+    },
+    [classId, roster, groups, lockedStudentIds, data.seatingProfiles, update],
   );
 
   const renameGroup = useCallback(
@@ -189,6 +221,7 @@ export function useGrouping(): GroupingView {
     studentById,
     suggestGroupCount,
     shuffleGroups,
+    balanceGroups,
     renameGroup,
     setLeader,
     toggleGroupLock,
