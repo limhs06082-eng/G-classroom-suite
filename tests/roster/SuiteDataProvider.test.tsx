@@ -340,3 +340,123 @@ describe('useRoster', () => {
     expect(screen.getByTestId('roster')).toHaveTextContent('1김하나,3박세찬');
   });
 });
+
+describe('SuiteDataProvider — 다른 창의 변경', () => {
+  /** 컨텍스트 값을 그대로 잡아 둔다. update를 직접 불러야 한다. */
+  function renderProbe(probeAdapter: StorageAdapter) {
+    const seen: { current: ReturnType<typeof useSuite> | null } = { current: null };
+
+    function Probe() {
+      seen.current = useSuite();
+      return null;
+    }
+
+    render(
+      <ToastProvider>
+        <SuiteDataProvider adapter={probeAdapter}>
+          <Probe />
+        </SuiteDataProvider>
+      </ToastProvider>,
+    );
+
+    return seen;
+  }
+
+  /** 밖에서 외부 변경을 밀어 넣을 수 있는 스텁 */
+  function pushableAdapter() {
+    const box: { push: ((data: SuiteData) => void) | null } = { push: null };
+    const pushable = stubAdapter({
+      subscribe: (listener) => {
+        box.push = listener;
+        return () => {
+          box.push = null;
+        };
+      },
+    });
+    return { adapter: pushable, box };
+  }
+
+  /**
+   * 다른 창이 보냈다고 할 만한 **온전한** 데이터.
+   *
+   * activeClassId만 넣고 학급을 빼면 참조 무결성 검사가 정당하게 null로
+   * 되돌린다. 그러면 통과해야 할 테스트가 엉뚱한 이유로 실패한다.
+   */
+  function incoming(): SuiteData {
+    return {
+      ...createEmptySuiteData(),
+      terms: [
+        {
+          id: 'term-1',
+          schoolYear: '2026',
+          semester: '1학기',
+          name: '2026학년도 1학기',
+          startDate: '2026-03-02',
+          endDate: '2026-07-20',
+          status: 'active',
+          createdAt: '2026-03-01T00:00:00.000Z',
+        },
+      ],
+      classRooms: [
+        {
+          id: 'class-1',
+          termId: 'term-1',
+          name: '3학년 2반',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        },
+      ],
+      activeTermId: 'term-1',
+      activeClassId: 'class-1',
+    };
+  }
+
+  it('다른 창의 변경을 화면에 반영한다', async () => {
+    const { adapter: pushable, box } = pushableAdapter();
+    const seen = renderProbe(pushable);
+
+    /*
+     * load()가 비동기다. 이걸 흘려보내지 않고 외부 변경을 밀어 넣으면
+     * 뒤늦게 끝난 load가 그것을 덮어 테스트가 간헐적으로 실패한다.
+     */
+    await act(async () => {});
+    expect(box.push).not.toBeNull();
+
+    act(() => box.push?.(incoming()));
+
+    await waitFor(() => expect(seen.current?.data.activeClassId).toBe('class-1'));
+  });
+
+  it('반영한 뒤 update가 낡은 값에서 출발하지 않는다', async () => {
+    // 이것이 원래 버그다. 칠판이 넘긴 값을 메인 창의 다음 저장이 되돌렸다.
+    const { adapter: pushable, box } = pushableAdapter();
+    const seen = renderProbe(pushable);
+
+    await act(async () => {});
+    expect(box.push).not.toBeNull();
+
+    act(() => box.push?.(incoming()));
+    await waitFor(() => expect(seen.current?.data.activeClassId).toBe('class-1'));
+
+    // 다른 창에서 온 것과 상관없는 작업을 한다
+    act(() =>
+      seen.current?.update((current) => ({
+        ...current,
+        classRooms: [
+          ...current.classRooms,
+          {
+            id: 'class-2',
+            termId: 'term-1',
+            name: '3학년 3반',
+            createdAt: '2026-03-01T00:00:00.000Z',
+            updatedAt: '2026-03-01T00:00:00.000Z',
+          },
+        ],
+      })),
+    );
+
+    // 외부에서 온 학급 선택이 살아 있어야 한다.
+    expect(seen.current?.data.activeClassId).toBe('class-1');
+    expect(seen.current?.data.classRooms).toHaveLength(2);
+  });
+});

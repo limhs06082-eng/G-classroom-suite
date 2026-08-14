@@ -143,15 +143,34 @@ Vercel이 자동으로 다시 배포합니다. 배포가 끝나면 `/login`에�
 
 ---
 
-## 아직 정하지 못한 것
+## 여러 기기에서 함께 쓸 때
 
-**두 기기에서 동시에 고치면 마지막에 저장한 쪽이 이깁니다.**
-교실 PC에서 점수를 주는 동안 노트북에서도 고치면 한쪽 내용이 덮일 수 있습니다.
+앱은 다른 창·기기의 변경을 **구독해서 바로 화면에 반영합니다.**
+교실 PC에서 점수를 주면 노트북 화면도 따라 바뀝니다.
 
-지금은 이렇게 쓰시길 권합니다.
+그래서 `FirestoreAdapter`를 만들 때 `subscribe`를 **반드시 함께 구현해야 합니다.**
+이것을 빠뜨리면 전자칠판이 수업 중에 따라오지 않고,
+한 창의 저장이 다른 창의 변경을 조용히 덮습니다.
 
-- 한 번에 한 기기에서만 고치기
-- 전자칠판은 **보기 전용**으로 띄우기 (`/board/...` 주소)
+```ts
+subscribe(listener: (data: SuiteData) => void): () => void {
+  return onSnapshot(this.docRef, (snapshot) => {
+    // Firestore는 자기가 쓴 것도 되돌려 준다. 이것을 거르지 않으면
+    // 저장할 때마다 자기 자신을 되받아 무한 반영이 일어난다.
+    if (snapshot.metadata.hasPendingWrites) return;
 
-실시간 동기화가 필요하면 `onSnapshot` 구독을 추가해야 합니다. 그때는 리스너가 재연결될 때마다
-문서를 다시 읽으므로, 필요한 화면에서만 구독하도록 주의하세요.
+    const raw = snapshot.data();
+    if (raw === undefined) return;
+
+    listener(parseSuiteData(raw).data);
+  });
+}
+```
+
+문서가 `teachers/{uid}/suite/data` **하나뿐**이라 리스너도 하나입니다.
+무료 한도를 걱정하지 않아도 됩니다.
+
+**남는 한계:** 거의 같은 순간에 양쪽에서 같은 것을 고치면 마지막에 저장한 쪽이 이깁니다.
+상대 변경이 즉시 화면에 뜨므로 바로 알아차릴 수 있습니다.
+
+설계 근거: [`superpowers/specs/2026-08-13-cross-window-sync-design.md`](superpowers/specs/2026-08-13-cross-window-sync-design.md)

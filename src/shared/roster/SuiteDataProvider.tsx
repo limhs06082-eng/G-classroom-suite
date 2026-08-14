@@ -14,6 +14,7 @@ import { validateAndRepair } from '../domain/invariants';
 import type { ClassRoom, Student, SuiteData, Term } from '../domain/types';
 import { LocalStorageAdapter } from '../storage/LocalStorageAdapter';
 import type { BackupKind, StorageAdapter } from '../storage/StorageAdapter';
+import { useExternalChanges } from '../state/useExternalChanges';
 import { useToast } from '../ui';
 
 /**
@@ -189,6 +190,22 @@ export function SuiteDataProvider({ adapter: injected, children }: Props) {
     },
     [adapter, flush],
   );
+
+  /*
+   * 칠판은 별도 창으로 뜬다. 이 구독이 없으면 각 창이 자기 사본을 들고
+   * 문서 전체를 덮어써서, 서로 다른 곳을 고쳐도 한쪽이 조용히 사라진다.
+   */
+  useExternalChanges<SuiteData>(adapter, {
+    // 내 것이 곧 나가고 상대가 그것을 구독으로 받는다. 상태는 갈라지지 않는다.
+    shouldIgnore: () => pendingRef.current !== null,
+    onApply: (next) => {
+      // 둘 다 갱신해야 한다. dataRef만 낡으면 다음 update가 같은 문제를 되풀이한다.
+      dataRef.current = next;
+      setData(next);
+    },
+    onDefer: () =>
+      toast.info('다른 창에서 바뀐 내용이 있습니다. 지금 하시던 편집을 마치면 반영됩니다.'),
+  });
 
   // 탭을 닫을 때 대기 중인 변경을 잃지 않는다.
   useEffect(() => {
