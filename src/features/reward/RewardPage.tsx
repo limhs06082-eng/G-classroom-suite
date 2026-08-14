@@ -1,4 +1,4 @@
-import { Eraser, Monitor, Plus, RotateCcw, Sparkles, Target, Trash2, Users } from 'lucide-react';
+import { CalendarRange, Eraser, Monitor, Plus, RotateCcw, Sparkles, Target, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -363,7 +363,84 @@ function ScoreTab({
           </ul>
         )}
       </section>
+
+      <CycleSettings reward={reward} />
     </div>
+  );
+}
+
+/**
+ * 점수 주기 설정.
+ *
+ * 원본에는 '교사가 직접 주기를 끊는' 방식과 '주 시작일을 다음 주기부터 적용'도
+ * 있었지만 걷어냈다. 전자는 주기 관리 화면이 통째로 필요하고, 후자는
+ * 언제 바꿨는지를 저장할 자리가 없어 골라도 즉시 적용되는 거짓말이 된다.
+ */
+function CycleSettings({ reward }: { reward: ReturnType<typeof useReward> }) {
+  const { cycle, setCycle } = reward;
+
+  return (
+    <Card title="점수 주기" icon={CalendarRange}>
+      <div className="flex flex-col gap-3">
+        <div>
+          <span className="text-sm text-slate-700">한 달을 세는 기준</span>
+          <div className="mt-1 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={cycle.monthlyType === '1st_to_end' ? 'primary' : 'secondary'}
+              aria-pressed={cycle.monthlyType === '1st_to_end'}
+              onClick={() => setCycle({ monthlyType: '1st_to_end' })}
+            >
+              1일~말일
+            </Button>
+            <Button
+              size="sm"
+              variant={cycle.monthlyType === 'specific_day' ? 'primary' : 'secondary'}
+              aria-pressed={cycle.monthlyType === 'specific_day'}
+              onClick={() => setCycle({ monthlyType: 'specific_day' })}
+            >
+              지정한 날부터
+            </Button>
+
+            {cycle.monthlyType === 'specific_day' ? (
+              <label className="flex items-center gap-1 text-sm text-slate-700">
+                <input
+                  type="number"
+                  min={1}
+                  max={28}
+                  aria-label="월 시작일"
+                  value={cycle.monthlyStartDay}
+                  onChange={(event) => {
+                    const parsed = Number.parseInt(event.target.value, 10);
+                    if (!Number.isFinite(parsed)) return;
+                    setCycle({ monthlyStartDay: Math.min(Math.max(1, parsed), 28) });
+                  }}
+                  className="h-8 w-16 rounded-control border border-slate-300 px-2"
+                />
+                일
+              </label>
+            ) : null}
+          </div>
+          <p className="mt-1 text-sm text-slate-500">
+            `이번 달` 점수를 어디서부터 셀지 정합니다. 29~31일은 없는 달이 있어 고를 수 없습니다.
+          </p>
+        </div>
+
+        <div className="border-t border-slate-100 pt-3">
+          <Button
+            size="sm"
+            variant={cycle.showLifetimeCumulative ? 'primary' : 'secondary'}
+            aria-pressed={cycle.showLifetimeCumulative}
+            onClick={() => setCycle({ showLifetimeCumulative: !cycle.showLifetimeCumulative })}
+          >
+            {cycle.showLifetimeCumulative ? '통산 점수 보이는 중' : '통산 점수 보기'}
+          </Button>
+          <p className="mt-1 text-sm text-slate-500">
+            켜면 위 기간 단추에 관계없이 `전체` 누적 점수를 함께 볼 수 있습니다.
+          </p>
+        </div>
+      </div>
+    </Card>
   );
 }
 

@@ -76,6 +76,56 @@ function SchoolTab() {
         <p className="text-sm text-slate-500">
           입력한 이름은 인쇄물과 안내 문구에 쓰입니다.
         </p>
+
+        <div className="border-t border-slate-100 pt-3">
+          <div className="flex gap-3">
+            <label className="block flex-1 text-sm">
+              <span className="text-slate-700">교육청 코드</span>
+              <input
+                defaultValue={data.profile.officeCode}
+                placeholder="예: D10"
+                onBlur={(event) => {
+                  const officeCode = event.target.value.trim();
+                  if (officeCode !== data.profile.officeCode) {
+                    update((current) => ({
+                      ...current,
+                      profile: { ...current.profile, officeCode },
+                    }));
+                    toast.success('교육청 코드를 저장했습니다.');
+                  }
+                }}
+                className="mt-1 h-10 w-full rounded-control border border-slate-300 px-3"
+              />
+            </label>
+
+            <label className="block flex-1 text-sm">
+              <span className="text-slate-700">학교 코드</span>
+              <input
+                defaultValue={data.profile.schoolCode}
+                placeholder="예: 7000000"
+                onBlur={(event) => {
+                  const schoolCode = event.target.value.trim();
+                  if (schoolCode !== data.profile.schoolCode) {
+                    update((current) => ({
+                      ...current,
+                      profile: { ...current.profile, schoolCode },
+                    }));
+                    toast.success('학교 코드를 저장했습니다.');
+                  }
+                }}
+                className="mt-1 h-10 w-full rounded-control border border-slate-300 px-3"
+              />
+            </label>
+          </div>
+
+          {/*
+            지금 아무 일도 일어나지 않는 칸이다.
+            설명이 없으면 교사가 고장으로 읽는다.
+          */}
+          <p className="mt-2 text-sm text-slate-500">
+            나중에 급식·시간표를 불러올 때 쓰는 값입니다. 지금은 저장만 해 둡니다.
+          </p>
+        </div>
       </div>
     </Card>
   );

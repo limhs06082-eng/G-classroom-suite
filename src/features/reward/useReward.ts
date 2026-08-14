@@ -11,6 +11,7 @@ import type {
   BehaviorPreset,
   Group,
   ScoreEntry,
+  ScoreCycle,
   ScoreGoal,
   ScoreTargetUnit,
   Student,
@@ -61,6 +62,9 @@ export interface RewardView {
   addGoal: (input: Pick<ScoreGoal, 'title' | 'targetUnit' | 'targetId' | 'targetPoints' | 'reward'>) => void;
   deleteGoal: (goalId: string) => void;
   clearEntries: () => Promise<void>;
+  /** 점수 주기 설정을 바꾼다 */
+  setCycle: (patch: Partial<ScoreCycle>) => void;
+  cycle: ScoreCycle;
 }
 
 function todayString(): string {
@@ -228,6 +232,13 @@ export function useReward(): RewardView {
     [update],
   );
 
+  const setCycle = useCallback(
+    (patch: Partial<ScoreCycle>): void => {
+      update((current) => ({ ...current, scoreCycle: { ...current.scoreCycle, ...patch } }));
+    },
+    [update],
+  );
+
   const clearEntries = useCallback(async (): Promise<void> => {
     if (classId === null) return;
     await guard('점수 기록 초기화 직전');
@@ -259,6 +270,8 @@ export function useReward(): RewardView {
     addGoal,
     deleteGoal,
     clearEntries,
+    setCycle,
+    cycle: data.scoreCycle,
   };
 }
 
