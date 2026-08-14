@@ -12,9 +12,12 @@ import {
   cx,
   EmptyState,
   Modal,
+  Tabs,
   useToast,
 } from '../../shared/ui';
+import { AssignmentMatrix } from './AssignmentMatrix';
 import { SUBMISSION_LABELS } from './assignmentCore';
+import { StudentAssignments } from './StudentAssignments';
 import { useAssignment } from './useAssignment';
 
 const STATUS_TONE: Record<SubmissionStatus, string> = {
@@ -29,12 +32,18 @@ const STATUS_TONE: Record<SubmissionStatus, string> = {
  *
  * 원본의 핵심은 "한 번 눌러 상태를 바꾸는 속도"였다. 그것을 지켰다.
  * 같은 자리를 계속 누르면 미제출 → 제출 → 보완 → 완료로 돈다.
+ *
+ * 탭 셋은 같은 자료를 다르게 보는 것이지 다른 기능이 아니다.
+ * 어느 탭에서 상태를 바꿔도 나머지 둘에 즉시 반영된다.
  */
+type AssignmentTab = 'byTask' | 'matrix' | 'byStudent';
+
 export default function AssignmentPage() {
   const activeClass = useActiveClass();
   const assignment = useAssignment();
   const toast = useToast();
 
+  const [tab, setTab] = useState<AssignmentTab>('byTask');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [deleting, setDeleting] = useState<Assignment | null>(null);
@@ -106,7 +115,22 @@ export default function AssignmentPage() {
         </div>
       </div>
 
-      {assignment.assignments.length === 0 ? (
+      <Tabs
+        items={[
+          { id: 'byTask', label: '과제별', count: assignment.assignments.length },
+          { id: 'matrix', label: '표 보기' },
+          { id: 'byStudent', label: '학생별', count: assignment.roster.length },
+        ]}
+        activeId={tab}
+        onChange={(id) =>
+          setTab(id === 'matrix' ? 'matrix' : id === 'byStudent' ? 'byStudent' : 'byTask')
+        }
+      >
+      {tab === 'matrix' ? (
+        <AssignmentMatrix />
+      ) : tab === 'byStudent' ? (
+        <StudentAssignments />
+      ) : assignment.assignments.length === 0 ? (
         <Card>
           <EmptyState
             icon={ClipboardCheck}
@@ -187,6 +211,13 @@ export default function AssignmentPage() {
                 </div>
               }
             >
+              {/* 교사가 적어 넣은 안내다. 안 보여 주면 적은 것이 사라졌다고 생각한다. */}
+              {selected.assignment.description === '' ? null : (
+                <p className="mb-3 rounded-control bg-slate-50 px-3 py-2 text-sm whitespace-pre-wrap text-slate-600">
+                  {selected.assignment.description}
+                </p>
+              )}
+
               <div className="mb-3 flex flex-wrap gap-2">
                 {(Object.keys(SUBMISSION_LABELS) as SubmissionStatus[]).map((status) => (
                   <Badge
@@ -244,7 +275,9 @@ export default function AssignmentPage() {
           )}
         </>
       )}
+      </Tabs>
 
+      {/* 모달과 확인창은 Tabs 밖에 둔다. 탭을 바꿔도 열려 있던 창이 사라지면 안 된다. */}
       <AddAssignmentModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
