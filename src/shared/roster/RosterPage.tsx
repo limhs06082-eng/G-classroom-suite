@@ -14,8 +14,14 @@ import {
   useToast,
   type Column,
 } from '../ui';
-import type { Student } from '../domain/types';
+import type { DutyRole, Gender, Student } from '../domain/types';
 import { RosterImportPanel } from './RosterImportPanel';
+import {
+  applyStudentDetail,
+  collectTags,
+  readStudentDetail,
+  type StudentDetail,
+} from './studentDetail';
 import {
   addStudent,
   applyRosterImport,
@@ -237,10 +243,24 @@ export default function RosterPage() {
 
       <EditStudentModal
         student={editing}
+        detail={editing === null ? null : readStudentDetail(data, editing.id)}
+        roles={
+          editing === null
+            ? []
+            : data.dutyRoles.filter((role) => role.classId === editing.classId)
+        }
+        knownTags={editing === null ? [] : collectTags(data, editing.classId)}
         onClose={() => setEditing(null)}
         onSave={(patch) => {
           if (editing === null) return;
-          update((current) => updateStudent(current, editing.id, patch));
+          update((current) => {
+            const renamed = updateStudent(current, editing.id, {
+              number: patch.number,
+              name: patch.name,
+            });
+            // 두 번 나눠 쓰지 않는다. 중간에 실패하면 학생 정보가 반쪽이 된다.
+            return applyStudentDetail(renamed, editing.id, patch.detail);
+          });
           setEditing(null);
         }}
       />
@@ -266,17 +286,49 @@ export default function RosterPage() {
   );
 }
 
+const GENDERS: Array<{ id: Gender; label: string }> = [
+  { id: 'male', label: '남' },
+  { id: 'female', label: '여' },
+  { id: 'none', label: '지정 안 함' },
+];
+
+/**
+ * 학생 정보 수정.
+ *
+ * 성별·태그는 자리 배치, 별명은 활동·보상, 고정 역할은 역할·당번이 쓴다.
+ * 서로 다른 기능이지만 교사에게는 전부 "이 학생의 정보"라 한 곳에 모은다.
+ * 명단을 한 번만 등록한다는 통합의 전제와 같은 논리다.
+ */
 function EditStudentModal({
   student,
+  detail,
+  roles,
+  knownTags,
   onClose,
   onSave,
 }: {
   student: Student | null;
+  detail: StudentDetail | null;
+  /** 이 학생 학급의 역할만. 다른 학급 역할을 고르면 참조가 깨진다. */
+  roles: DutyRole[];
+  knownTags: string[];
   onClose: () => void;
-  onSave: (patch: { number: number; name: string }) => void;
+  onSave: (patch: { number: number; name: string; detail: Partial<StudentDetail> }) => void;
 }) {
   const [name, setName] = useState('');
   const [number, setNumber] = useState('');
+  const [gender, setGender] = useState<Gender>(detail?.gender ?? 'none');
+  const [tags, setTags] = useState<string[]>(detail?.tags ?? []);
+  const [tagDraft, setTagDraft] = useState('');
+  const [nickname, setNickname] = useState(detail?.nickname ?? '');
+  const [fixedRoleId, setFixedRoleId] = useState(detail?.fixedRoleId ?? '');
+
+  const addTag = (value: string): void => {
+    const trimmed = value.trim();
+    if (trimmed === '' || tags.includes(trimmed)) return;
+    setTags([...tags, trimmed]);
+    setTagDraft('');
+  };
 
   // 열릴 때마다 대상 학생의 값으로 채운다.
   const key = student?.id ?? 'none';
@@ -297,9 +349,18 @@ function EditStudentModal({
             variant="primary"
             onClick={() => {
               const parsedNumber = Number.parseInt(number, 10);
+              // 태그 칸에 치다 만 것도 저장에 포함한다. 엔터를 안 눌렀다고 버리면 잃어버린다.
+              const finalTags = tagDraft.trim() === '' ? tags : [...tags, tagDraft.trim()];
+
               onSave({
                 number: Number.isFinite(parsedNumber) ? parsedNumber : (student?.number ?? 0),
                 name: name.trim() === '' ? (student?.name ?? '') : name.trim(),
+                detail: {
+                  gender,
+                  tags: finalTags,
+                  nickname: nickname.trim(),
+                  fixedRoleId: fixedRoleId === '' ? null : fixedRoleId,
+                },
               });
             }}
           >
@@ -331,6 +392,101 @@ function EditStudentModal({
         <p className="text-sm text-slate-500">
           번호가 이미 쓰이고 있으면 저장할 때 비어 있는 번호로 자동 조정됩니다.
         </p>
+
+        <div className="border-t border-slate-100 pt-3">
+          <span className="text-sm text-slate-700">성별</span>
+          <div className="mt-1 flex gap-2">
+            {GENDERS.map((item) => (
+              <Button
+                key={item.id}
+                size="sm"
+                variant={gender === item.id ? 'primary' : 'secondary'}
+                aria-pressed={gender === item.id}
+                onClick={() => setGender(item.id)}
+              >
+                {item.label}
+              </Button>
+            ))}
+          </div>
+          <p className="mt-1 text-sm text-slate-500">자리·모둠에서 남녀를 섞어 앉힐 때 씁니다.</p>
+        </div>
+
+        <div>
+          <label className="block text-sm">
+            <span className="text-slate-700">특성 태그</span>
+            <input
+              type="text"
+              value={tagDraft}
+              placeholder="예: 앞자리, 시력, 도우미"
+              onChange={(event) => setTagDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                addTag(tagDraft);
+              }}
+              className="mt-1 h-10 w-full rounded-control border border-slate-300 px-3"
+            />
+          </label>
+
+          {tags.length === 0 ? null : (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {tags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  aria-label={`${tag} 태그 빼기`}
+                  onClick={() => setTags(tags.filter((item) => item !== tag))}
+                >
+                  <Badge tone="brand">{tag} ×</Badge>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {knownTags.filter((tag) => !tags.includes(tag)).length === 0 ? null : (
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              <span className="text-sm text-slate-500">이미 쓴 태그</span>
+              {knownTags
+                .filter((tag) => !tags.includes(tag))
+                .map((tag) => (
+                  <button key={tag} type="button" onClick={() => addTag(tag)}>
+                    <Badge>{tag}</Badge>
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
+
+        <label className="block text-sm">
+          <span className="text-slate-700">별명</span>
+          <input
+            type="text"
+            aria-label="별명"
+            value={nickname}
+            onChange={(event) => setNickname(event.target.value)}
+            className="mt-1 h-10 w-full rounded-control border border-slate-300 px-3"
+          />
+          <span className="mt-1 block text-slate-500">활동·보상에서 이름 대신 찾을 때 씁니다.</span>
+        </label>
+
+        <label className="block text-sm">
+          <span className="text-slate-700">고정 역할</span>
+          <select
+            value={fixedRoleId}
+            onChange={(event) => setFixedRoleId(event.target.value)}
+            className="mt-1 h-10 w-full rounded-control border border-slate-300 px-3"
+          >
+            <option value="">(고정 역할 없음)</option>
+            {roles.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.name}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-slate-500">
+            역할·당번을 자동 배정할 때 이 학생은 늘 이 역할을 맡습니다.
+          </span>
+        </label>
       </div>
     </Modal>
   );
