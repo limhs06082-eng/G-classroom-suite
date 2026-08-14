@@ -75,6 +75,18 @@
   --font-mono: 'D2Coding', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /*
+   * 한글은 라틴보다 x-height가 커서 같은 px에서 더 빽빽해 보인다.
+   * 본문(text-sm)이 246곳으로 이미 일관되므로 클래스를 갈아엎지 않고 값만 한 단계 키운다.
+   * 300곳을 새 토큰으로 옮기다 하나를 빠뜨리는 쪽이 더 나쁘다.
+   */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.55;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.6;
+  --text-base: 1rem;
+  --text-base--line-height: 1.6;
+
+  /*
    * board 스케일 — 전자칠판 전용.
    * 교실 뒷자리는 칠판에서 3~8m 떨어져 있다. 일반 화면 타이포로는 읽히지 않는다.
    * desk 스케일(Tailwind 기본 text-*)과 절대 섞어 쓰지 않는다.
@@ -93,6 +105,22 @@
   /* ── 모양 ───────────────────────────────────────────────── */
   --radius-card: 0.875rem;
   --radius-control: 0.5rem;
+
+  /*
+   * 그림자는 두 단계뿐이다. 교사용 도구는 수업 중에 켜 놓는 물건이라 조용해야 한다.
+   * 테두리는 이미 slate-300이 84곳으로 충분히 진하다. 둘 다 올리면 과해진다.
+   */
+  --shadow-card: 0 1px 2px oklch(0.2 0.02 250 / 0.04), 0 1px 3px oklch(0.2 0.02 250 / 0.06);
+  --shadow-raised: 0 4px 6px oklch(0.2 0.02 250 / 0.05), 0 10px 20px oklch(0.2 0.02 250 / 0.08);
+
+  /*
+   * 움직임은 짧고 한 종류만.
+   *
+   * --ease-* 는 Tailwind가 유틸리티를 만들어 주는 이름공간이라 ease-out-soft로 쓸 수 있다.
+   * --duration-* 은 그 목록에 없다. 정의해도 duration-fast 클래스는 생기지 않고
+   * 조용히 아무 효과 없이 지나간다. 시간은 duration-[120ms]로 직접 적는다.
+   */
+  --ease-out-soft: cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* ============================================================
@@ -100,6 +128,8 @@
    ============================================================ */
 :root {
   color-scheme: light;
+  /* 키프레임에서 쓴다. @theme이 아니라 여기 둔다 (Tailwind 이름공간이 아니다). */
+  --duration-fast: 120ms;
 }
 
 html,
@@ -111,6 +141,33 @@ body,
 body {
   @apply bg-slate-50 text-slate-900 antialiased;
   font-family: var(--font-sans);
+  /* 한글은 라틴용 기본 자간에서 벌어져 보인다. */
+  letter-spacing: -0.01em;
+}
+
+/*
+ * 바뀌는 숫자는 폭이 고정돼야 한다.
+ * 이게 없으면 모둠 점수가 0점 → 10점이 될 때 버튼 너비가 튄다.
+ */
+table,
+[data-numeric] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 모달·알림이 튀어나오지 않고 올라오게 한다. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise-in {
+  animation: rise-in var(--duration-fast) var(--ease-out-soft);
 }
 
 /* 키보드 사용자에게만 포커스 링을 보인다. 교사는 단축키를 많이 쓴다. */
