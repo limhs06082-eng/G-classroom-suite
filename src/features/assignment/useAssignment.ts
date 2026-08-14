@@ -8,7 +8,16 @@ import type {
   SubmissionStatus,
 } from '../../shared/domain/types';
 import { useActiveClass, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
-import { byDueDate, nextStatus, statusOf, summarize, type AssignmentProgress } from './assignmentCore';
+import {
+  byDueDate,
+  nextStatus,
+  statusOf,
+  submissionIndex,
+  summarize,
+  summarizeStudent,
+  type AssignmentProgress,
+  type StudentProgress,
+} from './assignmentCore';
 
 /** 과제 제출 현황 화면과 저장소를 잇는 훅. */
 export interface AssignmentView {
@@ -20,6 +29,10 @@ export interface AssignmentView {
   progress: AssignmentProgress[];
   /** 마감이 가까운 순으로 진행 중인 과제 */
   upcoming: AssignmentProgress[];
+  /** 학생별 집계. 표 보기·학생별 보기가 쓴다. */
+  studentProgress: StudentProgress[];
+  /** `assignmentId|studentId` → 상태. 표 보기가 칸마다 배열을 훑지 않게 한다. */
+  statusIndex: ReadonlyMap<string, SubmissionStatus>;
 
   addAssignment: (input: { title: string; description: string; dueDate: string }) => void;
   updateAssignment: (assignmentId: string, patch: Partial<Assignment>) => void;
@@ -67,6 +80,13 @@ export function useAssignment(): AssignmentView {
   const upcoming = useMemo(
     () => progress.filter((entry) => entry.assignment.status === 'active'),
     [progress],
+  );
+
+  const statusIndex = useMemo(() => submissionIndex(submissions), [submissions]);
+
+  const studentProgress = useMemo(
+    () => roster.map((student) => summarizeStudent(student, assignments, submissions, today)),
+    [roster, assignments, submissions, today],
   );
 
   const addAssignment = useCallback(
@@ -244,6 +264,8 @@ export function useAssignment(): AssignmentView {
     submissions,
     progress,
     upcoming,
+    studentProgress,
+    statusIndex,
     addAssignment,
     updateAssignment,
     deleteAssignment,

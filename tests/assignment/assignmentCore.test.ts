@@ -4,11 +4,15 @@ import {
   byDueDate,
   daysBetween,
   nextStatus,
+  statusFromIndex,
   statusOf,
+  submissionIndex,
   summarize,
+  summarizeStudent,
+  SUBMISSION_SHORT,
 } from '../../src/features/assignment/assignmentCore';
 import { createAssignment, createStudent, createSubmission } from '../../src/shared/domain/factories';
-import type { Student, Submission } from '../../src/shared/domain/types';
+import type { Assignment, Student, Submission } from '../../src/shared/domain/types';
 
 const NOW = '2026-03-02T09:00:00.000Z';
 const TODAY = '2026-03-02';
@@ -155,5 +159,128 @@ describe('byDueDate', () => {
     const undated = createAssignment({ id: 'b', classId: 'c', title: 'B' }, NOW);
 
     expect([undated, dated].sort(byDueDate).map((x) => x.id)).toEqual(['a', 'b']);
+  });
+});
+
+describe('submissionIndex · statusFromIndex', () => {
+  it('기록이 없으면 미제출이다', () => {
+    expect(statusFromIndex(submissionIndex([]), 'a-1', 'stu-1')).toBe('unsubmitted');
+  });
+
+  it('기록한 상태를 그대로 돌려준다', () => {
+    const index = submissionIndex(subs([['stu-1', 'submitted'], ['stu-2', 'supplement']]));
+
+    expect(statusFromIndex(index, 'a-1', 'stu-1')).toBe('submitted');
+    expect(statusFromIndex(index, 'a-1', 'stu-2')).toBe('supplement');
+    expect(statusFromIndex(index, 'a-1', 'stu-3')).toBe('unsubmitted');
+  });
+
+  it('같은 학생·과제 기록이 둘이면 먼저 것을 쓴다', () => {
+    const index = submissionIndex([
+      createSubmission('a-1', 'stu-1', 'submitted', NOW),
+      createSubmission('a-1', 'stu-1', 'completed', NOW),
+    ]);
+
+    expect(statusFromIndex(index, 'a-1', 'stu-1')).toBe('submitted');
+  });
+
+  it('과제가 다르면 섞이지 않는다', () => {
+    const index = submissionIndex([
+      createSubmission('a-1', 'stu-1', 'submitted', NOW),
+      createSubmission('a-2', 'stu-1', 'completed', NOW),
+    ]);
+
+    expect(statusFromIndex(index, 'a-1', 'stu-1')).toBe('submitted');
+    expect(statusFromIndex(index, 'a-2', 'stu-1')).toBe('completed');
+  });
+});
+
+describe('summarizeStudent', () => {
+  const student = createStudent(
+    { id: 'stu-1', classId: 'class-1', number: 1, name: '학생1' },
+    NOW,
+  );
+
+  // TODAY는 2026-03-02. a-1은 기한이 지났고 a-2는 안 지났다.
+  const tasks: Assignment[] = [
+    createAssignment({ id: 'a-1', classId: 'class-1', title: '독서록', dueDate: '2026-03-01' }, NOW),
+    createAssignment({ id: 'a-2', classId: 'class-1', title: '일기', dueDate: '2026-03-10' }, NOW),
+    createAssignment({ id: 'a-3', classId: 'class-1', title: '자유', dueDate: '' }, NOW),
+  ];
+
+  it('상태별로 센다', () => {
+    const result = summarizeStudent(
+      student,
+      tasks,
+      [
+        createSubmission('a-1', 'stu-1', 'submitted', NOW),
+        createSubmission('a-2', 'stu-1', 'supplement', NOW),
+      ],
+      TODAY,
+    );
+
+    expect(result.total).toBe(3);
+    expect(result.counts).toEqual({ unsubmitted: 1, submitted: 1, supplement: 1, completed: 0 });
+  });
+
+  it('보완은 끝난 것으로 세지 않는다 — summarize와 같은 셈법', () => {
+    const result = summarizeStudent(
+      student,
+      tasks,
+      [
+        createSubmission('a-1', 'stu-1', 'submitted', NOW),
+        createSubmission('a-2', 'stu-1', 'supplement', NOW),
+        createSubmission('a-3', 'stu-1', 'completed', NOW),
+      ],
+      TODAY,
+    );
+
+    expect(result.doneRatio).toBeCloseTo(2 / 3);
+  });
+
+  it('기한이 지났는데 안 낸 과제만 지연으로 센다', () => {
+    expect(summarizeStudent(student, tasks, [], TODAY).overdueCount).toBe(1);
+  });
+
+  it('보완도 아직 안 낸 것으로 보고 지연에 넣는다', () => {
+    const result = summarizeStudent(
+      student,
+      tasks,
+      [createSubmission('a-1', 'stu-1', 'supplement', NOW)],
+      TODAY,
+    );
+
+    expect(result.overdueCount).toBe(1);
+  });
+
+  it('기한이 지나도 냈으면 지연이 아니다', () => {
+    const result = summarizeStudent(
+      student,
+      tasks,
+      [createSubmission('a-1', 'stu-1', 'submitted', NOW)],
+      TODAY,
+    );
+
+    expect(result.overdueCount).toBe(0);
+  });
+
+  it('기한 없는 과제는 지연이 아니다', () => {
+    const onlyOpen = tasks.filter((task) => task.dueDate === '');
+
+    expect(summarizeStudent(student, onlyOpen, [], TODAY).overdueCount).toBe(0);
+  });
+
+  it('과제가 없으면 0으로 나누지 않는다', () => {
+    const result = summarizeStudent(student, [], [], TODAY);
+
+    expect(result.total).toBe(0);
+    expect(result.doneRatio).toBe(0);
+    expect(result.overdueCount).toBe(0);
+  });
+});
+
+describe('SUBMISSION_SHORT', () => {
+  it('네 상태가 모두 한 글자다', () => {
+    expect(Object.values(SUBMISSION_SHORT)).toEqual(['미', '제', '보', '완']);
   });
 });
