@@ -22,6 +22,20 @@ function fakeAdapter() {
   };
 }
 
+/**
+ * 모달이 열린 상태를 흉내낸다. 닫는 함수를 돌려준다.
+ *
+ * document.body.innerHTML을 비우면 testing-library가 만든 렌더 컨테이너까지
+ * 함께 사라져 언마운트 때 React가 자기 노드를 찾지 못한다.
+ * 내가 넣은 것만 정확히 뺀다.
+ */
+function openDialog(): () => void {
+  const element = document.createElement('div');
+  element.setAttribute('role', 'dialog');
+  document.body.appendChild(element);
+  return () => element.remove();
+}
+
 function Harness(props: {
   adapter: ReturnType<typeof fakeAdapter>;
   shouldIgnore: () => boolean;
@@ -95,7 +109,7 @@ describe('useExternalChanges', () => {
   });
 
   it('편집 중이면 보류하고 한 번 알린다', () => {
-    document.body.innerHTML = '<div role="dialog"></div>';
+    openDialog();
     const adapter = fakeAdapter();
     const onApply = vi.fn();
     const onDefer = vi.fn();
@@ -110,7 +124,7 @@ describe('useExternalChanges', () => {
   });
 
   it('편집이 끝나면 적용한다', () => {
-    document.body.innerHTML = '<div role="dialog"></div>';
+    const closeDialog = openDialog();
     const adapter = fakeAdapter();
     const onApply = vi.fn();
     render(
@@ -121,7 +135,7 @@ describe('useExternalChanges', () => {
     expect(onApply).not.toHaveBeenCalled();
 
     // 모달을 닫는다. 포커스 변화 없이 닫힐 수 있으므로 주기 확인이 잡아야 한다.
-    document.body.innerHTML = '';
+    closeDialog();
     act(() => {
       vi.advanceTimersByTime(500);
     });
@@ -130,7 +144,7 @@ describe('useExternalChanges', () => {
   });
 
   it('보류 중 또 오면 마지막 것만 적용하고 알림은 한 번뿐이다', () => {
-    document.body.innerHTML = '<div role="dialog"></div>';
+    const closeDialog = openDialog();
     const adapter = fakeAdapter();
     const onApply = vi.fn();
     const onDefer = vi.fn();
@@ -141,7 +155,7 @@ describe('useExternalChanges', () => {
     act(() => adapter.push('첫 번째'));
     act(() => adapter.push('두 번째'));
 
-    document.body.innerHTML = '';
+    closeDialog();
     act(() => {
       vi.advanceTimersByTime(500);
     });
