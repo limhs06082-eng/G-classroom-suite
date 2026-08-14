@@ -53,8 +53,8 @@ function seeded(): { data: SuiteData; mineId: string; otherId: string; studentId
       { id: 'g-other', classId: other.id, name: '1모둠', color: 'blue', studentIds: [b.id], leaderId: null, createdAt: NOW, updatedAt: NOW },
     ],
     seatingStates: [
-      { classId: mine.id, rows: 4, cols: 5, disabledSeatIds: [], positions: [], updatedAt: NOW },
-      { classId: other.id, rows: 4, cols: 5, disabledSeatIds: [], positions: [], updatedAt: NOW },
+      { classId: mine.id, rows: 4, cols: 5, disabledSeatIds: [], positions: [], perspective: 'student', updatedAt: NOW },
+      { classId: other.id, rows: 4, cols: 5, disabledSeatIds: [], positions: [], perspective: 'student', updatedAt: NOW },
     ],
     dutyRoles: [
       { id: 'r-mine', classId: mine.id, name: '칠판', category: '기타', description: '', neededCount: 1, cycle: 'weekly', activeDays: [1], isActive: true, fixedStudentIds: [], excludedStudentIds: [], createdAt: NOW, updatedAt: NOW },

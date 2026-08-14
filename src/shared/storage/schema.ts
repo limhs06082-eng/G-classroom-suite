@@ -12,6 +12,7 @@ import {
   MAX_SEAT_ROWS,
   MIN_SEAT_COLS,
   MIN_SEAT_ROWS,
+  SEATING_PERSPECTIVES,
   type ClassRoom,
   type Assignment,
   type AssignmentStatus,
@@ -262,6 +263,7 @@ function parseSeatingState(raw: unknown, now: string): SeatingState | null {
     cols: clamp(raw['cols'], DEFAULT_SEAT_COLS, MIN_SEAT_COLS, MAX_SEAT_COLS),
     disabledSeatIds: strArray(raw['disabledSeatIds']),
     positions,
+    perspective: oneOf(raw['perspective'], SEATING_PERSPECTIVES, 'student'),
     updatedAt: str(raw['updatedAt'], now),
   };
 }

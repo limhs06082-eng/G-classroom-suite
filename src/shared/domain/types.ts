@@ -176,6 +176,16 @@ export interface StudentPosition {
   seatId: string;
 }
 
+export const SEATING_PERSPECTIVES = ['student', 'teacher'] as const;
+
+/**
+ * 자리표를 어느 방향으로 볼지.
+ *
+ * 'student'는 학생이 앉아서 보는 방향(칠판이 위), 'teacher'는 교탁에서
+ * 학생들을 마주 본 방향(칠판이 아래, 좌우도 뒤집힌다)이다.
+ */
+export type SeatingPerspective = (typeof SEATING_PERSPECTIVES)[number];
+
 export interface SeatingState {
   classId: string;
   rows: number;
@@ -183,6 +193,8 @@ export interface SeatingState {
   /** 책상이 없거나 쓰지 않는 자리 */
   disabledSeatIds: string[];
   positions: StudentPosition[];
+  /** 교사 화면에서만 쓴다. 전자칠판은 학생이 보는 화면이라 항상 학생 시점이다. */
+  perspective: SeatingPerspective;
   updatedAt: string;
 }
 

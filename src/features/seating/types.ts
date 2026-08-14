@@ -55,3 +55,17 @@ export function buildSeats(rows: number, cols: number, disabledSeatIds: readonly
 
   return seats;
 }
+
+/**
+ * 좌석 배열을 교탁에서 본 순서로 뒤집는다.
+ *
+ * buildSeats가 행 우선(1행 1열 → 1행 n열 → 2행 1열 …)으로 만들고
+ * ClassroomGrid가 그 순서대로 그린다. 그래서 배열을 통째로 뒤집으면
+ * 행과 열이 함께 뒤집혀 정확히 180도 회전이 된다.
+ *
+ * seat.id·row·column 값은 건드리지 않는다. 좌석 클릭도 저장된 positions도
+ * id로 이어져 있어서, 값까지 바꾸면 누른 자리와 앉는 자리가 어긋난다.
+ */
+export function flipSeats(seats: readonly Seat[]): Seat[] {
+  return [...seats].reverse();
+}

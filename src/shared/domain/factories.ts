@@ -146,6 +146,7 @@ export function createSeatingState(classId: string, now: string = nowIso()): Sea
     cols: DEFAULT_SEAT_COLS,
     disabledSeatIds: [],
     positions: [],
+    perspective: 'student',
     updatedAt: now,
   };
 }

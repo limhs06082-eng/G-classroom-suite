@@ -1,8 +1,8 @@
 import { Lock, Plus } from 'lucide-react';
 
-import type { Student } from '../../shared/domain/types';
+import type { SeatingPerspective, Student } from '../../shared/domain/types';
 import { cx } from '../../shared/ui';
-import type { Seat } from './types';
+import { flipSeats, type Seat } from './types';
 
 export type GridScale = 'desk' | 'board';
 export type GridMode = 'assign' | 'layout';
@@ -18,6 +18,8 @@ interface Props {
   selectedSeatId?: string | null;
   onSeatClick?: (seatId: string) => void;
   onToggleLock?: (studentId: string) => void;
+  /** 'teacher'면 교탁에서 본 방향으로 뒤집어 그린다. 전자칠판은 넘기지 않는다. */
+  perspective?: SeatingPerspective;
   /** 학생 이름 아래 번호를 함께 보일지 */
   showNumbers?: boolean;
 }
@@ -38,12 +40,20 @@ export function ClassroomGrid({
   selectedSeatId = null,
   onSeatClick,
   onToggleLock,
+  perspective = 'student',
   showNumbers = true,
 }: Props) {
   const isBoard = scale === 'board';
+  const isTeacher = perspective === 'teacher';
+
+  /*
+   * 칠판 막대는 DOM 순서를 그대로 두고 flex-col-reverse로 아래에 보낸다.
+   * 좌석은 배열을 뒤집는다. 둘이 함께여야 180도 회전이 완성된다.
+   */
+  const ordered = isTeacher ? flipSeats(seats) : seats;
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className={cx('flex items-center gap-3', isTeacher ? 'flex-col-reverse' : 'flex-col')}>
       {/* 방향을 알려 주지 않으면 앞뒤가 뒤집힌 배치표가 나온다 */}
       <div
         className={cx(
@@ -58,7 +68,7 @@ export function ClassroomGrid({
         className={cx('grid w-full', isBoard ? 'gap-3' : 'gap-2')}
         style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
       >
-        {seats.map((seat) => {
+        {ordered.map((seat) => {
           const student = studentBySeat.get(seat.id);
           const isSelected = selectedSeatId === seat.id;
           const isLocked = student !== undefined && lockedStudentIds.has(student.id);
