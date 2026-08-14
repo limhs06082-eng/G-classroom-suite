@@ -126,6 +126,27 @@ describe('cycleRangeFor', () => {
     expect(range.since).toBe('2026-03-01T00:00:00.000');
   });
 
+  it('1일~말일 기준이면 시작일 설정을 무시한다', () => {
+    const cycle = { ...DEFAULT_SCORE_CYCLE, monthlyType: '1st_to_end' as const, monthlyStartDay: 15 };
+    const range = cycleRangeFor('monthly', cycle, '2026-08-20');
+
+    expect(range.since?.slice(0, 10)).toBe('2026-08-01');
+  });
+
+  it('지정일 기준이면 그 날부터 센다', () => {
+    const cycle = { ...DEFAULT_SCORE_CYCLE, monthlyType: 'specific_day' as const, monthlyStartDay: 15 };
+    const range = cycleRangeFor('monthly', cycle, '2026-08-20');
+
+    expect(range.since?.slice(0, 10)).toBe('2026-08-15');
+  });
+
+  it('지정일이 아직 안 왔으면 지난달 그 날부터다', () => {
+    const cycle = { ...DEFAULT_SCORE_CYCLE, monthlyType: 'specific_day' as const, monthlyStartDay: 15 };
+    const range = cycleRangeFor('monthly', cycle, '2026-08-10');
+
+    expect(range.since?.slice(0, 10)).toBe('2026-07-15');
+  });
+
   it('월간은 설정한 시작일부터 센다', () => {
     const range = cycleRangeFor('monthly', DEFAULT_SCORE_CYCLE, '2026-03-15');
 
@@ -133,7 +154,16 @@ describe('cycleRangeFor', () => {
   });
 
   it('시작일이 아직 안 지났으면 지난달부터가 이번 주기다', () => {
-    const fifteenth = { ...DEFAULT_SCORE_CYCLE, monthlyStartDay: 15 };
+    /*
+     * monthlyType도 함께 지정한다.
+     * 예전에는 계산이 monthlyType을 무시해서 monthlyStartDay만 바꿔도 통했지만,
+     * 이제 1일~말일 기준이면 시작일 설정을 쓰지 않는다.
+     */
+    const fifteenth = {
+      ...DEFAULT_SCORE_CYCLE,
+      monthlyType: 'specific_day' as const,
+      monthlyStartDay: 15,
+    };
     const range = cycleRangeFor('monthly', fifteenth, '2026-03-10');
 
     expect(range.since).toBe('2026-02-15T00:00:00.000');

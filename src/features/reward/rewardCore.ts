@@ -51,7 +51,9 @@ export function cycleRangeFor(period: CyclePeriod, cycle: ScoreCycle, today: str
   const date = parseLocalDate(today);
   if (date === null) return { since: null, label: '이번 달' };
 
-  const startDay = Math.min(Math.max(1, cycle.monthlyStartDay), 28);
+  // 1일~말일 기준이면 시작일 설정은 쓰지 않는다.
+  const startDay =
+    cycle.monthlyType === '1st_to_end' ? 1 : Math.min(Math.max(1, cycle.monthlyStartDay), 28);
   const month = date.getMonth();
   const year = date.getFullYear();
 
