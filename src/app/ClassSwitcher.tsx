@@ -88,7 +88,7 @@ export function ClassSwitcher() {
         <ul
           role="listbox"
           aria-label="학급 전환"
-          className="absolute left-0 z-30 mt-1 max-h-72 w-56 overflow-y-auto rounded-card border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute left-0 z-30 mt-1 max-h-72 w-56 overflow-y-auto rounded-card border border-slate-200 bg-white py-1 shadow-raised"
         >
           {siblings.map((room) => {
             const selected = room.id === activeClass.id;

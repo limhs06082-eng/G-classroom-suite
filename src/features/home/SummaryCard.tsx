@@ -70,7 +70,7 @@ export function BigStat({ value, unit, note }: { value: number | string; unit?: 
   return (
     <div>
       <p className="flex items-baseline gap-1">
-        <span className="text-2xl font-bold text-slate-900">{value}</span>
+        <span data-numeric className="text-2xl font-bold text-slate-900">{value}</span>
         {unit === undefined ? null : <span className="text-sm text-slate-500">{unit}</span>}
       </p>
       {note === undefined ? null : <p className="mt-1 text-sm text-slate-500">{note}</p>}

@@ -20,7 +20,7 @@ export function StagePlaceholder({ title, stage, source }: Props) {
       <div className="flex items-start gap-3">
         <Construction className="mt-0.5 size-5 shrink-0 text-slate-400" aria-hidden />
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
+          <h1 className="text-xl font-bold text-slate-900">{title}</h1>
           <p className="mt-1.5 text-sm text-slate-600">
             {stage}단계에서 구현합니다.
             {source ? ` 원본: ${source}` : ''}

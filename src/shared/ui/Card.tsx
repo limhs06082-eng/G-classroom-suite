@@ -30,7 +30,8 @@ export function Card({
       {title === undefined && action === undefined ? null : (
         <header className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
           {Icon ? <Icon className={cx('size-4 shrink-0', accentClass ?? 'text-slate-400')} aria-hidden /> : null}
-          <h2 className="min-w-0 truncate text-sm font-semibold text-slate-900">{title}</h2>
+          {/* 본문과 1px 차이다. 위계를 크기가 아니라 굵기로 만든다. */}
+          <h2 className="min-w-0 truncate text-base font-semibold text-slate-900">{title}</h2>
           {action ? <div className="ml-auto shrink-0">{action}</div> : null}
         </header>
       )}

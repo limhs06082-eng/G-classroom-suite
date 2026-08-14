@@ -18,11 +18,11 @@ export function RootErrorBoundary() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-      <div className="w-full max-w-lg rounded-card border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="w-full max-w-lg rounded-card border border-slate-200 bg-white p-6 shadow-card">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-danger-500" aria-hidden />
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold text-slate-900">앱을 여는 중 문제가 생겼습니다</h1>
+            <h1 className="text-xl font-bold text-slate-900">앱을 여는 중 문제가 생겼습니다</h1>
             <p className="mt-2 text-sm leading-relaxed text-slate-600">
               저장된 학급 데이터는 브라우저에 그대로 남아 있습니다. 새로고침해도 같은 화면이 나오면
               설정 화면에서 데이터를 내보내 백업해 두세요.

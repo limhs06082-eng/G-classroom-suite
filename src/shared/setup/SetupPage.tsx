@@ -69,7 +69,7 @@ export default function SetupPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-5">
+    <div className="mx-auto flex max-w-2xl flex-col gap-4">
       <header>
         <h1 className="text-xl font-bold text-slate-900">처음 설정</h1>
         <p className="mt-1 text-sm text-slate-600">

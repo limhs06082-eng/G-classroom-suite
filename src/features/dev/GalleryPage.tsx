@@ -59,7 +59,7 @@ export default function GalleryPage() {
   const [tab, setTab] = useState('all');
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <h1 className="text-xl font-bold text-slate-900">공통 컴포넌트 갤러리</h1>
 
       <Card title="Button">

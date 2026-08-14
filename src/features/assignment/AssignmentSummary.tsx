@@ -14,7 +14,7 @@ export function AssignmentSummary() {
   return (
     <div>
       <p className="flex items-baseline gap-1">
-        <span className="text-2xl font-bold text-slate-900">{assignment.upcoming.length}</span>
+        <span data-numeric className="text-2xl font-bold text-slate-900">{assignment.upcoming.length}</span>
         <span className="text-sm text-slate-500">개 진행 중</span>
         {overdue > 0 ? <span className="text-sm text-danger-700">· 지연 {overdue}</span> : null}
       </p>

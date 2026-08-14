@@ -17,7 +17,7 @@ export function RewardSummary() {
   return (
     <div>
       <p className="flex items-baseline gap-1">
-        <span className="text-2xl font-bold text-slate-900">{reward.totals.classTotal}</span>
+        <span data-numeric className="text-2xl font-bold text-slate-900">{reward.totals.classTotal}</span>
         <span className="text-sm text-slate-500">점 · 우리 반</span>
       </p>
       <p className="mt-1 text-sm text-slate-500">

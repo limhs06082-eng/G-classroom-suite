@@ -48,11 +48,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <div role="alert" className="flex min-h-64 items-center justify-center p-6">
-        <div className="w-full max-w-lg rounded-card border border-danger-500/30 bg-white p-6 shadow-sm">
+        <div className="w-full max-w-lg rounded-card border border-danger-500/30 bg-white p-6 shadow-card">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 size-5 shrink-0 text-danger-500" aria-hidden />
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+              <h2 className="text-xl font-bold text-slate-900">{title}</h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">
                 저장된 데이터는 그대로 있습니다. 아래 버튼으로 다시 시도해 주세요. 문제가 반복되면
                 설정 화면에서 데이터를 내보내 백업한 뒤 문의해 주세요.
