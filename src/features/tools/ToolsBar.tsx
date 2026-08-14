@@ -119,8 +119,13 @@ function TimerModal({ open, onClose }: { open: boolean; onClose: () => void }) {
           </div>
         )}
 
+        {/*
+          문장이 가운데서 끊기지 않게 각각 한 덩어리로 둔다.
+          좁은 화면에서는 span이 각자 줄바꿈되어 두 줄이 된다.
+        */}
         <p className="text-center text-sm text-slate-500">
-          다른 화면으로 옮겨도 시간이 정확합니다. 끝날 시각을 기준으로 셉니다.
+          <span className="block">다른 화면으로 옮겨도 시간이 정확합니다.</span>
+          <span className="block">끝날 시각을 기준으로 셉니다.</span>
         </p>
       </div>
     </Modal>
