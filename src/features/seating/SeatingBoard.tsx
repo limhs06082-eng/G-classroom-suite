@@ -50,6 +50,12 @@ export function SeatingBoard() {
             description="자리·모둠 화면에서 무작위 배치를 누르면 여기에 표시됩니다."
           />
         ) : (
+          /*
+           * perspective를 넘기지 않는다. 기본값 'student'로 그린다.
+           * 이 화면은 학생이 보는 화면이다. 교사가 자기 화면을 교사 시점으로
+           * 돌렸다고 여기까지 뒤집히면, 학생은 눈앞에 칠판을 두고 칠판이
+           * 아래에 그려진 자리표를 보게 된다.
+           */
           <ClassroomGrid
             seats={seating.seats}
             cols={seating.cols}

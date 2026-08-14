@@ -1,4 +1,4 @@
-import { Eraser, Grid3x3, Monitor, Shuffle, Users } from 'lucide-react';
+import { Bookmark, Eraser, Grid3x3, Monitor, Shuffle, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -34,6 +34,8 @@ export default function SeatingPage() {
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [layoutName, setLayoutName] = useState('');
+  const [confirmDeleteLayoutId, setConfirmDeleteLayoutId] = useState<string | null>(null);
 
   if (activeClass === null) {
     return (
@@ -122,6 +124,27 @@ export default function SeatingPage() {
     }
   };
 
+  const handleSaveLayout = (): void => {
+    if (seating.saveCurrentLayout(layoutName)) {
+      toast.success(`'${layoutName.trim()}' 자리표를 저장했습니다.`);
+      setLayoutName('');
+    } else {
+      toast.error('자리표 이름을 입력해 주세요.');
+    }
+  };
+
+  const handleLoadLayout = (layout: { id: string; name: string }): void => {
+    const { droppedStudents } = seating.loadLayout(layout.id);
+
+    toast.success(
+      droppedStudents > 0
+        ? `'${layout.name}' 자리표를 불러왔습니다. 지금 명단에 없는 ${droppedStudents}명은 자리에서 뺐습니다.`
+        : `'${layout.name}' 자리표를 불러왔습니다.`,
+    );
+    setSelectedSeatId(null);
+    setSelectedStudentId(null);
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-bold text-slate-900">자리·모둠</h1>
@@ -169,6 +192,28 @@ export default function SeatingPage() {
         accentClass="text-seating-500"
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <div
+              className="inline-flex gap-0.5 rounded-control border border-slate-200 p-0.5"
+              role="group"
+              aria-label="자리표 보는 방향"
+            >
+              <Button
+                size="sm"
+                variant={seating.perspective === 'student' ? 'primary' : 'ghost'}
+                aria-pressed={seating.perspective === 'student'}
+                onClick={() => seating.setPerspective('student')}
+              >
+                학생 시점
+              </Button>
+              <Button
+                size="sm"
+                variant={seating.perspective === 'teacher' ? 'primary' : 'ghost'}
+                aria-pressed={seating.perspective === 'teacher'}
+                onClick={() => seating.setPerspective('teacher')}
+              >
+                교사 시점
+              </Button>
+            </div>
             <SizeStepper
               label="행"
               value={seating.rows}
@@ -201,6 +246,12 @@ export default function SeatingPage() {
           </div>
         }
       >
+        {seating.perspective === 'teacher' ? (
+          <p className="mb-2 text-sm text-brand-700">
+            교탁에서 본 방향입니다. 칠판이 아래에 있습니다. 전자칠판에는 학생 시점으로 나갑니다.
+          </p>
+        ) : null}
+
         <p className="mb-3 text-sm text-slate-500">
           {mode === 'layout'
             ? '자리를 누르면 사용 안 함으로 바뀝니다. 책상이 없는 자리를 표시해 주세요.'
@@ -216,6 +267,7 @@ export default function SeatingPage() {
           cols={seating.cols}
           studentBySeat={seating.studentBySeat}
           lockedStudentIds={seating.lockedStudentIds}
+          perspective={seating.perspective}
           mode={mode}
           selectedSeatId={selectedSeatId}
           onSeatClick={handleSeatClick}
@@ -263,6 +315,57 @@ export default function SeatingPage() {
           </ul>
         </Card>
       ) : null}
+
+      <Card title="저장한 자리표" icon={Bookmark}>
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="min-w-48 flex-1 text-sm text-slate-600">
+            자리표 이름
+            <input
+              type="text"
+              value={layoutName}
+              onChange={(event) => setLayoutName(event.target.value)}
+              placeholder="예: 3월 자리, 시험 대형"
+              className="mt-1 h-10 w-full rounded-control border border-slate-300 px-3"
+            />
+          </label>
+          <Button variant="secondary" onClick={handleSaveLayout}>
+            지금 배치 저장
+          </Button>
+        </div>
+
+        {seating.layouts.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">
+            저장한 자리표가 없습니다. 자리를 배치한 뒤 이름을 붙여 저장하면 나중에 그대로
+            불러올 수 있습니다. 교실 크기와 사용 안 함 자리도 함께 저장됩니다.
+          </p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-2">
+            {seating.layouts.map((layout) => (
+              <li
+                key={layout.id}
+                className="flex flex-wrap items-center gap-2 rounded-control border border-slate-200 px-3 py-2"
+              >
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">
+                  {layout.name}
+                </span>
+                <span className="text-xs text-slate-400" data-numeric>
+                  {layout.rows}행 {layout.cols}열 · {layout.positions.length}명
+                </span>
+                <Button size="sm" variant="secondary" onClick={() => handleLoadLayout(layout)}>
+                  불러오기
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setConfirmDeleteLayoutId(layout.id)}
+                >
+                  삭제
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
           </div>
         )}
       </Tabs>
@@ -280,6 +383,19 @@ export default function SeatingPage() {
             setSelectedSeatId(null);
             toast.info('자리 배치를 지웠습니다.');
           })();
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteLayoutId !== null}
+        title="저장한 자리표를 지울까요?"
+        description="지금 교실 배치는 그대로 남습니다. 저장해 둔 자리표만 사라집니다."
+        confirmLabel="자리표 지우기"
+        onCancel={() => setConfirmDeleteLayoutId(null)}
+        onConfirm={() => {
+          if (confirmDeleteLayoutId !== null) seating.removeLayout(confirmDeleteLayoutId);
+          setConfirmDeleteLayoutId(null);
+          toast.info('저장한 자리표를 지웠습니다.');
         }}
       />
     </div>

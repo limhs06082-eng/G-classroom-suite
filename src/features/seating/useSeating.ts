@@ -6,12 +6,15 @@ import {
   MAX_SEAT_ROWS,
   MIN_SEAT_COLS,
   MIN_SEAT_ROWS,
+  type SavedLayout,
+  type SeatingPerspective,
   type SeatingState,
   type Student,
   type StudentPosition,
   type SuiteData,
 } from '../../shared/domain/types';
 import { useActiveClass, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
+import { applyLayout, deleteLayout, layoutsOf, saveLayout } from './layoutOps';
 import { performRandomSeating } from './seatingCore';
 import { buildSeats, type Seat } from './types';
 
@@ -62,14 +65,24 @@ export interface SeatingView {
   unseated: Student[];
   lockedStudentIds: Set<string>;
   roster: Student[];
+  /** 교사 화면에서 자리표를 보는 방향. 전자칠판은 이 값을 쓰지 않는다. */
+  perspective: SeatingPerspective;
+  /** 이 학급에 저장해 둔 자리표 */
+  layouts: SavedLayout[];
 
   setSize: (rows: number, cols: number) => void;
+  setPerspective: (next: SeatingPerspective) => void;
   toggleSeatDisabled: (seatId: string) => void;
   toggleLock: (studentId: string) => void;
   shuffleSeats: () => { ok: boolean; message?: string };
   swapSeats: (seatA: string, seatB: string) => void;
   assignStudent: (studentId: string, seatId: string) => void;
   clearSeats: () => Promise<void>;
+
+  /** 이름이 비었거나 저장할 배치가 없으면 false */
+  saveCurrentLayout: (name: string) => boolean;
+  loadLayout: (layoutId: string) => { droppedStudents: number };
+  removeLayout: (layoutId: string) => void;
 }
 
 export function useSeating(): SeatingView {
@@ -86,6 +99,12 @@ export function useSeating(): SeatingView {
   const rows = state?.rows ?? 5;
   const cols = state?.cols ?? 6;
   const disabledSeatIds = useMemo(() => state?.disabledSeatIds ?? [], [state]);
+  const perspective: SeatingPerspective = state?.perspective ?? 'student';
+
+  const layouts = useMemo(
+    () => (classId === null ? [] : layoutsOf(data, classId)),
+    [data, classId],
+  );
 
   const seats = useMemo(() => buildSeats(rows, cols, disabledSeatIds), [rows, cols, disabledSeatIds]);
 
@@ -135,6 +154,13 @@ export function useSeating(): SeatingView {
         cols: c,
         // 줄어든 교실 밖으로 밀려난 학생은 불변조건 검사가 자리를 비우고 알려 준다.
       }));
+    },
+    [mutate],
+  );
+
+  const setPerspective = useCallback(
+    (next: SeatingPerspective): void => {
+      mutate((prev) => ({ ...prev, perspective: next }));
     },
     [mutate],
   );
@@ -226,6 +252,42 @@ export function useSeating(): SeatingView {
     mutate((prev) => ({ ...prev, positions: [] }));
   }, [guard, mutate]);
 
+  const saveCurrentLayout = useCallback(
+    (name: string): boolean => {
+      if (classId === null) return false;
+
+      const now = new Date().toISOString();
+      // saveLayout은 저장할 것이 없으면 받은 데이터를 그대로 돌려준다.
+      // 그 판정을 update 밖에서 미리 해 둔다. 화면이 결과를 알아야 한다.
+      const saved = saveLayout(data, classId, name, now) !== data;
+      if (!saved) return false;
+
+      update((current) => saveLayout(current, classId, name, now));
+      return true;
+    },
+    [classId, data, update],
+  );
+
+  const loadLayout = useCallback(
+    (layoutId: string): { droppedStudents: number } => {
+      const now = new Date().toISOString();
+      // 몇 명이 빠졌는지는 화면이 알려야 하므로 update 밖에서 한 번 더 계산한다.
+      const preview = applyLayout(data, layoutId, now);
+
+      update((current) => applyLayout(current, layoutId, now).data);
+
+      return { droppedStudents: preview.droppedStudents };
+    },
+    [data, update],
+  );
+
+  const removeLayout = useCallback(
+    (layoutId: string): void => {
+      update((current) => deleteLayout(current, layoutId));
+    },
+    [update],
+  );
+
   return {
     classId,
     rows,
@@ -236,12 +298,18 @@ export function useSeating(): SeatingView {
     unseated,
     lockedStudentIds,
     roster,
+    perspective,
+    layouts,
     setSize,
+    setPerspective,
     toggleSeatDisabled,
     toggleLock,
     shuffleSeats,
     swapSeats,
     assignStudent,
     clearSeats,
+    saveCurrentLayout,
+    loadLayout,
+    removeLayout,
   };
 }
