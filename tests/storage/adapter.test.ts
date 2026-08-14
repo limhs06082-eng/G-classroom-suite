@@ -361,3 +361,36 @@ describe('LocalStorageAdapter — 저장 공간 부족', () => {
     await expect(adapter.save(sampleData())).rejects.toThrow(/저장 공간이 부족/);
   });
 });
+
+describe('parseSuiteData — 걷어낸 점수 주기 설정', () => {
+  it('옛 저장 자료의 weeklyStartDayApplyMode를 조용히 버린다', () => {
+    const raw = {
+      schemaVersion: 1,
+      scoreCycle: {
+        weeklyStartDay: 1,
+        weeklyStartDayApplyMode: 'next_period',
+        monthlyType: '1st_to_end',
+        monthlyStartDay: 1,
+        showLifetimeCumulative: false,
+      },
+    };
+
+    const result = parseSuiteData(raw);
+
+    expect('weeklyStartDayApplyMode' in result.data.scoreCycle).toBe(false);
+    // 사용자가 고른 적 없는 값이라 복구 알림을 띄우지 않는다.
+    expect(result.repairs).toEqual([]);
+  });
+
+  it('teacher_manual은 화면에 있던 적이 없으므로 알리지 않고 기본값으로 되돌린다', () => {
+    const raw = {
+      schemaVersion: 1,
+      scoreCycle: { weeklyStartDay: 1, monthlyType: 'teacher_manual', monthlyStartDay: 1 },
+    };
+
+    const result = parseSuiteData(raw);
+
+    expect(result.data.scoreCycle.monthlyType).toBe('1st_to_end');
+    expect(result.repairs).toEqual([]);
+  });
+});

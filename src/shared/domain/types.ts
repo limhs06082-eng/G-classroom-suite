@@ -372,8 +372,20 @@ export interface Submission {
 export interface ScoreCycle {
   /** 0=일 … 6=토 */
   weeklyStartDay: number;
-  weeklyStartDayApplyMode: 'next_period' | 'recalculate_current';
-  monthlyType: '1st_to_end' | 'specific_day' | 'teacher_manual';
+  /**
+   * 월 주기 기준.
+   *
+   * 원본에는 'teacher_manual'(교사가 직접 주기를 끊는 방식)과
+   * weeklyStartDayApplyMode('다음 주기부터 적용')도 있었지만 걷어냈다.
+   *
+   * 전자는 주기 관리 화면이 통째로 필요하고, 후자는 "언제 바꿨는지"를
+   * 저장할 필드가 없어 화면만 붙이면 거짓말하는 설정이 된다.
+   * 지키지 못할 선택지를 타입에 남겨 두면 다음 사람이 "화면만 붙이면 되겠네"라고
+   * 읽고 같은 함정에 빠진다.
+   *
+   * 되살릴 근거: docs/superpowers/specs/2026-08-14-missing-input-screens-design.md §3.1
+   */
+  monthlyType: '1st_to_end' | 'specific_day';
   /** 1~31 */
   monthlyStartDay: number;
   showLifetimeCumulative: boolean;

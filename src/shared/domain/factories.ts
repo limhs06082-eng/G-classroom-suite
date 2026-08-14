@@ -315,7 +315,6 @@ export function createSubmission(
 
 export const DEFAULT_SCORE_CYCLE: ScoreCycle = {
   weeklyStartDay: 1, // 월요일 시작 — 학교 주간 운영에 맞춘다
-  weeklyStartDayApplyMode: 'next_period',
   monthlyType: '1st_to_end',
   monthlyStartDay: 1,
   showLifetimeCumulative: false,

@@ -445,14 +445,14 @@ function parseScoreCycle(raw: unknown): ScoreCycle {
 
   return {
     weeklyStartDay: num(raw['weeklyStartDay'], DEFAULT_SCORE_CYCLE.weeklyStartDay),
-    weeklyStartDayApplyMode: oneOf(
-      raw['weeklyStartDayApplyMode'],
-      ['next_period', 'recalculate_current'] as const,
-      DEFAULT_SCORE_CYCLE.weeklyStartDayApplyMode,
-    ),
+    /*
+     * 걷어낸 weeklyStartDayApplyMode와 teacher_manual은 여기서 읽지 않는다.
+     * 아는 키만 읽어 새 객체를 만드는 구조라 옛 저장 자료의 값은 자동으로 버려진다.
+     * 화면에 그 선택지가 있던 적이 없으므로 복구 알림도 띄우지 않는다.
+     */
     monthlyType: oneOf(
       raw['monthlyType'],
-      ['1st_to_end', 'specific_day', 'teacher_manual'] as const,
+      ['1st_to_end', 'specific_day'] as const,
       DEFAULT_SCORE_CYCLE.monthlyType,
     ),
     monthlyStartDay: num(raw['monthlyStartDay'], DEFAULT_SCORE_CYCLE.monthlyStartDay),
