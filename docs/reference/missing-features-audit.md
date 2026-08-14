@@ -28,18 +28,32 @@
 
 ## A. 그릇은 있는데 뚜껑이 없는 것
 
-저장·백업·복원이 이미 되고 있다. **입력 UI만 붙이면 기존 자료도 그대로 살아난다.**
+저장·백업·복원이 이미 되고 있어 **입력 UI만 붙이면 기존 자료도 그대로 살아난다.**
 
-| 기능 | 필드 | 원본 위치 |
+### A-1. 완료 (2026-08-14)
+
+| 기능 | 필드 | 붙인 곳 |
 |---|---|---|
-| 학생 성별·특성 태그 | `SeatingProfile.gender` · `tags` | 자리 앱 `StudentManagerModal` |
-| 학생 별명 | `RewardProfile.nickname` | 보상 앱 `SettingsView` (검색에도 쓴다) |
-| 고정 역할 | `DutyProfile.fixedRoleId` | 당번 앱 `StudentManager` |
-| 점수 주기 상세 설정 | `ScoreCycle.weeklyStartDayApplyMode` · `monthlyType` · `showLifetimeCumulative` | 보상 앱 `PeriodManagerModal` |
-| NEIS 학교 코드 | `SchoolProfile.officeCode` · `schoolCode` | 대시보드 (급식·시간표 조회) |
-| 학년·반 | `ClassRoom.grade` · `classNo` | 여러 앱 |
-| 학기 보관 | `Term.archivedAt` | — |
-| 목표 달성 시각 | `ScoreGoal.achievedAt` | 보상 앱 |
+| 학생 성별·특성 태그 | `SeatingProfile.gender` · `tags` | 명단 → 학생 정보 수정 |
+| 학생 별명 | `RewardProfile.nickname` | 같은 모달 |
+| 고정 역할 | `DutyProfile.fixedRoleId` | 같은 모달 |
+| 월 주기 기준 | `ScoreCycle.monthlyType` | 활동·보상 → 점수 주기 |
+| 통산 점수 표시 | `ScoreCycle.showLifetimeCumulative` | 같은 카드 |
+| NEIS 학교 코드 | `SchoolProfile.officeCode` · `schoolCode` | 설정 → 학교 정보 |
+
+네 가지 학생 정보를 한 모달에 모은 이유: 서로 다른 기능에 속하지만 교사에게는
+전부 "이 학생의 정보"다. 명단을 한 번만 등록한다는 통합의 전제와 같은 논리다.
+
+### A-2. B로 재분류 — 필드를 빠뜨린 게 아니었다
+
+작업하며 확인해 보니 이 셋은 **입력 화면이 없는 게 아니라 살 화면 자체가 없거나
+로직이 없는** 것이었다. 필드 단위로만 훑어서 처음에 잘못 분류했다.
+
+| 항목 | 실제 문제 |
+|---|---|
+| `ClassRoom.grade` · `classNo` | **학급 관리 화면이 통째로 없다.** 처음 설정 마법사 뒤로는 학급을 늘리거나 이름을 고칠 방법이 없다 |
+| `Term.archivedAt` | 학기 관리 화면이 없다 |
+| `ScoreGoal.achievedAt` | 입력 화면 문제가 아니다. 화면은 점수 합계로 달성 여부를 계산해 뱃지만 띄우고 **시각을 기록하지 않는다.** 로직 누락이다 |
 
 ## B. 그릇도 없는 것 — 모델부터 만들어야 한다
 
@@ -56,6 +70,26 @@
 | 목표 달성 축하 화면 | 공동 목표 달성 시 전체 화면 축하 | 낮음 |
 | 교사 PIN 잠금 | 학생이 만지지 못하게 | 낮음 |
 | 오늘의 명언 | 대시보드 카드 | 낮음 |
+
+### B-2. A에서 옮겨온 것 (2026-08-14)
+
+| 항목 | 필요한 일 | 우선순위 |
+|---|---|---|
+| **학급 관리 화면** | 학급 추가·이름 수정·학년·반. 지금은 처음 설정 마법사 뒤로 학급을 늘릴 수 없다 | **높음** |
+| 학기 관리 화면 | 학기 만들기·보관(`Term.archivedAt`) | 중간 |
+| 목표 달성 시각 기록 | `ScoreGoal.achievedAt`. 달성 순간을 잡아 기록하는 로직 | 낮음 |
+
+### B-3. 이번에 걷어낸 것 (2026-08-14)
+
+지킬 수 없는 선택지를 타입에 남겨 두면 다음 사람이 "화면만 붙이면 되겠네"라고
+읽고 같은 함정에 빠진다. 그래서 지웠다. 되살리려면 아래가 필요하다.
+
+| 항목 | 되살리려면 |
+|---|---|
+| `ScoreCycle.weeklyStartDayApplyMode` | **바꾼 시점을 저장할 필드**를 모델에 더해야 한다. 그것 없이 화면만 붙이면 "다음 주기부터"를 골라도 즉시 적용돼 거짓말하는 설정이 된다 |
+| `monthlyType`의 `teacher_manual` | 주기 관리 화면이 통째로 필요하다 |
+
+설계 근거: [`../superpowers/specs/2026-08-14-missing-input-screens-design.md`](../superpowers/specs/2026-08-14-missing-input-screens-design.md)
 
 교사 시점 전환과 균형 모둠 편성이 높은 이유: 자리 배치는 교사가 가장 자주 쓰는 기능이고,
 이 둘이 없으면 원본보다 확실히 못하다. 나머지는 없어도 수업에 지장이 없다.
