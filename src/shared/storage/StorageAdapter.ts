@@ -76,4 +76,16 @@ export interface StorageAdapter {
 
   /** 마지막으로 수동 내보내기를 한 시각. 백업 권유 알림에 쓴다. */
   getLastExportedAt(): Promise<string | null>;
+
+  /**
+   * 다른 창·기기가 자료를 바꾸면 부른다. 해제 함수를 돌려준다.
+   *
+   * 칠판은 target="_blank"로 별도 앱 인스턴스로 뜬다. 이 통로가 없으면
+   * 각 창이 자기 메모리 사본을 들고 문서 전체를 통째로 덮어써서,
+   * 서로 다른 곳을 고쳐도 한쪽이 조용히 사라진다.
+   *
+   * FirestoreAdapter는 이것을 onSnapshot으로 채운다.
+   * 설계 근거: docs/superpowers/specs/2026-08-13-cross-window-sync-design.md
+   */
+  subscribe(listener: (data: SuiteData) => void): () => void;
 }

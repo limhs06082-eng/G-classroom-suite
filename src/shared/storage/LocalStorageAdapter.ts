@@ -390,4 +390,38 @@ export class LocalStorageAdapter implements StorageAdapter {
   async getLastExportedAt(): Promise<string | null> {
     return this.readMeta().lastExportedAt ?? null;
   }
+
+  /**
+   * 다른 탭의 저장을 받는다.
+   *
+   * storage 이벤트는 자기 탭에서는 발생하지 않는다.
+   * 그래서 "내가 쓴 것을 내가 다시 받는" 문제를 따로 거를 필요가 없다.
+   */
+  subscribe(listener: (data: SuiteData) => void): () => void {
+    const handle = (event: StorageEvent): void => {
+      // 데이터 키만 본다. 백업·메타가 바뀔 때 화면을 갈아 끼울 이유가 없다.
+      if (event.key !== STORAGE_KEYS.data) return;
+
+      // 다른 창이 키를 지웠다(전체 초기화). 그 창이 스스로 새로고침하므로
+      // 이쪽 창까지 빈 화면으로 만들지 않는다.
+      if (event.newValue === null) return;
+
+      let parsedJson: unknown;
+      try {
+        parsedJson = JSON.parse(event.newValue);
+      } catch {
+        // 멀쩡한 화면을 망가진 데이터로 덮지 않는다.
+        return;
+      }
+
+      /*
+       * 고친 내용(repairs)은 알리지 않는다. 저장한 쪽에서 이미 겪고 알린 것이고,
+       * 같은 안내를 창마다 띄우면 소음이 된다.
+       */
+      listener(parseSuiteData(parsedJson, this.clock()).data);
+    };
+
+    window.addEventListener('storage', handle);
+    return () => window.removeEventListener('storage', handle);
+  }
 }

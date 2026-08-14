@@ -20,6 +20,7 @@ export function stubAdapter(overrides: Partial<StorageAdapter> = {}): StorageAda
     deleteBackup: async () => true,
     clearBackups: async () => {},
     getLastExportedAt: async () => null,
+    subscribe: () => () => {},
     ...overrides,
   };
 }
