@@ -71,7 +71,10 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
       disabled={disabled === true || loading}
       aria-busy={loading || undefined}
       className={cx(
-        'inline-flex items-center justify-center rounded-control font-medium transition-colors',
+        'inline-flex items-center justify-center rounded-control font-medium',
+        // 누르면 반응이 있어야 한다. 짧게, 한 종류로.
+        'transition-[background-color,box-shadow,transform] duration-[120ms] ease-out-soft',
+        'active:scale-[0.98]',
         'disabled:cursor-not-allowed',
         VARIANTS[variant],
         iconOnly ? ICON_ONLY_SIZES[size] : SIZES[size],

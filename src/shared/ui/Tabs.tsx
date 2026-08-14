@@ -59,7 +59,8 @@ export function Tabs({ items, activeId, onChange, children }: Props) {
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(item.id)}
               className={cx(
-                '-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
+                '-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap',
+                'transition-colors duration-[120ms] ease-out-soft',
                 selected
                   ? 'border-brand-600 text-brand-700'
                   : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800',

@@ -26,7 +26,7 @@ export function Card({
   children,
 }: Props) {
   return (
-    <section className={cx('rounded-card border border-slate-200 bg-white shadow-sm', className)}>
+    <section className={cx('rounded-card border border-slate-200 bg-white shadow-card', className)}>
       {title === undefined && action === undefined ? null : (
         <header className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
           {Icon ? <Icon className={cx('size-4 shrink-0', accentClass ?? 'text-slate-400')} aria-hidden /> : null}

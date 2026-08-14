@@ -220,7 +220,8 @@ function ToastViewport({
           <div
             key={toast.id}
             className={cx(
-              'pointer-events-auto flex items-start gap-3 rounded-card border p-3 shadow-lg',
+              'pointer-events-auto flex items-start gap-3 rounded-card border p-3 shadow-raised',
+              'animate-rise-in',
               TONE_STYLES[toast.tone],
             )}
           >
