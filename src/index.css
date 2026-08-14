@@ -1,3 +1,14 @@
+/*
+ * Pretendard 동적 서브셋.
+ * 실제로 쓰는 글자만 내려받아 한글 UI에서 60~100KB면 된다.
+ *
+ * CDN을 쓰지 않는다. 학교 네트워크가 외부 CDN을 막는 일이 잦고,
+ * index.html의 CSP에 외부 호스트를 열어야 한다.
+ * 번들에 넣으면 오프라인에서도 뜨고 fork 직후 설정 없이 동작한다.
+ *
+ * 이 줄이 없던 동안 폰트 스택 맨 앞의 Pretendard는 그냥 무시됐다.
+ */
+@import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 @import 'tailwindcss';
 
 /* ============================================================
