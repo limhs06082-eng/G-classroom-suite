@@ -36,6 +36,7 @@ export type RepairCode =
   | 'INVALID_ACTIVE_CLASS'
   | 'ORPHAN_SEATING_STATE'
   | 'INVALID_SEAT_POSITION'
+  | 'ORPHAN_SAVED_LAYOUT'
   | 'ORPHAN_DUTY_RECORD'
   | 'INVALID_DUTY_ASSIGNMENT'
   | 'ORPHAN_REWARD_RECORD'
@@ -449,6 +450,31 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
     return kept;
   })();
 
+  // ── 8-2b. 저장한 자리표가 실제 학급을 가리키는가 ──────────────
+  //     학급 삭제 연쇄(classOps.deleteClassRoom)에서 자리표를 빠뜨리면
+  //     여기서 잡힌다. 제대로 지우면 이 규칙은 아무 일도 하지 않는다.
+  const savedLayouts = (() => {
+    const classIds = new Set(classRooms.map((c) => c.id));
+    const dropped: string[] = [];
+
+    const kept = input.savedLayouts.filter((layout) => {
+      if (classIds.has(layout.classId)) return true;
+      dropped.push(layout.id);
+      return false;
+    });
+
+    if (dropped.length > 0) {
+      repairs.push({
+        code: 'ORPHAN_SAVED_LAYOUT',
+        severity: 'info',
+        entityIds: dropped,
+        message: `없는 학급의 저장한 자리표 ${dropped.length}건을 정리했습니다.`,
+      });
+    }
+
+    return kept;
+  })();
+
   // ── 8-3. 역할·당번이 실제 학급·학생·역할을 가리키는가 ─────────
   //     잘못된 배정을 두면 오늘의 당번에 빈칸이나 유령 이름이 뜬다.
   const duty = (() => {
@@ -679,6 +705,7 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       dutyProfiles,
       rewardProfiles,
       seatingStates,
+      savedLayouts,
       dutyRoles: duty.dutyRoles,
       dutyRounds: duty.dutyRounds,
       dutyCompletions: duty.dutyCompletions,

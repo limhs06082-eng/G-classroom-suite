@@ -28,6 +28,7 @@ import {
   type Gender,
   type Group,
   type RewardProfile,
+  type SavedLayout,
   type ScoreCycle,
   type ScoreEntry,
   type ScoreGoal,
@@ -265,6 +266,35 @@ function parseSeatingState(raw: unknown, now: string): SeatingState | null {
     positions,
     perspective: oneOf(raw['perspective'], SEATING_PERSPECTIVES, 'student'),
     updatedAt: str(raw['updatedAt'], now),
+  };
+}
+
+function parseSavedLayout(raw: unknown, now: string): SavedLayout | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  const classId = requiredStr(raw['classId']);
+  if (id === null || classId === null) return null;
+
+  const positions = asArray(raw['positions']).flatMap((entry) => {
+    if (!isRecord(entry)) return [];
+    const studentId = requiredStr(entry['studentId']);
+    const seatIdValue = requiredStr(entry['seatId']);
+    if (studentId === null || seatIdValue === null) return [];
+    return [{ studentId, seatId: seatIdValue }];
+  });
+
+  const clamp = (value: unknown, fallback: number, min: number, max: number): number =>
+    Math.max(min, Math.min(max, Math.round(num(value, fallback))));
+
+  return {
+    id,
+    classId,
+    name: str(raw['name'], '이름 없는 자리표'),
+    rows: clamp(raw['rows'], DEFAULT_SEAT_ROWS, MIN_SEAT_ROWS, MAX_SEAT_ROWS),
+    cols: clamp(raw['cols'], DEFAULT_SEAT_COLS, MIN_SEAT_COLS, MAX_SEAT_COLS),
+    disabledSeatIds: strArray(raw['disabledSeatIds']),
+    positions,
+    createdAt: str(raw['createdAt'], now),
   };
 }
 
@@ -535,6 +565,7 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     dutyProfiles: parseList('dutyProfiles', '당번 설정', parseDutyProfile),
     rewardProfiles: parseList('rewardProfiles', '보상 설정', parseRewardProfile),
     seatingStates: parseList('seatingStates', '자리 배치', (r) => parseSeatingState(r, now)),
+    savedLayouts: parseList('savedLayouts', '저장한 자리표', (r) => parseSavedLayout(r, now)),
     dutyRoles: parseList('dutyRoles', '역할', (r) => parseDutyRole(r, now)),
     dutyRounds: parseList('dutyRounds', '당번 배정', (r) => parseDutyRound(r, now)),
     dutyCompletions: parseList('dutyCompletions', '당번 수행 기록', parseDutyCompletion),

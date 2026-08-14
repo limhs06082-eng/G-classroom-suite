@@ -334,6 +334,7 @@ export function createEmptySuiteData(): SuiteData {
     dutyProfiles: [],
     rewardProfiles: [],
     seatingStates: [],
+    savedLayouts: [],
     dutyRoles: [],
     dutyRounds: [],
     dutyCompletions: [],

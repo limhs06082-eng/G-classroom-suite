@@ -198,6 +198,24 @@ export interface SeatingState {
   updatedAt: string;
 }
 
+/**
+ * 이름 붙여 저장해 둔 자리표.
+ *
+ * 교실 크기까지가 한 벌이다. 크기를 빼면 불러왔을 때 저장할 때와 다른
+ * 그림이 나온다. 보는 방향(perspective)은 넣지 않는다 — 그건 배치가
+ * 아니라 읽는 방향이라 자리표에 딸릴 이유가 없다.
+ */
+export interface SavedLayout {
+  id: string;
+  classId: string;
+  name: string;
+  rows: number;
+  cols: number;
+  disabledSeatIds: string[];
+  positions: StudentPosition[];
+  createdAt: string;
+}
+
 export const MIN_SEAT_ROWS = 1;
 export const MAX_SEAT_ROWS = 12;
 export const MIN_SEAT_COLS = 1;
@@ -427,6 +445,9 @@ export interface SuiteData {
 
   /** 학급마다 최대 하나. 자리 배치를 한 번도 안 한 학급은 없을 수도 있다. */
   seatingStates: SeatingState[];
+
+  /** 저장해 둔 자리표. 학급마다 여러 개일 수 있다. */
+  savedLayouts: SavedLayout[];
 
   dutyRoles: DutyRole[];
   dutyRounds: DutyRound[];

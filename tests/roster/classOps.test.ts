@@ -56,6 +56,10 @@ function seeded(): { data: SuiteData; mineId: string; otherId: string; studentId
       { classId: mine.id, rows: 4, cols: 5, disabledSeatIds: [], positions: [], perspective: 'student', updatedAt: NOW },
       { classId: other.id, rows: 4, cols: 5, disabledSeatIds: [], positions: [], perspective: 'student', updatedAt: NOW },
     ],
+    savedLayouts: [
+      { id: 'sl-mine', classId: mine.id, name: '3월 자리', rows: 4, cols: 5, disabledSeatIds: [], positions: [], createdAt: NOW },
+      { id: 'sl-other', classId: other.id, name: '3월 자리', rows: 4, cols: 5, disabledSeatIds: [], positions: [], createdAt: NOW },
+    ],
     dutyRoles: [
       { id: 'r-mine', classId: mine.id, name: '칠판', category: '기타', description: '', neededCount: 1, cycle: 'weekly', activeDays: [1], isActive: true, fixedStudentIds: [], excludedStudentIds: [], createdAt: NOW, updatedAt: NOW },
       { id: 'r-other', classId: other.id, name: '칠판', category: '기타', description: '', neededCount: 1, cycle: 'weekly', activeDays: [1], isActive: true, fixedStudentIds: [], excludedStudentIds: [], createdAt: NOW, updatedAt: NOW },
@@ -92,6 +96,7 @@ describe('countClassData', () => {
       students: 1,
       groups: 1,
       seatingStates: 1,
+      savedLayouts: 1,
       seatingProfiles: 1,
       dutyProfiles: 1,
       rewardProfiles: 1,
@@ -117,7 +122,7 @@ describe('countClassData', () => {
 });
 
 describe('deleteClassRoom', () => {
-  it('14개 배열에서 그 학급 것이 함께 사라진다', () => {
+  it('15개 배열에서 그 학급 것이 함께 사라진다', () => {
     const { data, mineId } = seeded();
 
     const next = deleteClassRoom(data, mineId);
@@ -126,6 +131,7 @@ describe('deleteClassRoom', () => {
       students: 0,
       groups: 0,
       seatingStates: 0,
+      savedLayouts: 0,
       seatingProfiles: 0,
       dutyProfiles: 0,
       rewardProfiles: 0,
