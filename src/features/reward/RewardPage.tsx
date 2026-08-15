@@ -508,6 +508,15 @@ function GoalsTab({
               {isAchieved ? null : ` · ${remaining}점 남음`}
               {goal.reward === '' ? null : ` · 보상: ${goal.reward}`}
             </p>
+
+            {/*
+              숫자가 어디서 왔는지 화면이 말해야 한다.
+              위의 기간 버튼을 눌러도 이 숫자가 안 바뀌는 이유이기도 하다.
+            */}
+            <p className="mt-0.5 text-xs text-slate-400">
+              {goal.startDate}부터 센 점수입니다
+              {goal.achievedAt === undefined ? '' : ` · ${goal.achievedAt.slice(0, 10)} 달성`}
+            </p>
           </li>
         ))}
       </ul>

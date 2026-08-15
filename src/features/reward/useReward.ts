@@ -21,6 +21,7 @@ import {
   computeScores,
   cycleRangeFor,
   goalProgress,
+  startOfDayIso,
   type CyclePeriod,
   type GoalProgress,
   type ScoreTotals,
@@ -110,12 +111,26 @@ export function useReward(): RewardView {
     [entries, groups, range.since],
   );
 
+  /*
+   * 목표는 화면의 기간 탭을 따라가지 않는다.
+   *
+   * 예전에는 위의 totals(기간 탭이 정한 합계)를 그대로 썼다. 그래서 같은
+   * 목표가 '이번 주'에서는 12점, '전체'에서는 340점으로 보였고 어느 쪽이
+   * 맞는지 화면이 말해 주지 않았다. 목표에는 자기 startDate가 있다.
+   *
+   * 목표마다 합계를 다시 계산한다. 목표는 한 학급에 많아야 대여섯이고
+   * 합산은 기록을 한 번 훑는 일이다.
+   */
   const goals = useMemo(
     () =>
       (classId === null ? [] : data.scoreGoals.filter((goal) => goal.classId === classId)).map(
-        (goal) => goalProgress(goal, totals),
+        (goal) =>
+          goalProgress(
+            goal,
+            computeScores(entries, groups, { since: startOfDayIso(goal.startDate) }),
+          ),
       ),
-    [data.scoreGoals, classId, totals],
+    [data.scoreGoals, classId, entries, groups],
   );
 
   const recentEntries = useMemo(

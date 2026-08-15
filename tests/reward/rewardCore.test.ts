@@ -6,6 +6,7 @@ import {
   goalProgress,
   goalTargetLabel,
   isCounted,
+  startOfDayIso,
 } from '../../src/features/reward/rewardCore';
 import {
   createGroup,
@@ -276,5 +277,44 @@ describe('goalTargetLabel', () => {
     );
 
     expect(goalTargetLabel(goal, lookup)).toBe('(없는 학생)');
+  });
+});
+
+describe('목표는 자기 startDate부터 센다', () => {
+  /*
+   * 예전에는 goalProgress가 화면 기간 탭이 정한 합계를 받았다.
+   * 같은 목표가 '이번 주'에서는 12점, '전체'에서는 340점이었다.
+   * ScoreGoal.startDate가 있는데 아무도 읽지 않았다.
+   */
+  const goal = createScoreGoal(
+    {
+      id: 'g-1',
+      classId: 'class-1',
+      title: '우리 반 100점',
+      targetUnit: 'class',
+      targetId: 'class',
+      targetPoints: 100,
+      startDate: '2026-03-02',
+    },
+    NOW,
+  );
+
+  const before = new Date(2026, 2, 1, 10, 0).toISOString();
+  const after = new Date(2026, 2, 3, 10, 0).toISOString();
+  const entries = [entry('class', 'class', 40, before), entry('class', 'class', 30, after)];
+
+  it('시작일 이전 기록은 세지 않는다', () => {
+    const totals = computeScores(entries, [], { since: startOfDayIso(goal.startDate) });
+
+    expect(goalProgress(goal, totals).current).toBe(30);
+  });
+
+  it('시작일 당일 아침 기록은 센다', () => {
+    const morning = new Date(2026, 2, 2, 7, 0).toISOString();
+    const totals = computeScores([entry('class', 'class', 5, morning)], [], {
+      since: startOfDayIso(goal.startDate),
+    });
+
+    expect(goalProgress(goal, totals).current).toBe(5);
   });
 });
