@@ -160,6 +160,51 @@ export function goalProgress(goal: ScoreGoal, totals: ScoreTotals): GoalProgress
 }
 
 /**
+ * 목표의 달성 상태를 지금 점수와 맞춘다.
+ *
+ * 순수 함수로 둔 이유: 달성은 시간이 흐르며 일어나는 일이지만, "지금 이
+ * 기록으로 달성인가"는 계산이다. 계산으로 만들어야 테스트할 수 있다.
+ *
+ * **점수가 목표 아래로 내려가면 achievedAt을 지운다.** 되돌리기로 점수가
+ * 줄었는데 달성 표시만 남으면 "달성 완료인데 진행률 80%"라는 화면이 나온다.
+ * 이 앱은 기록이 유일한 원본이고 점수는 언제나 합산해서 만든다.
+ * achievedAt만 예외로 둘 이유가 없다.
+ *
+ * 안 바뀐 목표는 **같은 객체**를 돌려준다. 부르는 쪽이 참조로 비교해
+ * 불필요한 저장을 건너뛸 수 있다.
+ */
+export function syncGoalAchievements(
+  goals: readonly ScoreGoal[],
+  entries: readonly ScoreEntry[],
+  groups: readonly Group[],
+  now: string,
+): { goals: ScoreGoal[]; newlyAchieved: ScoreGoal[] } {
+  const newlyAchieved: ScoreGoal[] = [];
+
+  const next = goals.map((goal) => {
+    // 목표마다 자기 startDate부터 센다. 화면의 기간 탭과 무관하다.
+    const totals = computeScores(entries, groups, { since: startOfDayIso(goal.startDate) });
+    const { isAchieved } = goalProgress(goal, totals);
+
+    if (isAchieved && goal.achievedAt === undefined) {
+      const achieved = { ...goal, achievedAt: now };
+      newlyAchieved.push(achieved);
+      return achieved;
+    }
+
+    if (!isAchieved && goal.achievedAt !== undefined) {
+      // achievedAt은 optional이다. "달성 안 함"은 키를 빼서 표현한다.
+      const { achievedAt: _dropped, ...rest } = goal;
+      return rest;
+    }
+
+    return goal;
+  });
+
+  return { goals: next, newlyAchieved };
+}
+
+/**
  * 목표 대상의 표시 이름을 만든다.
  * 학급 목표는 대상 id가 고정값이라 별도 조회가 필요 없다.
  */

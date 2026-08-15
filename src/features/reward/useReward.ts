@@ -15,6 +15,7 @@ import type {
   ScoreGoal,
   ScoreTargetUnit,
   Student,
+  SuiteData,
 } from '../../shared/domain/types';
 import { useActiveClass, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
 import {
@@ -22,10 +23,44 @@ import {
   cycleRangeFor,
   goalProgress,
   startOfDayIso,
+  syncGoalAchievements,
   type CyclePeriod,
   type GoalProgress,
   type ScoreTotals,
 } from './rewardCore';
+
+/**
+ * 점수가 움직인 뒤 목표 달성 상태를 맞춘다.
+ *
+ * useEffect로 나중에 감시하지 않는다. 그러면 저장이 두 번 일어나고,
+ * 다른 창이 같은 자료를 동시에 고칠 때 어느 쪽이 이길지 알 수 없다.
+ * **점수 변경과 달성 기록이 한 번의 저장으로 함께 일어나야 한다.**
+ */
+function withGoalSync(
+  data: SuiteData,
+  classId: string,
+  now: string,
+): { data: SuiteData; newlyAchieved: ScoreGoal[] } {
+  const mine = data.scoreGoals.filter((goal) => goal.classId === classId);
+  const entries = data.scoreEntries.filter((entry) => entry.classId === classId);
+  const groups = data.groups.filter((group) => group.classId === classId);
+
+  const synced = syncGoalAchievements(mine, entries, groups, now);
+
+  // 하나도 안 바뀌었으면 배열을 새로 만들지 않는다.
+  const changed = synced.goals.some((goal, index) => goal !== mine[index]);
+  if (!changed) return { data, newlyAchieved: [] };
+
+  const byId = new Map(synced.goals.map((goal) => [goal.id, goal]));
+
+  return {
+    data: {
+      ...data,
+      scoreGoals: data.scoreGoals.map((goal) => byId.get(goal.id) ?? goal),
+    },
+    newlyAchieved: synced.newlyAchieved,
+  };
+}
 
 /**
  * 활동·보상 화면과 저장소를 잇는 훅.
@@ -53,11 +88,12 @@ export interface RewardView {
   seedStarterPresets: () => number;
   addPreset: (input: Pick<BehaviorPreset, 'name' | 'defaultPoints' | 'targetUnit' | 'color'>) => void;
   deletePreset: (presetId: string) => void;
+  /** 새로 달성된 목표를 함께 돌려준다. 화면이 축하를 띄운다. */
   award: (
     preset: BehaviorPreset,
     targetId: string,
     override?: { points?: number; reason?: string },
-  ) => string | null;
+  ) => { entryId: string; achieved: ScoreGoal[] } | null;
   revoke: (entryId: string) => void;
   restore: (entryId: string) => void;
   addGoal: (input: Pick<ScoreGoal, 'title' | 'targetUnit' | 'targetId' | 'targetPoints' | 'reward'>) => void;
@@ -177,7 +213,7 @@ export function useReward(): RewardView {
       preset: BehaviorPreset,
       targetId: string,
       override: { points?: number; reason?: string } = {},
-    ): string | null => {
+    ): { entryId: string; achieved: ScoreGoal[] } | null => {
       if (classId === null) return null;
 
       const entry = createScoreEntry({
@@ -189,8 +225,18 @@ export function useReward(): RewardView {
         presetId: preset.id,
       });
 
-      update((current) => ({ ...current, scoreEntries: [...current.scoreEntries, entry] }));
-      return entry.id;
+      const now = new Date().toISOString();
+      // update의 콜백은 반환값을 밖으로 낼 수 없다. 여기에 받아 둔다.
+      let achieved: ScoreGoal[] = [];
+
+      update((current) => {
+        const withEntry = { ...current, scoreEntries: [...current.scoreEntries, entry] };
+        const synced = withGoalSync(withEntry, classId, now);
+        achieved = synced.newlyAchieved;
+        return synced.data;
+      });
+
+      return { entryId: entry.id, achieved };
     },
     [classId, update],
   );
@@ -198,28 +244,36 @@ export function useReward(): RewardView {
   const revoke = useCallback(
     (entryId: string): void => {
       const now = new Date().toISOString();
-      update((current) => ({
-        ...current,
-        scoreEntries: current.scoreEntries.map((entry) =>
-          entry.id === entryId ? { ...entry, revokedAt: now } : entry,
-        ),
-      }));
+      update((current) => {
+        const revoked = {
+          ...current,
+          scoreEntries: current.scoreEntries.map((entry) =>
+            entry.id === entryId ? { ...entry, revokedAt: now } : entry,
+          ),
+        };
+        // 점수가 목표 아래로 떨어졌으면 달성 표시도 풀린다.
+        return classId === null ? revoked : withGoalSync(revoked, classId, now).data;
+      });
     },
-    [update],
+    [classId, update],
   );
 
   const restore = useCallback(
     (entryId: string): void => {
-      update((current) => ({
-        ...current,
-        scoreEntries: current.scoreEntries.map((entry) => {
-          if (entry.id !== entryId) return entry;
-          const { revokedAt: _revokedAt, ...rest } = entry;
-          return rest;
-        }),
-      }));
+      const now = new Date().toISOString();
+      update((current) => {
+        const restored = {
+          ...current,
+          scoreEntries: current.scoreEntries.map((entry) => {
+            if (entry.id !== entryId) return entry;
+            const { revokedAt: _revokedAt, ...rest } = entry;
+            return rest;
+          }),
+        };
+        return classId === null ? restored : withGoalSync(restored, classId, now).data;
+      });
     },
-    [update],
+    [classId, update],
   );
 
   const addGoal = useCallback(

@@ -7,6 +7,7 @@ import {
   goalTargetLabel,
   isCounted,
   startOfDayIso,
+  syncGoalAchievements,
 } from '../../src/features/reward/rewardCore';
 import {
   createGroup,
@@ -316,5 +317,99 @@ describe('목표는 자기 startDate부터 센다', () => {
     });
 
     expect(goalProgress(goal, totals).current).toBe(5);
+  });
+});
+
+describe('syncGoalAchievements', () => {
+  const NOW_ISO = '2026-03-05T01:00:00.000Z';
+
+  const goal = (id: string, targetPoints: number) =>
+    createScoreGoal(
+      {
+        id,
+        classId: 'class-1',
+        title: `${targetPoints}점`,
+        targetUnit: 'class',
+        targetId: 'class',
+        targetPoints,
+        startDate: '2026-03-01',
+      },
+      NOW,
+    );
+
+  const withAchieved = (base: ReturnType<typeof goal>, at: string) => ({ ...base, achievedAt: at });
+
+  const scored = (points: number) => [
+    entry('class', 'class', points, new Date(2026, 2, 3, 10, 0).toISOString()),
+  ];
+
+  it('목표를 넘기면 달성 시각이 생기고 새로 달성한 것으로 알린다', () => {
+    const result = syncGoalAchievements([goal('g-1', 10)], scored(12), [], NOW_ISO);
+
+    expect(result.goals[0]?.achievedAt).toBe(NOW_ISO);
+    expect(result.newlyAchieved.map((g) => g.id)).toEqual(['g-1']);
+  });
+
+  it('아직 못 넘겼으면 아무것도 안 바뀐다', () => {
+    const input = [goal('g-1', 100)];
+    const result = syncGoalAchievements(input, scored(12), [], NOW_ISO);
+
+    expect(result.goals[0]?.achievedAt).toBeUndefined();
+    expect(result.newlyAchieved).toEqual([]);
+    // 안 바뀐 목표는 같은 객체여야 한다. 불필요한 저장을 막는다.
+    expect(result.goals[0]).toBe(input[0]);
+  });
+
+  it('이미 달성한 목표는 다시 알리지 않는다', () => {
+    const already = withAchieved(goal('g-1', 10), '2026-03-04T00:00:00.000Z');
+    const result = syncGoalAchievements([already], scored(12), [], NOW_ISO);
+
+    expect(result.newlyAchieved).toEqual([]);
+    // 시각도 덮어쓰지 않는다. 처음 달성한 때가 남아야 한다.
+    expect(result.goals[0]?.achievedAt).toBe('2026-03-04T00:00:00.000Z');
+    expect(result.goals[0]).toBe(already);
+  });
+
+  it('점수가 내려가면 달성 표시가 사라진다', () => {
+    // 되돌리기로 목표 아래로 떨어진 경우. 기록이 유일한 원본이라는 원칙과 맞춘다.
+    const already = withAchieved(goal('g-1', 10), '2026-03-04T00:00:00.000Z');
+    const result = syncGoalAchievements([already], scored(3), [], NOW_ISO);
+
+    expect(result.goals[0]?.achievedAt).toBeUndefined();
+    expect(result.newlyAchieved).toEqual([]);
+  });
+
+  it('목표 점수가 0 이하면 달성으로 본다 — goalProgress와 같은 셈법', () => {
+    const result = syncGoalAchievements([goal('g-1', 0)], [], [], NOW_ISO);
+
+    expect(result.goals[0]?.achievedAt).toBe(NOW_ISO);
+  });
+
+  it('목표마다 자기 startDate부터 센다', () => {
+    const early = createScoreGoal(
+      {
+        id: 'g-late',
+        classId: 'class-1',
+        title: '늦게 시작',
+        targetUnit: 'class',
+        targetId: 'class',
+        targetPoints: 10,
+        startDate: '2026-03-04',
+      },
+      NOW,
+    );
+
+    // 03-03에 12점. startDate가 03-04인 목표는 못 본다.
+    const result = syncGoalAchievements([goal('g-1', 10), early], scored(12), [], NOW_ISO);
+
+    expect(result.goals[0]?.achievedAt).toBe(NOW_ISO);
+    expect(result.goals[1]?.achievedAt).toBeUndefined();
+  });
+
+  it('목표가 없어도 깨지지 않는다', () => {
+    const result = syncGoalAchievements([], scored(12), [], NOW_ISO);
+
+    expect(result.goals).toEqual([]);
+    expect(result.newlyAchieved).toEqual([]);
   });
 });

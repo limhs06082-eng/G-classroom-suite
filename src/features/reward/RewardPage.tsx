@@ -2,7 +2,7 @@ import { CalendarRange, Eraser, Monitor, Plus, RotateCcw, Sparkles, Target, Tras
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import type { BehaviorPreset, ScoreTargetUnit } from '../../shared/domain/types';
+import type { BehaviorPreset, ScoreGoal, ScoreTargetUnit } from '../../shared/domain/types';
 import { useActiveClass } from '../../shared/roster/SuiteDataProvider';
 import {
   Badge,
@@ -16,7 +16,8 @@ import {
   useToast,
 } from '../../shared/ui';
 import { groupColorStyle } from '../seating/groupColors';
-import type { CyclePeriod } from './rewardCore';
+import { GoalCelebration } from './GoalCelebration';
+import { goalTargetLabel, type CyclePeriod } from './rewardCore';
 import { useReward } from './useReward';
 
 type RewardTab = 'score' | 'goals' | 'log';
@@ -43,6 +44,7 @@ export default function RewardPage() {
   const [presetOpen, setPresetOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [celebrating, setCelebrating] = useState<ScoreGoal[]>([]);
 
   if (activeClass === null) {
     return (
@@ -87,14 +89,17 @@ export default function RewardPage() {
   const handleAward = (targetId: string, label: string): void => {
     if (selectedPreset === null) return;
 
-    const entryId = reward.award(selectedPreset, targetId);
-    if (entryId === null) return;
+    const result = reward.award(selectedPreset, targetId);
+    if (result === null) return;
 
     const points = selectedPreset.defaultPoints;
     toast.info(`${label} ${points > 0 ? `+${points}` : points}점 (${selectedPreset.name})`, {
       actionLabel: '실행 취소',
-      onAction: () => reward.revoke(entryId),
+      onAction: () => reward.revoke(result.entryId),
     });
+
+    // 이 점수로 목표를 넘겼으면 축하 화면을 띄운다.
+    if (result.achieved.length > 0) setCelebrating(result.achieved);
   };
 
   return (
@@ -151,6 +156,17 @@ export default function RewardPage() {
 
         {tab === 'log' ? <LogTab reward={reward} onClear={() => setConfirmClear(true)} /> : null}
       </Tabs>
+
+      <GoalCelebration
+        goals={celebrating}
+        targetLabel={(goal) =>
+          goalTargetLabel(goal, {
+            studentName: (id) => reward.studentById.get(id)?.name,
+            groupName: (id) => reward.groups.find((group) => group.id === id)?.name,
+          })
+        }
+        onClose={() => setCelebrating([])}
+      />
 
       <AddPresetModal
         open={presetOpen}
