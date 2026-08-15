@@ -42,6 +42,8 @@ import {
   type TermStatus,
 } from '../domain/types';
 
+import { isValidPin } from '../lock/lockOps';
+
 /**
  * 저장된 원시 데이터를 SuiteData로 해석한다.
  *
@@ -267,6 +269,20 @@ function parseSeatingState(raw: unknown, now: string): SeatingState | null {
     perspective: oneOf(raw['perspective'], SEATING_PERSPECTIVES, 'student'),
     updatedAt: str(raw['updatedAt'], now),
   };
+}
+
+/**
+ * 교사 잠금.
+ *
+ * 망가진 PIN은 빈 값으로 둔다. 그리고 **PIN이 없으면 잠금도 반드시 푼다.**
+ * 둘이 어긋나면 열 수 있는 값이 없는 잠긴 화면이 되어, 자료를 초기화하는 것
+ * 말고는 앱을 다시 쓸 길이 없다.
+ */
+function parseLock(root: Record<string, unknown>): { lockPin: string; isLocked: boolean } {
+  const raw = str(root['lockPin']);
+  const lockPin = isValidPin(raw) ? raw : '';
+
+  return { lockPin, isLocked: lockPin !== '' && root['isLocked'] === true };
 }
 
 function parseSavedLayout(raw: unknown, now: string): SavedLayout | null {
@@ -577,6 +593,7 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     scoreCycle: parseScoreCycle(root['scoreCycle']),
     activeTermId: typeof root['activeTermId'] === 'string' ? root['activeTermId'] : null,
     activeClassId: typeof root['activeClassId'] === 'string' ? root['activeClassId'] : null,
+    ...parseLock(root),
   };
 
   const repaired = validateAndRepair(shaped, now);

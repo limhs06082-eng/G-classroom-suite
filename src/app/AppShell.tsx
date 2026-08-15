@@ -1,8 +1,11 @@
-import { Settings, Users } from 'lucide-react';
-import { Suspense } from 'react';
+import { Lock, Settings, Users } from 'lucide-react';
+import { Suspense, useCallback } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 
 import { ToolsBar } from '../features/tools/ToolsBar';
+import { LockScreen } from '../shared/lock/LockScreen';
+import { engageLock, tryUnlock } from '../shared/lock/lockOps';
+import { useSuite } from '../shared/roster/SuiteDataProvider';
 import { ClassSwitcher } from './ClassSwitcher';
 import { ErrorBoundary } from './ErrorBoundary';
 import { FEATURE_NAV } from './navigation';
@@ -15,6 +18,23 @@ import { PageLoader } from './PageLoader';
  * 하단 도구 툴바(타이머·커튼 등)는 11단계에서 붙인다.
  */
 export function AppShell() {
+  const { data, update } = useSuite();
+
+  /*
+   * update의 콜백은 반환값을 밖으로 낼 수 없다. 맞았는지는 지금 자료로
+   * 미리 판정하고, 저장은 update 안에서 한 번 더 계산한다.
+   * 순수 함수라 두 번 불러도 같은 답이 나온다.
+   */
+  const handleUnlock = useCallback(
+    (pin: string): boolean => {
+      const { ok } = tryUnlock(data, pin);
+      if (ok) update((current) => tryUnlock(current, pin).data);
+
+      return ok;
+    },
+    [data, update],
+  );
+
   return (
     <div className="flex min-h-full flex-col">
       {/* 반투명 헤더는 스크롤할 때 본문 한글이 비쳐 읽기 어려워진다. 불투명으로 둔다. */}
@@ -63,6 +83,19 @@ export function AppShell() {
               <Users className="size-4" aria-hidden />
             </NavLink>
 
+            {/* PIN을 만든 교사에게만 보인다. 누를 수 없는 버튼을 보일 이유가 없다. */}
+            {data.lockPin === '' ? null : (
+              <button
+                type="button"
+                onClick={() => update(engageLock)}
+                aria-label="화면 잠그기"
+                title="화면 잠그기"
+                className="ml-1 rounded-control p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              >
+                <Lock className="size-4" aria-hidden />
+              </button>
+            )}
+
             <NavLink
               to="/settings"
               aria-label="설정"
@@ -91,6 +124,9 @@ export function AppShell() {
       </main>
 
       <ToolsBar />
+
+      {/* 전자칠판(/board/*)은 이 껍데기를 쓰지 않는다. 보여 주려고 띄운 화면이라 덮지 않는다. */}
+      {data.isLocked ? <LockScreen onSubmit={handleUnlock} /> : null}
     </div>
   );
 }

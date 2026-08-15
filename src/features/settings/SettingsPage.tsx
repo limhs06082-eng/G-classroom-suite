@@ -6,8 +6,9 @@ import { useSuite } from '../../shared/roster/SuiteDataProvider';
 import type { BackupSummary } from '../../shared/storage/StorageAdapter';
 import { Badge, Button, Card, ConfirmDialog, EmptyState, Tabs, useToast } from '../../shared/ui';
 import { ClassTermTab } from './ClassTermTab';
+import { LockTab } from './LockTab';
 
-type SettingsTab = 'school' | 'classes' | 'backup' | 'legacy';
+type SettingsTab = 'school' | 'classes' | 'lock' | 'backup' | 'legacy';
 
 /**
  * 설정.
@@ -26,6 +27,7 @@ export default function SettingsPage() {
         items={[
           { id: 'school', label: '학교 정보' },
           { id: 'classes', label: '학급·학기' },
+          { id: 'lock', label: '교사 잠금' },
           { id: 'backup', label: '백업·복원' },
           { id: 'legacy', label: '기존 앱에서 가져오기' },
         ]}
@@ -34,6 +36,7 @@ export default function SettingsPage() {
       >
         {tab === 'school' ? <SchoolTab /> : null}
         {tab === 'classes' ? <ClassTermTab /> : null}
+        {tab === 'lock' ? <LockTab /> : null}
         {tab === 'backup' ? <BackupTab /> : null}
         {tab === 'legacy' ? <LegacyTab /> : null}
       </Tabs>

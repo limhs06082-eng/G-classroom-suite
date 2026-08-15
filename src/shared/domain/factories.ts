@@ -346,5 +346,7 @@ export function createEmptySuiteData(): SuiteData {
     scoreCycle: { ...DEFAULT_SCORE_CYCLE },
     activeTermId: null,
     activeClassId: null,
+    lockPin: '',
+    isLocked: false,
   };
 }

@@ -465,4 +465,14 @@ export interface SuiteData {
   /** 화면 전역에서 선택된 학기·반. 존재하지 않는 id면 복구 대상이다. */
   activeTermId: string | null;
   activeClassId: string | null;
+
+  /**
+   * 교사 잠금 PIN 4자리. 빈 문자열이면 잠금을 쓰지 않는다.
+   *
+   * 보안이 아니다. 여기 그대로 저장되고 개발자 도구를 열면 보인다.
+   * 학생이 지나가다 실수로 누르는 것을 막는 장치다.
+   */
+  lockPin: string;
+  /** 지금 잠겨 있는가. 새로 고쳐도 남아야 하므로 저장한다. */
+  isLocked: boolean;
 }
