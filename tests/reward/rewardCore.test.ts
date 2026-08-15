@@ -101,6 +101,15 @@ describe('computeScores', () => {
   });
 });
 
+/**
+ * 지역 자정의 UTC 표기.
+ *
+ * 기대값을 글자로 박으면 시간대에 따라 테스트가 깨진다. occurredAt이
+ * UTC라 since도 UTC여야 하고, 그 값은 실행 환경의 시간대에 달려 있다.
+ */
+const localMidnight = (year: number, month: number, day: number): string =>
+  new Date(year, month - 1, day).toISOString();
+
 describe('cycleRangeFor', () => {
   it('전체 기간은 기준 시각이 없다', () => {
     expect(cycleRangeFor('all', DEFAULT_SCORE_CYCLE, '2026-03-04').since).toBeNull();
@@ -110,47 +119,69 @@ describe('cycleRangeFor', () => {
     // 2026-03-04는 수요일. 월요일 시작이면 03-02부터.
     const range = cycleRangeFor('weekly', DEFAULT_SCORE_CYCLE, '2026-03-04');
 
-    expect(range.since).toBe('2026-03-02T00:00:00.000');
+    expect(range.since).toBe(localMidnight(2026, 3, 2));
   });
 
   it('시작 요일 당일이면 그날부터 센다', () => {
     const range = cycleRangeFor('weekly', DEFAULT_SCORE_CYCLE, '2026-03-02');
 
-    expect(range.since).toBe('2026-03-02T00:00:00.000');
+    expect(range.since).toBe(localMidnight(2026, 3, 2));
   });
 
   it('일요일 시작으로 바꾸면 경계도 함께 옮겨진다', () => {
     const sundayStart = { ...DEFAULT_SCORE_CYCLE, weeklyStartDay: 0 };
     const range = cycleRangeFor('weekly', sundayStart, '2026-03-04');
 
-    expect(range.since).toBe('2026-03-01T00:00:00.000');
+    expect(range.since).toBe(localMidnight(2026, 3, 1));
   });
 
   it('1일~말일 기준이면 시작일 설정을 무시한다', () => {
     const cycle = { ...DEFAULT_SCORE_CYCLE, monthlyType: '1st_to_end' as const, monthlyStartDay: 15 };
     const range = cycleRangeFor('monthly', cycle, '2026-08-20');
 
-    expect(range.since?.slice(0, 10)).toBe('2026-08-01');
+    expect(range.since).toBe(localMidnight(2026, 8, 1));
   });
 
   it('지정일 기준이면 그 날부터 센다', () => {
     const cycle = { ...DEFAULT_SCORE_CYCLE, monthlyType: 'specific_day' as const, monthlyStartDay: 15 };
     const range = cycleRangeFor('monthly', cycle, '2026-08-20');
 
-    expect(range.since?.slice(0, 10)).toBe('2026-08-15');
+    expect(range.since).toBe(localMidnight(2026, 8, 15));
   });
 
   it('지정일이 아직 안 왔으면 지난달 그 날부터다', () => {
     const cycle = { ...DEFAULT_SCORE_CYCLE, monthlyType: 'specific_day' as const, monthlyStartDay: 15 };
     const range = cycleRangeFor('monthly', cycle, '2026-08-10');
 
-    expect(range.since?.slice(0, 10)).toBe('2026-07-15');
+    expect(range.since).toBe(localMidnight(2026, 7, 15));
   });
 
   it('월간은 설정한 시작일부터 센다', () => {
     const range = cycleRangeFor('monthly', DEFAULT_SCORE_CYCLE, '2026-03-15');
 
-    expect(range.since).toBe('2026-03-01T00:00:00.000');
+    expect(range.since).toBe(localMidnight(2026, 3, 1));
+  });
+
+  /*
+   * 회귀 방지.
+   *
+   * since를 '2026-03-02T00:00:00.000' 같은 지역 글자열로 두면, occurredAt이
+   * UTC라 한국(UTC+9)에서 아침에 준 점수가 전날 UTC로 적혀 빠진다.
+   * 자정부터 오전 9시까지 — 교사가 점수를 가장 많이 주는 시간이다.
+   */
+  it('주기 시작일 아침에 준 점수가 그 주기에 들어온다', () => {
+    const range = cycleRangeFor('weekly', DEFAULT_SCORE_CYCLE, '2026-03-02');
+    const morning = new Date(2026, 2, 2, 7, 0).toISOString();
+
+    expect(range.since).not.toBeNull();
+    expect(morning >= (range.since ?? '')).toBe(true);
+  });
+
+  it('주기 시작 전날 밤에 준 점수는 빠진다', () => {
+    const range = cycleRangeFor('weekly', DEFAULT_SCORE_CYCLE, '2026-03-02');
+    const lastNight = new Date(2026, 2, 1, 23, 30).toISOString();
+
+    expect(lastNight >= (range.since ?? '')).toBe(false);
   });
 
   it('시작일이 아직 안 지났으면 지난달부터가 이번 주기다', () => {
@@ -166,7 +197,7 @@ describe('cycleRangeFor', () => {
     };
     const range = cycleRangeFor('monthly', fifteenth, '2026-03-10');
 
-    expect(range.since).toBe('2026-02-15T00:00:00.000');
+    expect(range.since).toBe(localMidnight(2026, 2, 15));
   });
 });
 

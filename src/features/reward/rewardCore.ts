@@ -25,8 +25,26 @@ export interface CycleRange {
   label: string;
 }
 
-function startOfDayIso(dateStr: string): string {
-  return `${dateStr}T00:00:00.000`;
+/**
+ * 그 날 지역 자정에 해당하는 UTC 순간.
+ *
+ * `${dateStr}T00:00:00.000`처럼 지역 글자열을 만들면 안 된다.
+ * ScoreEntry.occurredAt은 `new Date().toISOString()` — **UTC**다.
+ * 한국(UTC+9)에서 월요일 아침 7시에 준 점수는 2026-08-16T22:00Z로 적히고,
+ * 지역 글자열 '2026-08-17T00:00:00.000'과 글자로 비교하면 빠져 버린다.
+ *
+ * **자정부터 오전 9시까지 준 점수가 그 주기에서 통째로 빠졌다.**
+ * 교사가 점수를 가장 많이 주는 아침 활동 시간이 거기다.
+ *
+ * parseLocalDate가 만드는 Date가 지역 자정이고, toISOString()이 같은
+ * 순간의 UTC 표기다. 지역→UTC 변환은 이 함수 한 곳에서만 한다.
+ */
+export function startOfDayIso(dateStr: string): string {
+  const date = parseLocalDate(dateStr);
+  // 읽을 수 없는 날짜. 부르는 쪽이 이미 걸러내지만 형태는 맞춰 둔다.
+  if (date === null) return `${dateStr}T00:00:00.000Z`;
+
+  return date.toISOString();
 }
 
 /**
