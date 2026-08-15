@@ -104,6 +104,24 @@ export function ClassroomGrid({
                   ? `${seat.row}행 ${seat.column}열, ${student.number}번 ${student.name}${isLocked ? ', 자리 고정됨' : ''}`
                   : `${seat.row}행 ${seat.column}열, 빈자리`
               }
+              overlay={
+                student !== undefined && onToggleLock !== undefined ? (
+                  <button
+                    type="button"
+                    onClick={() => onToggleLock(student.id)}
+                    aria-label={`${student.name} 자리 ${isLocked ? '고정 해제' : '고정'}`}
+                    aria-pressed={isLocked}
+                    className={cx(
+                      'absolute top-1 right-1 rounded p-0.5 transition-colors duration-[120ms]',
+                      isLocked
+                        ? 'text-brand-600 hover:text-brand-700'
+                        : 'text-slate-300 hover:text-slate-500',
+                    )}
+                  >
+                    <Lock className="size-3.5" aria-hidden />
+                  </button>
+                ) : undefined
+              }
             >
               {student ? (
                 <>
@@ -126,32 +144,13 @@ export function ClassroomGrid({
                     {student.name}
                   </span>
 
-                  {onToggleLock === undefined ? (
-                    isLocked ? (
-                      <Lock
-                        className={cx('text-brand-500', isBoard ? 'size-6' : 'size-3.5')}
-                        aria-hidden
-                      />
-                    ) : null
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onToggleLock(student.id);
-                      }}
-                      aria-label={`${student.name} 자리 ${isLocked ? '고정 해제' : '고정'}`}
-                      aria-pressed={isLocked}
-                      className={cx(
-                        'absolute top-1 right-1 rounded p-0.5 transition-colors',
-                        isLocked
-                          ? 'text-brand-600 hover:text-brand-700'
-                          : 'text-slate-300 hover:text-slate-500',
-                      )}
-                    >
-                      <Lock className="size-3.5" aria-hidden />
-                    </button>
-                  )}
+                  {/* 누를 수 없는 화면(전자칠판·인쇄)에서는 자물쇠를 그림으로만 보인다. */}
+                  {onToggleLock === undefined && isLocked ? (
+                    <Lock
+                      className={cx('text-brand-500', isBoard ? 'size-6' : 'size-3.5')}
+                      aria-hidden
+                    />
+                  ) : null}
                 </>
               ) : (
                 <Plus
@@ -167,36 +166,57 @@ export function ClassroomGrid({
   );
 }
 
+/**
+ * 좌석 한 칸.
+ *
+ * `overlay`는 칸 위에 얹히지만 DOM에서는 **형제**다. 예전에는 자리 고정
+ * 버튼을 좌석 버튼의 자식으로 넣었는데, 버튼 안의 버튼은 유효하지 않은
+ * HTML이고 브라우저마다 탭 순서와 화면 낭독기 동작이 달라진다.
+ * 겹쳐 보이는 것은 위치(absolute)로 만들고 구조는 나란히 둔다.
+ */
 function SeatShell({
   isBoard,
   onClick,
   className,
   label,
+  overlay,
   children,
 }: {
   isBoard: boolean;
   onClick?: (() => void) | undefined;
   className?: string;
   label: string;
+  overlay?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const shared = cx(
-    'relative flex flex-col items-center justify-center rounded-control border',
+    'flex size-full flex-col items-center justify-center rounded-control border',
     isBoard ? 'min-h-24 gap-1 p-2' : 'min-h-16 gap-0.5 p-1.5',
     className,
   );
 
-  if (onClick === undefined) {
-    return (
+  const seat =
+    onClick === undefined ? (
       <div className={shared} aria-label={label}>
         {children}
       </div>
+    ) : (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        className={cx(shared, 'hover:border-slate-400')}
+      >
+        {children}
+      </button>
     );
-  }
+
+  if (overlay === undefined) return seat;
 
   return (
-    <button type="button" onClick={onClick} aria-label={label} className={cx(shared, 'hover:border-slate-400')}>
-      {children}
-    </button>
+    <div className="relative">
+      {seat}
+      {overlay}
+    </div>
   );
 }
