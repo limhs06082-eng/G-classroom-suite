@@ -1,6 +1,7 @@
 import {
   ClipboardCheck,
   Download,
+  Quote,
   School,
   Shield,
   Sparkles,
@@ -22,6 +23,7 @@ import { AssignmentSummary } from '../assignment/AssignmentSummary';
 import { DutySummary } from '../duty/DutySummary';
 import { RewardSummary } from '../reward/RewardSummary';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
+import { quoteOfDay } from './quotes';
 import { BigStat, PendingNote, SummaryCard } from './SummaryCard';
 
 /**
@@ -169,7 +171,41 @@ export default function HomePage() {
           />
         </SummaryCard>
       </div>
+
+      <QuoteCard />
     </div>
+  );
+}
+
+/**
+ * 오늘의 명언.
+ *
+ * 원본 대시보드에 있던 카드다. 같은 날에는 같은 문장이 나온다 —
+ * 새로 고칠 때마다 바뀌면 "아까 그 문장 뭐였지"를 다시 찾을 수 없다.
+ */
+function QuoteCard() {
+  const [offset, setOffset] = useState(0);
+
+  const today = new Date();
+  const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const quote = quoteOfDay(todayString, offset);
+
+  return (
+    <Card title="오늘의 한마디" icon={Quote}>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-lg font-semibold text-slate-800">{quote.text}</p>
+          {quote.note === undefined ? null : (
+            <p className="mt-1 text-sm text-slate-500">{quote.note}</p>
+          )}
+        </div>
+
+        {/* 넘긴 것은 저장하지 않는다. 새로 고치면 오늘 것으로 돌아온다. */}
+        <Button size="sm" variant="ghost" onClick={() => setOffset((value) => value + 1)}>
+          다른 한마디
+        </Button>
+      </div>
+    </Card>
   );
 }
 
