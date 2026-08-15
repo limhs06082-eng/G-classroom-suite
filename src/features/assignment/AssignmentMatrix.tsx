@@ -64,6 +64,11 @@ export function AssignmentMatrix() {
                   <span className="block max-w-24 truncate">{item.title}</span>
                   <span className="block text-xs font-normal text-slate-400" data-numeric>
                     {total - counts.unsubmitted}/{total}
+                    {/* 마감한 열을 빼지 않는다. 마감한 과제의 미제출자를 확인하는
+                        것이 표 보기의 쓸모 중 하나다. */}
+                    {item.status === 'closed' ? (
+                      <span className="ml-1 text-slate-400">· 마감</span>
+                    ) : null}
                   </span>
                 </th>
               ))}

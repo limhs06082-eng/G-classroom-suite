@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  archivedAssignments,
   byDueDate,
   daysBetween,
   nextStatus,
@@ -10,6 +11,7 @@ import {
   summarize,
   summarizeStudent,
   SUBMISSION_SHORT,
+  visibleAssignments,
 } from '../../src/features/assignment/assignmentCore';
 import { createAssignment, createStudent, createSubmission } from '../../src/shared/domain/factories';
 import type { Assignment, Student, Submission } from '../../src/shared/domain/types';
@@ -282,5 +284,65 @@ describe('summarizeStudent', () => {
 describe('SUBMISSION_SHORT', () => {
   it('네 상태가 모두 한 글자다', () => {
     expect(Object.values(SUBMISSION_SHORT)).toEqual(['미', '제', '보', '완']);
+  });
+});
+
+describe('visibleAssignments · archivedAssignments', () => {
+  const list = [
+    createAssignment({ id: 'a-1', classId: 'class-1', title: '진행', status: 'active' }, NOW),
+    createAssignment({ id: 'a-2', classId: 'class-1', title: '마감', status: 'closed' }, NOW),
+    createAssignment({ id: 'a-3', classId: 'class-1', title: '보관', status: 'archived' }, NOW),
+  ];
+
+  it('보관한 것만 갈라진다', () => {
+    expect(visibleAssignments(list).map((item) => item.id)).toEqual(['a-1', 'a-2']);
+    expect(archivedAssignments(list).map((item) => item.id)).toEqual(['a-3']);
+  });
+
+  it('마감은 보이는 쪽에 남는다', () => {
+    // 마감은 '더 안 받는다'는 표시지 '안 보인다'가 아니다.
+    expect(visibleAssignments(list).some((item) => item.status === 'closed')).toBe(true);
+  });
+
+  it('원본 순서를 지킨다', () => {
+    const shuffled = [list[2], list[0], list[1]].filter((item) => item !== undefined);
+
+    expect(visibleAssignments(shuffled).map((item) => item.id)).toEqual(['a-1', 'a-2']);
+  });
+});
+
+describe('마감한 과제는 지연이 아니다', () => {
+  const OVERDUE = '2026-03-01'; // TODAY(2026-03-02)보다 하루 전
+
+  const student = createStudent(
+    { id: 'stu-1', classId: 'class-1', number: 1, name: '학생1' },
+    NOW,
+  );
+
+  const withStatus = (status: Assignment['status']): Assignment =>
+    createAssignment({ id: 'a-1', classId: 'class-1', title: '독서록', dueDate: OVERDUE, status }, NOW);
+
+  it('summarize — 진행 중이면 지연이다', () => {
+    expect(summarize(withStatus('active'), roster(3), [], TODAY).isOverdue).toBe(true);
+  });
+
+  it('summarize — 마감하면 지연이 아니다', () => {
+    expect(summarize(withStatus('closed'), roster(3), [], TODAY).isOverdue).toBe(false);
+  });
+
+  it('summarize — 보관해도 지연이 아니다', () => {
+    expect(summarize(withStatus('archived'), roster(3), [], TODAY).isOverdue).toBe(false);
+  });
+
+  it('summarizeStudent — 마감한 과제는 지연으로 세지 않는다', () => {
+    expect(summarizeStudent(student, [withStatus('active')], [], TODAY).overdueCount).toBe(1);
+    expect(summarizeStudent(student, [withStatus('closed')], [], TODAY).overdueCount).toBe(0);
+  });
+
+  it('마감해도 미제출 수는 그대로 센다', () => {
+    // 지연이 아닐 뿐, 누가 안 냈는지는 여전히 봐야 한다.
+    const result = summarize(withStatus('closed'), roster(3), [], TODAY);
+
+    expect(result.counts.unsubmitted).toBe(3);
   });
 });

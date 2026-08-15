@@ -3,18 +3,21 @@ import { useCallback, useMemo } from 'react';
 import { createAssignment } from '../../shared/domain/factories';
 import type {
   Assignment,
+  AssignmentStatus,
   Student,
   Submission,
   SubmissionStatus,
 } from '../../shared/domain/types';
 import { useActiveClass, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
 import {
+  archivedAssignments,
   byDueDate,
   nextStatus,
   statusOf,
   submissionIndex,
   summarize,
   summarizeStudent,
+  visibleAssignments,
   type AssignmentProgress,
   type StudentProgress,
 } from './assignmentCore';
@@ -24,7 +27,10 @@ export interface AssignmentView {
   classId: string | null;
   today: string;
   roster: Student[];
+  /** 보관하지 않은 과제. 화면 셋이 전부 이것을 본다. */
   assignments: Assignment[];
+  /** 보관한 과제. 보관함에서만 쓴다. */
+  archived: Assignment[];
   submissions: Submission[];
   progress: AssignmentProgress[];
   /** 마감이 가까운 순으로 진행 중인 과제 */
@@ -36,6 +42,8 @@ export interface AssignmentView {
 
   addAssignment: (input: { title: string; description: string; dueDate: string }) => void;
   updateAssignment: (assignmentId: string, patch: Partial<Assignment>) => void;
+  /** 마감·보관·다시 열기. 기록은 아무것도 지우지 않는다. */
+  setAssignmentStatus: (assignmentId: string, status: AssignmentStatus) => void;
   deleteAssignment: (assignmentId: string) => Promise<void>;
   statusFor: (assignmentId: string, studentId: string) => SubmissionStatus;
   cycleStatus: (assignmentId: string, studentId: string) => SubmissionStatus;
@@ -57,13 +65,21 @@ export function useAssignment(): AssignmentView {
   const classId = activeClass?.id ?? null;
   const today = todayString();
 
-  const assignments = useMemo(
+  const ofClass = useMemo(
     () =>
       classId === null
         ? []
         : data.assignments.filter((item) => item.classId === classId).sort(byDueDate),
     [data.assignments, classId],
   );
+
+  /*
+   * 보관을 빼는 것이 여기 한 곳이다.
+   * progress·submissions·statusIndex·studentProgress가 전부 이것에서 나오므로
+   * 과제별·표 보기·학생별 세 화면이 자동으로 따라온다.
+   */
+  const assignments = useMemo(() => visibleAssignments(ofClass), [ofClass]);
+  const archived = useMemo(() => archivedAssignments(ofClass), [ofClass]);
 
   const assignmentIds = useMemo(() => new Set(assignments.map((item) => item.id)), [assignments]);
 
@@ -109,6 +125,14 @@ export function useAssignment(): AssignmentView {
       }));
     },
     [update],
+  );
+
+  const setAssignmentStatus = useCallback(
+    (assignmentId: string, status: AssignmentStatus): void => {
+      // 삭제와 다르다. 제출 기록은 그대로 둔다. 보관을 풀면 그대로 돌아온다.
+      updateAssignment(assignmentId, { status });
+    },
+    [updateAssignment],
   );
 
   const deleteAssignment = useCallback(
@@ -261,6 +285,7 @@ export function useAssignment(): AssignmentView {
     today,
     roster,
     assignments,
+    archived,
     submissions,
     progress,
     upcoming,
@@ -268,6 +293,7 @@ export function useAssignment(): AssignmentView {
     statusIndex,
     addAssignment,
     updateAssignment,
+    setAssignmentStatus,
     deleteAssignment,
     statusFor,
     cycleStatus,

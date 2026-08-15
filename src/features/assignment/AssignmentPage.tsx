@@ -1,4 +1,4 @@
-import { ClipboardCheck, Monitor, Plus, Trash2, Users } from 'lucide-react';
+import { Archive, ClipboardCheck, Monitor, Plus, RotateCcw, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -44,6 +44,7 @@ export default function AssignmentPage() {
   const toast = useToast();
 
   const [tab, setTab] = useState<AssignmentTab>('byTask');
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [deleting, setDeleting] = useState<Assignment | null>(null);
@@ -130,12 +131,22 @@ export default function AssignmentPage() {
         <AssignmentMatrix />
       ) : tab === 'byStudent' ? (
         <StudentAssignments />
-      ) : assignment.assignments.length === 0 ? (
+      ) : (
+        <div className="flex flex-col gap-4">
+        {assignment.assignments.length === 0 ? (
         <Card>
           <EmptyState
             icon={ClipboardCheck}
-            title="아직 등록한 과제가 없습니다"
-            description="과제를 만들면 학생별 제출 상태를 한 번의 클릭으로 체크할 수 있습니다."
+            title={
+              assignment.archived.length > 0
+                ? '진행 중인 과제가 없습니다'
+                : '아직 등록한 과제가 없습니다'
+            }
+            description={
+              assignment.archived.length > 0
+                ? '보관한 과제는 아래에서 되돌릴 수 있습니다.'
+                : '과제를 만들면 학생별 제출 상태를 한 번의 클릭으로 체크할 수 있습니다.'
+            }
             action={
               <Button variant="primary" icon={Plus} onClick={() => setAddOpen(true)}>
                 과제 추가
@@ -145,7 +156,7 @@ export default function AssignmentPage() {
         </Card>
       ) : (
         <>
-          <ul className="flex flex-wrap gap-2">
+          <ul aria-label="과제 목록" className="flex flex-wrap gap-2">
             {assignment.progress.map(({ assignment: item, counts, total, isOverdue, daysLeft }) => {
               const active = selected?.assignment.id === item.id;
               return (
@@ -165,6 +176,7 @@ export default function AssignmentPage() {
                     <span className="font-mono text-xs text-slate-400">
                       {total - counts.unsubmitted}/{total}
                     </span>
+                    {item.status === 'closed' ? <Badge tone="neutral">마감</Badge> : null}
                     {isOverdue ? <Badge tone="danger">지연</Badge> : null}
                     {daysLeft !== null && daysLeft >= 0 && daysLeft <= 2 && !isOverdue ? (
                       <Badge tone="warning">{daysLeft === 0 ? '오늘' : `D-${daysLeft}`}</Badge>
@@ -200,6 +212,57 @@ export default function AssignmentPage() {
                   >
                     전원 제출
                   </Button>
+
+                  {/*
+                   * 진행 중에서 바로 보관은 두지 않는다. 진행 중인 과제를 한 번에
+                   * 숨기는 것은 실수하기 쉽다. 마감을 거쳐야 보관할 수 있다.
+                   */}
+                  {selected.assignment.status === 'active' ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        assignment.setAssignmentStatus(selected.assignment.id, 'closed');
+                        toast.info(`${selected.assignment.title} 과제를 마감했습니다.`, {
+                          actionLabel: '실행 취소',
+                          onAction: () =>
+                            assignment.setAssignmentStatus(selected.assignment.id, 'active'),
+                        });
+                      }}
+                    >
+                      마감하기
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          assignment.setAssignmentStatus(selected.assignment.id, 'active');
+                          toast.info(`${selected.assignment.title} 과제를 다시 열었습니다.`);
+                        }}
+                      >
+                        다시 열기
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        icon={Archive}
+                        onClick={() => {
+                          assignment.setAssignmentStatus(selected.assignment.id, 'archived');
+                          setSelectedId(null);
+                          toast.info(`${selected.assignment.title} 과제를 보관했습니다.`, {
+                            actionLabel: '실행 취소',
+                            onAction: () =>
+                              assignment.setAssignmentStatus(selected.assignment.id, 'closed'),
+                          });
+                        }}
+                      >
+                        보관하기
+                      </Button>
+                    </>
+                  )}
+
                   <Button
                     size="sm"
                     variant="ghost"
@@ -274,6 +337,54 @@ export default function AssignmentPage() {
             </Card>
           )}
         </>
+      )}
+
+        {/* 보관한 과제가 없으면 이 줄 자체가 안 나온다. */}
+        {assignment.archived.length > 0 ? (
+          <div className="rounded-card border border-slate-200 bg-white">
+            <button
+              type="button"
+              onClick={() => setArchiveOpen((value) => !value)}
+              aria-expanded={archiveOpen}
+              className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-slate-600 hover:bg-slate-50"
+            >
+              <Archive className="size-4 shrink-0 text-slate-400" aria-hidden />
+              보관한 과제 {assignment.archived.length}개
+              <span className="ml-auto text-brand-600">{archiveOpen ? '접기' : '보기'}</span>
+            </button>
+
+            {archiveOpen ? (
+              <ul className="flex flex-col gap-2 border-t border-slate-100 p-3">
+                {assignment.archived.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex flex-wrap items-center gap-2 rounded-control border border-slate-200 px-3 py-2"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
+                      {item.title}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      {item.dueDate === '' ? '기한 없음' : `기한 ${item.dueDate}`}
+                    </span>
+                    {/* 보관함에서는 되돌리기만 한다. 체크나 삭제는 되돌린 뒤에. */}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon={RotateCcw}
+                      onClick={() => {
+                        assignment.setAssignmentStatus(item.id, 'closed');
+                        toast.success(`${item.title} 과제를 되돌렸습니다. 마감 상태입니다.`);
+                      }}
+                    >
+                      되돌리기
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
+        </div>
       )}
       </Tabs>
 

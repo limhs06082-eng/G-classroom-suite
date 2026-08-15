@@ -124,6 +124,26 @@
 
 설계: [`../superpowers/specs/2026-08-14-assignment-views-design.md`](../superpowers/specs/2026-08-14-assignment-views-design.md)
 
+### B-7. 과제 마감·보관 완료 (2026-08-14)
+
+표 보기·학생별 보기를 만들고 나니 바로 드러난 문제를 이어서 고쳤다.
+한 학기를 쓰면 과제가 수십 개 쌓여 표의 열이 계속 늘어난다.
+**끝난 것을 치울 방법이 있어야 새 화면들이 학기 내내 쓸모를 유지한다.**
+
+**마감은 잠금이 아니다.** 마감해도 상태를 계속 바꿀 수 있다 — 늦게 낸
+학생을 체크해야 한다. 마감이 하는 일은 셋이다: 홈·전자칠판에서 빠지고,
+지연으로 세지 않고, 칩에 표시가 붙는다.
+
+**보관은 삭제가 아니다.** `deleteAssignment`는 제출 기록까지 지우지만
+보관은 아무것도 지우지 않는다. 되돌리면 보완 사유까지 그대로 돌아온다.
+`Term.archivedAt`·`visibleTerms`와 같은 개념이다.
+
+`useAssignment.assignments`에서 보관을 빼는 **한 줄이 파급의 전부다.**
+`progress`·`submissions`·`statusIndex`·`studentProgress`가 전부 거기서
+나오므로 세 탭이 자동으로 따라온다.
+
+설계: [`../superpowers/specs/2026-08-14-assignment-lifecycle-design.md`](../superpowers/specs/2026-08-14-assignment-lifecycle-design.md)
+
 ### B-5. 작업 중 발견한 기존 결함
 
 | 곳 | 문제 | 상태 |
@@ -131,7 +151,7 @@
 | `ClassroomGrid`의 `SeatShell` | 좌석 칸이 `<button>`인데 그 안에 자리 고정 `<button>`이 또 있다. 유효하지 않은 HTML이고 콘솔에 오류가 난다 | **미해결** — 묶음 2 범위 밖이라 따로 뺐다 |
 | `Assignment.description` | 과제 추가 모달이 '안내'로 입력을 받는데 **어디에도 안 보였다.** 입력만 받고 버리는 것이 가장 나쁘다 — 교사는 적어 넣었고 저장도 됐다. 다음에 열어 보면 자기가 적은 것이 사라졌다고 생각한다 | 묶음 3에서 고침 |
 | `Submission.note` | `setNote`가 훅에 있고 `setAll`이 '전원 제출' 때 메모를 지키려고 애쓰는데, 정작 넣을 화면이 없었다 | 묶음 3에서 고침 |
-| `Assignment.status` | `closed`·`archived`가 있고 `updateAssignment`도 훅에 있는데 **부르는 곳이 하나도 없다.** 과제는 만들면 영원히 `active`다 | **미해결** — 과제 목록 관리 화면이 필요하다. 마감한 과제를 표에서 뺄지도 정해야 한다 |
+| `Assignment.status` | `closed`·`archived`가 있고 `updateAssignment`도 훅에 있는데 **부르는 곳이 하나도 없었다.** 과제는 만들면 영원히 `active`였다 | 2026-08-14에 고침 (B-7) |
 
 **이 표가 늘어나는 것이 정상이다.** 화면을 새로 만들 때마다 "모델에는 있는데
 화면이 없는 것"이 드러난다. 고치지 않고 남긴 것을 적어 둬야 다음에 또

@@ -93,7 +93,13 @@ export function summarize(
     counts,
     total,
     doneRatio: total === 0 ? 0 : done / total,
-    isOverdue: daysLeft !== null && daysLeft < 0 && counts.unsubmitted + counts.supplement > 0,
+    // 마감·보관한 과제는 더 이상 독촉 대상이 아니다. 안 그러면 마감해도
+    // 빨간 지연 뱃지가 남아 마감이 아무 일도 안 하는 것처럼 보인다.
+    isOverdue:
+      assignment.status === 'active' &&
+      daysLeft !== null &&
+      daysLeft < 0 &&
+      counts.unsubmitted + counts.supplement > 0,
     daysLeft,
   };
 }
@@ -104,6 +110,24 @@ export function byDueDate(a: Assignment, b: Assignment): number {
   if (a.dueDate === '') return 1;
   if (b.dueDate === '') return -1;
   return a.dueDate.localeCompare(b.dueDate);
+}
+
+// ── 과제의 일생 ───────────────────────────────────────────────
+//
+// 마감(closed)은 '더 안 받는다'는 교사의 표시지 잠금이 아니다.
+// 마감해도 상태를 계속 바꿀 수 있다 — 늦게 낸 학생을 체크해야 한다.
+//
+// 보관(archived)은 삭제가 아니다. deleteAssignment는 제출 기록까지 지우지만
+// 보관은 아무것도 지우지 않는다. 화면에서 치울 뿐이고 되돌릴 수 있다.
+// classOps의 visibleTerms와 같은 개념이다.
+
+/** 보관하지 않은 과제. 화면은 거의 언제나 이것만 쓴다. */
+export function visibleAssignments(assignments: readonly Assignment[]): Assignment[] {
+  return assignments.filter((item) => item.status !== 'archived');
+}
+
+export function archivedAssignments(assignments: readonly Assignment[]): Assignment[] {
+  return assignments.filter((item) => item.status === 'archived');
 }
 
 // ── 학생 쪽에서 보기 ──────────────────────────────────────────
@@ -183,7 +207,9 @@ export function summarizeStudent(
     const status = statusFromIndex(index, assignment.id, student.id);
     counts[status] += 1;
 
-    if (status === 'unsubmitted' || status === 'supplement') {
+    // summarize와 같은 조건으로 센다. 한쪽만 고치면 과제별 탭과 학생별 탭이
+    // 서로 다른 지연 수를 말하게 된다.
+    if (assignment.status === 'active' && (status === 'unsubmitted' || status === 'supplement')) {
       const daysLeft = assignment.dueDate === '' ? null : daysBetween(today, assignment.dueDate);
       if (daysLeft !== null && daysLeft < 0) overdueCount += 1;
     }
