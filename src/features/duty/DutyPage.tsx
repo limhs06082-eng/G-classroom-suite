@@ -1,4 +1,16 @@
-import { Check, Eraser, Lock, Monitor, Plus, Scale, Shuffle, Trash2, Users, Wand2 } from 'lucide-react';
+import {
+  Check,
+  Eraser,
+  Lock,
+  Monitor,
+  Plus,
+  Scale,
+  Shuffle,
+  Trash2,
+  UserRoundCog,
+  Users,
+  Wand2,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -34,6 +46,7 @@ export default function DutyPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [deleting, setDeleting] = useState<DutyRole | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [substituteRoleId, setSubstituteRoleId] = useState<string | null>(null);
 
   if (activeClass === null) {
     return (
@@ -122,7 +135,11 @@ export default function DutyPage() {
         onChange={(id) => setTab(id as DutyTab)}
       >
         {tab === 'today' ? (
-          <TodayTab duty={duty} onGoRoles={() => setTab('roles')} />
+          <TodayTab
+            duty={duty}
+            onGoRoles={() => setTab('roles')}
+            onSubstitute={setSubstituteRoleId}
+          />
         ) : null}
 
         {tab === 'roles' ? (
@@ -136,6 +153,12 @@ export default function DutyPage() {
 
         {tab === 'fairness' ? <FairnessTab duty={duty} /> : null}
       </Tabs>
+
+      <SubstituteModal
+        duty={duty}
+        roleId={substituteRoleId}
+        onClose={() => setSubstituteRoleId(null)}
+      />
 
       <AddRoleModal
         open={addOpen}
@@ -182,7 +205,15 @@ export default function DutyPage() {
   );
 }
 
-function TodayTab({ duty, onGoRoles }: { duty: ReturnType<typeof useDuty>; onGoRoles: () => void }) {
+function TodayTab({
+  duty,
+  onGoRoles,
+  onSubstitute,
+}: {
+  duty: ReturnType<typeof useDuty>;
+  onGoRoles: () => void;
+  onSubstitute: (roleId: string) => void;
+}) {
   if (!duty.hasRoles) {
     return (
       <EmptyState
@@ -231,6 +262,22 @@ function TodayTab({ duty, onGoRoles }: { duty: ReturnType<typeof useDuty>; onGoR
                 {role.name}
               </h3>
               {isDone ? <Badge tone="success">완료</Badge> : null}
+
+              {/*
+                대체 버튼을 학생 줄이 아니라 여기 둔다.
+                학생 줄은 줄 전체가 완료 토글 버튼이라, 그 안에 버튼을 넣으면
+                버튼 안의 버튼이 된다.
+              */}
+              <button
+                type="button"
+                onClick={() => onSubstitute(role.id)}
+                aria-label={`${role.name} 오늘 대체`}
+                title="오늘 대체"
+                className="rounded p-0.5 text-slate-300 hover:text-slate-500"
+              >
+                <UserRoundCog className="size-3.5" aria-hidden />
+              </button>
+
               <button
                 type="button"
                 onClick={() => duty.toggleRoleLock(role.id)}
@@ -285,6 +332,108 @@ function TodayTab({ duty, onGoRoles }: { duty: ReturnType<typeof useDuty>; onGoR
         );
       })}
     </ul>
+  );
+}
+
+/**
+ * 오늘 하루 당번 대체.
+ *
+ * `DutyCompletion`이 날짜별 기록이라 대체도 그날치다. 결석·조퇴 때문에
+ * 하루만 바꾸는 것이 이 기능의 쓸모다.
+ *
+ * 화면은 이미 대체자를 읽어 표시하고 있었다(`{원래 학생} 대신` 배지).
+ * 넣을 방법만 없었다.
+ */
+function SubstituteModal({
+  duty,
+  roleId,
+  onClose,
+}: {
+  duty: ReturnType<typeof useDuty>;
+  roleId: string | null;
+  onClose: () => void;
+}) {
+  const entry = duty.todayDuties.find((item) => item.role.id === roleId);
+  if (roleId === null || entry === undefined) return null;
+
+  const { role, students, replaced } = entry;
+
+  /*
+   * students는 대체가 반영된 목록이라 그대로 쓰면 "누구를 대신할지"를 못 고른다.
+   * 대체된 자리는 원래 학생으로 되돌려 원래 당번 목록을 만든다.
+   */
+  const originals = students.map((student) => {
+    const swap = replaced.find((item) => item.substitute.id === student.id);
+    return { original: swap?.original ?? student, current: student };
+  });
+
+  // 오늘 이 역할을 맡은 사람은 후보에서 뺀다. 당번이 당번을 대신하는 것은 대체가 아니다.
+  const onDuty = new Set(students.map((student) => student.id));
+  const candidates = duty.roster.filter((student) => !onDuty.has(student.id));
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`${role.name} 오늘 대체`}
+      size="sm"
+      footer={
+        <Button variant="primary" onClick={onClose}>
+          닫기
+        </Button>
+      }
+    >
+      <p className="mb-3 text-sm text-slate-500">
+        오늘({duty.today})만 바뀝니다. 내일은 원래 당번으로 돌아옵니다.
+      </p>
+
+      <ul className="flex flex-col gap-2">
+        {originals.map(({ original, current }) => {
+          const substituted = original.id !== current.id;
+
+          return (
+            <li
+              key={original.id}
+              className="flex flex-wrap items-center gap-2 rounded-control border border-slate-200 px-3 py-2"
+            >
+              <span className="min-w-0 flex-1 truncate text-sm text-slate-800">
+                <span className="font-mono text-xs text-slate-400">{original.number}</span>{' '}
+                {original.name}
+              </span>
+
+              <label className="sr-only" htmlFor={`sub-${original.id}`}>
+                {original.name} 대신할 학생
+              </label>
+              <select
+                id={`sub-${original.id}`}
+                value={substituted ? current.id : ''}
+                onChange={(event) =>
+                  duty.setSubstitute(
+                    role.id,
+                    original.id,
+                    event.target.value === '' ? null : event.target.value,
+                  )
+                }
+                className="h-9 rounded-control border border-slate-300 px-2 text-sm"
+              >
+                <option value="">(대체 없음)</option>
+                {candidates.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.number} {student.name}
+                  </option>
+                ))}
+                {/* 지금 대체 중인 학생은 후보 목록에 없다. 골라 둔 값이 사라지면 안 된다. */}
+                {substituted && !candidates.some((student) => student.id === current.id) ? (
+                  <option value={current.id}>
+                    {current.number} {current.name}
+                  </option>
+                ) : null}
+              </select>
+            </li>
+          );
+        })}
+      </ul>
+    </Modal>
   );
 }
 

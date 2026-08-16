@@ -1,4 +1,14 @@
-import { CalendarRange, Eraser, Monitor, Plus, RotateCcw, Sparkles, Target, Trash2, Users } from 'lucide-react';
+import {
+  CalendarRange,
+  Eraser,
+  Monitor,
+  Plus,
+  RotateCcw,
+  Sparkles,
+  Target,
+  Trash2,
+  Users,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -222,6 +232,8 @@ function ScoreTab({
   onAddPreset: () => void;
 }) {
   const toast = useToast();
+  const [tidying, setTidying] = useState(false);
+  const [deletingPreset, setDeletingPreset] = useState<BehaviorPreset | null>(null);
 
   if (!reward.hasPresets) {
     return (
@@ -254,13 +266,38 @@ function ScoreTab({
   return (
     <div className="flex flex-col gap-4">
       <section>
-        <div className="mb-2 flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-slate-700">1. 항목 고르기</h2>
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <h2 className="text-sm font-semibold text-slate-700">
+            {tidying ? '지울 항목 고르기' : '1. 항목 고르기'}
+          </h2>
           <Button size="sm" variant="ghost" icon={Plus} onClick={onAddPreset}>
             항목 추가
           </Button>
+          <Button
+            size="sm"
+            variant={tidying ? 'primary' : 'ghost'}
+            icon={Eraser}
+            aria-pressed={tidying}
+            onClick={() => {
+              // 점수를 주려다 지우는 일이 없어야 한다. 모드에 들어가면 선택을 푼다.
+              onSelectPreset(null);
+              setTidying((value) => !value);
+            }}
+          >
+            {tidying ? '정리 끝내기' : '항목 정리'}
+          </Button>
         </div>
 
+        {tidying ? (
+          <p className="mb-2 text-sm text-danger-700">
+            항목을 누르면 지웁니다. 이미 준 점수는 그대로 남습니다.
+          </p>
+        ) : null}
+
+        {/*
+          칩 안에 삭제 버튼을 넣지 않는다. 칩 자체가 버튼이라 버튼 안의 버튼이 된다.
+          한 칩은 언제나 버튼 하나이고, 하는 일만 모드에 따라 바뀐다.
+        */}
         <ul className="flex flex-wrap gap-2">
           {reward.presets.map((preset) => {
             const selected = selectedPreset?.id === preset.id;
@@ -270,18 +307,29 @@ function ScoreTab({
               <li key={preset.id}>
                 <button
                   type="button"
-                  aria-pressed={selected}
-                  onClick={() => onSelectPreset(selected ? null : preset)}
+                  aria-pressed={tidying ? undefined : selected}
+                  aria-label={tidying ? `${preset.name} 삭제` : undefined}
+                  onClick={() =>
+                    tidying ? setDeletingPreset(preset) : onSelectPreset(selected ? null : preset)
+                  }
                   className={cx(
                     'inline-flex items-center gap-1.5 rounded-control border px-3 py-2 text-sm',
-                    selected ? 'border-brand-500 bg-brand-50 font-medium text-brand-700' : style.card,
+                    tidying
+                      ? 'border-danger-300 bg-danger-50 text-danger-700 hover:border-danger-500'
+                      : selected
+                        ? 'border-brand-500 bg-brand-50 font-medium text-brand-700'
+                        : style.card,
                   )}
                 >
                   {preset.name}
                   <span
                     className={cx(
                       'font-mono text-xs',
-                      preset.defaultPoints >= 0 ? 'text-success-700' : 'text-danger-700',
+                      tidying
+                        ? 'text-danger-500'
+                        : preset.defaultPoints >= 0
+                          ? 'text-success-700'
+                          : 'text-danger-700',
                     )}
                   >
                     {preset.defaultPoints > 0 ? `+${preset.defaultPoints}` : preset.defaultPoints}
@@ -292,6 +340,21 @@ function ScoreTab({
           })}
         </ul>
       </section>
+
+      <ConfirmDialog
+        open={deletingPreset !== null}
+        title={`${deletingPreset?.name ?? ''} 항목을 지울까요?`}
+        description="이미 준 점수는 그대로 남습니다. 기록에 사유가 글자로 저장돼 있습니다."
+        destructive
+        confirmLabel="항목 삭제"
+        onCancel={() => setDeletingPreset(null)}
+        onConfirm={() => {
+          if (deletingPreset === null) return;
+          reward.deletePreset(deletingPreset.id);
+          toast.warning(`${deletingPreset.name} 항목을 지웠습니다.`);
+          setDeletingPreset(null);
+        }}
+      />
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-slate-700">

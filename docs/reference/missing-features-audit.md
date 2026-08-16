@@ -191,6 +191,30 @@
 
 설계: [`../superpowers/specs/2026-08-16-teacher-lock-and-quote-design.md`](../superpowers/specs/2026-08-16-teacher-lock-and-quote-design.md)
 
+### B-10. 점검 스크립트가 찾은 둘 (2026-08-16)
+
+toolkit에 쓰려고 만든 **훅 미사용 API 검사**를 suite에도 돌려 나온 것이다.
+필드 검사로는 안 잡혔다 — 둘 다 이름이 코드에 있었기 때문이다.
+
+**당번 대체는 절반만 이식돼 있었다.** `DutyPage`와 `DutyBoard`가 이미
+대체자를 읽어 `{원래 학생} 대신` 배지로 표시하고, `useDuty`가 `replaced`를
+계산해 내주고, `DutyCompletion.substitutions`도 저장·복원됐다.
+**넣을 방법만 없었다.** 읽는 쪽은 옮겨졌고 쓰는 쪽이 안 옮겨진 것이다.
+
+**행동 항목을 지울 수 없었다.** `deletePreset`이 훅에 있는데 부르는 화면이
+없어서, 기본 항목 6개 + 직접 추가만 되고 안 쓰는 항목이 계속 쌓였다.
+
+둘 다 **중첩 버튼을 만들기 쉬운 자리**였다. 당번 학생 줄은 줄 전체가 완료
+토글 버튼이고 행동 항목 칩은 칩 전체가 선택 버튼이다. 방금 `ClassroomGrid`에서
+걷어낸 실수를 반복하지 않으려고 이렇게 했다.
+
+| | 어떻게 |
+|---|---|
+| 당번 대체 | 학생 줄이 아니라 **역할 카드 머리**에 버튼. 지정은 모달의 `<select>`로 |
+| 행동 항목 | 칩 안에 X를 넣는 대신 **`항목 정리` 토글**. 한 칩은 언제나 버튼 하나이고 하는 일만 바뀐다 |
+
+설계: [`../superpowers/specs/2026-08-16-duty-substitute-and-preset-delete-design.md`](../superpowers/specs/2026-08-16-duty-substitute-and-preset-delete-design.md)
+
 ### B-5. 작업 중 발견한 기존 결함
 
 | 곳 | 문제 | 상태 |
