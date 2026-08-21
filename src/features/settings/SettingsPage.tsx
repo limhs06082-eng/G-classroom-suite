@@ -1,4 +1,4 @@
-import { Download, RotateCcw, School, Shield, Trash2, Upload } from 'lucide-react';
+import { Database, Download, RotateCcw, School, Shield, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { importLegacyRoster, scanLegacy, type LegacyScanResult } from '../../shared/migration/legacyImport';
@@ -9,8 +9,9 @@ import {
   type LegacyScan as ToolkitLegacyScan,
 } from './legacyImport';
 import { useSuite } from '../../shared/roster/SuiteDataProvider';
+import { formatBytes, measureDataSize } from '../../shared/storage/dataSize';
 import type { BackupSummary } from '../../shared/storage/StorageAdapter';
-import { Badge, Button, Card, ConfirmDialog, EmptyState, Tabs, useToast } from '../../shared/ui';
+import { Badge, Button, Card, ConfirmDialog, cx, EmptyState, Tabs, useToast } from '../../shared/ui';
 import { ClassTermTab } from './ClassTermTab';
 import { LockTab } from './LockTab';
 
@@ -150,6 +151,71 @@ function SchoolTab() {
   );
 }
 
+/**
+ * 저장 자료가 얼마나 찼는지.
+ *
+ * 백업 탭에 둔다. 정리하는 수단(백업 내려받기)이 바로 아래 있어서,
+ * 알림과 할 일이 한 화면에 있다.
+ */
+function DataSizeCard() {
+  const { data } = useSuite();
+  const report = measureDataSize(data);
+
+  // 여유로울 때는 말을 걸지 않는다. 겁줄 이유가 없다.
+  if (report.level === 'ok') return null;
+
+  const percent = Math.round(report.ratio * 100);
+  const warn = report.level === 'warn';
+
+  return (
+    <Card title="저장 자료 크기" icon={Database}>
+      <div className="flex flex-wrap items-baseline gap-2">
+        <span data-numeric className="text-2xl font-bold text-slate-900">
+          {formatBytes(report.bytes)}
+        </span>
+        <span className={cx('text-sm font-medium', warn ? 'text-danger-700' : 'text-warning-700')}>
+          한도의 {percent}%
+        </span>
+      </div>
+
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+        <span
+          className={cx('block h-full', warn ? 'bg-danger-500' : 'bg-warning-500')}
+          style={{ width: `${Math.min(100, percent)}%` }}
+        />
+      </div>
+
+      <p className={cx('mt-3 text-sm', warn ? 'text-danger-700' : 'text-slate-600')}>
+        {warn
+          ? 'Firebase를 붙였다면 곧 저장이 실패합니다. 아래에서 백업을 내려받은 뒤 활동·보상 → 기록 탭에서 지난 기록을 정리해 주세요.'
+          : 'Firebase를 붙였다면 문서 하나에 1MB까지 담깁니다. 학년말에 백업을 내려받고 지난 기록을 정리하면 넉넉해집니다.'}
+      </p>
+
+      <p className="mt-1 text-sm text-slate-500">
+        Firebase를 붙이지 않았다면 이 브라우저에만 저장되고 한도가 훨씬 넉넉합니다.
+        그래도 백업은 받아 두세요.
+      </p>
+
+      <ul className="mt-3 flex flex-col gap-1">
+        {report.slices.slice(0, 4).map((slice) => (
+          <li key={slice.label} className="flex items-center gap-2 text-sm">
+            <span className="w-20 shrink-0 text-slate-600">{slice.label}</span>
+            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+              <span
+                className="block h-full bg-slate-400"
+                style={{ width: `${Math.round(slice.share * 100)}%` }}
+              />
+            </span>
+            <span data-numeric className="w-14 shrink-0 text-right text-xs text-slate-500">
+              {formatBytes(slice.bytes)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 function BackupTab() {
   const { adapter, flush } = useSuite();
   const toast = useToast();
@@ -211,6 +277,8 @@ function BackupTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      <DataSizeCard />
+
       <Card title="백업" icon={Shield}>
         <div className="flex flex-col gap-3">
           <p className="text-sm text-slate-600">
