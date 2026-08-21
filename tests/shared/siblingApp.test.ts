@@ -8,9 +8,22 @@ describe('siblingAppHref', () => {
     expect(siblingAppHref('   ')).toBeNull();
   });
 
-  it('기본값은 비어 있다', () => {
-    // fork한 직후 아무 설정 없이 올려도 동작해야 한다.
-    expect(siblingAppHref(SIBLING_APP_URL)).toBeNull();
+  it('이 저장소에 적힌 주소는 쓸 만한 값이거나 비어 있다', () => {
+    /*
+     * 이 저장소는 강사 데모이면서 수강생 템플릿이다. 배포한 뒤에는 주소가
+     * 채워져 있고, 아직 안 했으면 비어 있다. 둘 다 정상이다.
+     *
+     * **fork한 사람은 이 주소를 자기 것으로 바꿔야 한다.** 안 바꾸면 버튼이
+     * 강사 앱으로 간다. docs/linking-two-apps.md에 적어 두었다.
+     */
+    const href = siblingAppHref(SIBLING_APP_URL);
+
+    if (SIBLING_APP_URL.trim() === '') {
+      expect(href).toBeNull();
+    } else {
+      expect(href).not.toBeNull();
+      expect(href?.startsWith('https://')).toBe(true);
+    }
   });
 
   it('https 주소를 받는다', () => {
