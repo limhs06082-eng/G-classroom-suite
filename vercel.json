@@ -5,7 +5,6 @@
   "framework": "vite",
   "rewrites": [
     {
-      "comment": "SPA 폴백. /api/* 는 서버리스 함수로 넘어가야 하므로 제외한다.",
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
