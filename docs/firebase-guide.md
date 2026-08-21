@@ -104,7 +104,7 @@ fork한 저장소를 AI 스튜디오로 연 뒤, **아래 내용을 그대로 �
 
 > 이 프로젝트에 Firebase Firestore 동기화를 추가해 줘. 다음 조건을 반드시 지켜:
 >
-> 1. `src/shared/storage/firebaseConfig.ts` 파일 **하나만** 새로 만들고, 거기에 내 Firebase 설정값을 넣어. 설정값을 다른 파일에 흩어 놓지 마.
+> 1. `src/shared/storage/firebaseConfig.ts` 파일 **하나만** 새로 만들고, 거기에 내 Firebase 설정값을 넣어. 설정값을 다른 파일에 흩어 놓지 마. 그 파일에서 설정 객체에 `as const`를 붙이지 말고 타입을 따로 적어 줘. `as const`를 붙이면 값을 채우는 순간 빈 값 비교가 타입 오류가 돼.
 > 2. `src/shared/storage/FirestoreAdapter.ts`를 만들어. 이미 있는 `src/shared/storage/StorageAdapter.ts` 인터페이스를 **그대로 구현**해야 해. 인터페이스를 바꾸지 마.
 > 3. `src/features/` 아래 파일은 **한 줄도 고치지 마.** 화면 코드는 어댑터만 알고 있어야 해.
 > 4. `src/main.tsx`에서 `SuiteDataProvider`에 어댑터를 넘길 때, Firebase 설정이 채워져 있으면 `FirestoreAdapter`를, 비어 있으면 지금처럼 `LocalStorageAdapter`를 쓰도록 해. 설정이 없어도 앱이 그대로 동작해야 해.
@@ -120,6 +120,8 @@ fork한 저장소를 AI 스튜디오로 연 뒤, **아래 내용을 그대로 �
 > 14. 다 만든 뒤 `npm run verify`를 실행해서 타입 검사·테스트·빌드가 **모두** 통과하는지 확인해. 셋 중 하나만 돌리면 안 돼 — 타입 검사와 테스트를 통과하고 빌드에서만 깨지는 경우가 실제로 있어.
 
 작업이 끝나면 `firebaseConfig.ts`에 2단계에서 복사한 값을 채워 넣으세요.
+채운 뒤 `npm run verify`를 **한 번 더** 돌리세요. 비어 있을 때는 통과하다가
+값을 채우면 깨지는 경우가 있습니다(위 1번 조건).
 
 > **AI가 만든 코드를 어디까지 믿을까요.** 위 지시문 8~12번은 실제로 이 지시문을
 > 따라 코드를 만들어 보고 걸린 문제들입니다. 지시문에 적어 두지 않으면 AI는
@@ -197,6 +199,7 @@ Vercel이 자동으로 다시 배포합니다. 배포가 끝나면 `/login`에�
 | `Unsupported field value: undefined` | 3단계 지시문 9번이 빠졌습니다. 자료를 객체가 아니라 JSON 글자로 담아야 합니다 |
 | `Top-level await is not available` | 3단계 지시문 12번이 빠졌습니다. `src/main.tsx`의 최상위 `await`를 `.then()`으로 바꾸세요 |
 | 첫 화면이 눈에 띄게 느려짐 | 3단계 지시문 8번이 빠졌습니다. `firebase`를 `await import(...)`로 부르는지 확인하세요 |
+| 설정값을 채웠더니 `This comparison appears to be unintentional` | `firebaseConfig`에 붙은 `as const`를 지우고 타입을 따로 적으세요 (3단계 지시문 1번) |
 
 ---
 
