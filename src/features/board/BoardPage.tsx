@@ -5,6 +5,8 @@ import { useActiveClass, useActiveTerm } from '../../shared/roster/SuiteDataProv
 import { BoardScreen, EmptyState } from '../../shared/ui';
 import { AssignmentBoard } from '../assignment/AssignmentBoard';
 import { DutyBoard } from '../duty/DutyBoard';
+import { LessonBoard } from '../lesson/LessonBoard';
+import { QuizBoard } from '../quiz/QuizBoard';
 import { RewardBoard } from '../reward/RewardBoard';
 import { SeatingBoard } from '../seating/SeatingBoard';
 
@@ -49,6 +51,10 @@ export default function BoardPage() {
         <RewardBoard />
       ) : item.id === 'assignment' ? (
         <AssignmentBoard />
+      ) : item.id === 'lesson' ? (
+        <LessonBoard />
+      ) : item.id === 'quiz' ? (
+        <QuizBoard />
       ) : (
         <p className="text-slate-500">
           이 화면은 {item.label} 기능을 이식할 때 실제 내용으로 채워집니다.

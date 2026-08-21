@@ -1,6 +1,10 @@
 import {
+  CheckSquare,
   ClipboardCheck,
   Download,
+  ListChecks,
+  MessageSquareText,
+  Presentation,
   Quote,
   School,
   Shield,
@@ -22,6 +26,7 @@ import { Button, Card, EmptyState, useToast } from '../../shared/ui';
 import { AssignmentSummary } from '../assignment/AssignmentSummary';
 import { DutySummary } from '../duty/DutySummary';
 import { RewardSummary } from '../reward/RewardSummary';
+import { summarizeTasks } from '../task/taskCore';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
 import { quoteOfDay } from './quotes';
 import { BigStat, PendingNote, SummaryCard } from './SummaryCard';
@@ -39,6 +44,13 @@ export default function HomePage() {
   const roster = useRoster();
 
   const groups = data.groups.filter((group) => group.classId === activeClass?.id);
+
+  // 업무는 학급에 매이지 않는다. activeClass가 없어도 셀 수 있다.
+  const today = new Date();
+  const taskSummary = summarizeTasks(
+    data.tasks,
+    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
+  );
 
   if (activeClass === null) {
     return (
@@ -167,6 +179,84 @@ export default function HomePage() {
               data.students.filter((s) => s.classId === activeClass.id && s.status === 'inactive').length > 0
                 ? `전출·제외 ${data.students.filter((s) => s.classId === activeClass.id && s.status === 'inactive').length}명`
                 : '모든 기능이 이 명단을 함께 씁니다'
+            }
+          />
+        </SummaryCard>
+      </div>
+
+      {/*
+        도구함에서 옮겨 온 넷. 학급에 매이지 않아 학급을 안 만들어도 쓸 수 있고,
+        그래서 학급 카드와 줄을 나눠 둔다.
+      */}
+      <h2 className="mt-2 text-sm font-semibold text-slate-700">수업·업무 도구</h2>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <SummaryCard
+          to="/lesson"
+          label="수업 진행"
+          icon={Presentation}
+          accentClass="text-lesson-500"
+          tintClass="bg-lesson-50"
+          cta="수업 진행 열기"
+        >
+          <BigStat
+            value={data.lessonTemplates.length}
+            unit="개"
+            note={data.lessonRun === null ? '수업 흐름' : '지금 수업 진행 중'}
+          />
+        </SummaryCard>
+
+        <SummaryCard
+          to="/quiz"
+          label="형성평가"
+          icon={CheckSquare}
+          accentClass="text-quiz-500"
+          tintClass="bg-quiz-50"
+          cta="형성평가 열기"
+        >
+          <BigStat
+            value={data.quizSets.length}
+            unit="개"
+            note={
+              data.quizRun !== null
+                ? '지금 퀴즈 진행 중'
+                : data.quizResults.length > 0
+                  ? `지난 결과 ${data.quizResults.length}건`
+                  : '문제 세트'
+            }
+          />
+        </SummaryCard>
+
+        <SummaryCard
+          to="/task"
+          label="업무 체크"
+          icon={ListChecks}
+          accentClass="text-task-500"
+          tintClass="bg-task-50"
+          cta="업무 체크 열기"
+        >
+          <BigStat
+            value={taskSummary.open}
+            unit="개"
+            note={taskSummary.overdue > 0 ? `기한 지남 ${taskSummary.overdue}개` : '남은 일'}
+          />
+        </SummaryCard>
+
+        <SummaryCard
+          to="/message"
+          label="문구 템플릿"
+          icon={MessageSquareText}
+          accentClass="text-message-500"
+          tintClass="bg-message-50"
+          cta="문구 템플릿 열기"
+        >
+          <BigStat
+            value={data.messageTemplates.length}
+            unit="개"
+            note={
+              data.messageFavorites.length > 0
+                ? `즐겨찾기 ${data.messageFavorites.length}개`
+                : '가정 통신 문구'
             }
           />
         </SummaryCard>

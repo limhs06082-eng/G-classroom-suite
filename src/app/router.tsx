@@ -19,7 +19,12 @@ const AssignmentPage = lazy(() => import('../features/assignment/AssignmentPage'
 const RosterPage = lazy(() => import('../shared/roster/RosterPage'));
 const SettingsPage = lazy(() => import('../features/settings/SettingsPage'));
 const SetupPage = lazy(() => import('../shared/setup/SetupPage'));
+const LessonPage = lazy(() => import('../features/lesson/LessonPage'));
+const QuizPage = lazy(() => import('../features/quiz/QuizPage'));
+const TaskPage = lazy(() => import('../features/task/TaskPage'));
+const MessagePage = lazy(() => import('../features/message/MessagePage'));
 const BoardPage = lazy(() => import('../features/board/BoardPage'));
+const JoinPage = lazy(() => import('../features/quiz/JoinPage'));
 
 /*
  * 개발 전용 컴포넌트 갤러리.
@@ -47,6 +52,10 @@ export const router = createBrowserRouter([
       { path: 'duty', element: <DutyPage /> },
       { path: 'reward', element: <RewardPage /> },
       { path: 'assignment', element: <AssignmentPage /> },
+      { path: 'lesson', element: <LessonPage /> },
+      { path: 'quiz', element: <QuizPage /> },
+      { path: 'task', element: <TaskPage /> },
+      { path: 'message', element: <MessagePage /> },
       { path: 'roster', element: <RosterPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'setup', element: <SetupPage /> },
@@ -63,6 +72,16 @@ export const router = createBrowserRouter([
     element: (
       <Suspense fallback={<PageLoader />}>
         <BoardPage />
+      </Suspense>
+    ),
+    errorElement: <RootErrorBoundary />,
+  },
+  {
+    // 학생 화면. 셸 밖에 둔다. 폰에는 교사용 내비게이션이 필요 없다.
+    path: 'join/:code',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <JoinPage />
       </Suspense>
     ),
     errorElement: <RootErrorBoundary />,

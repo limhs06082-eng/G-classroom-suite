@@ -2,6 +2,12 @@ import { Download, RotateCcw, School, Shield, Trash2, Upload } from 'lucide-reac
 import { useEffect, useState } from 'react';
 
 import { importLegacyRoster, scanLegacy, type LegacyScanResult } from '../../shared/migration/legacyImport';
+// 도구함 쪽 원본 4개 앱. 같은 이름이라 별칭으로 갈라 둔다.
+import {
+  importLegacy as importToolkitLegacy,
+  scanLegacy as scanToolkitLegacy,
+  type LegacyScan as ToolkitLegacyScan,
+} from './legacyImport';
 import { useSuite } from '../../shared/roster/SuiteDataProvider';
 import type { BackupSummary } from '../../shared/storage/StorageAdapter';
 import { Badge, Button, Card, ConfirmDialog, EmptyState, Tabs, useToast } from '../../shared/ui';
@@ -38,7 +44,12 @@ export default function SettingsPage() {
         {tab === 'classes' ? <ClassTermTab /> : null}
         {tab === 'lock' ? <LockTab /> : null}
         {tab === 'backup' ? <BackupTab /> : null}
-        {tab === 'legacy' ? <LegacyTab /> : null}
+        {tab === 'legacy' ? (
+          <div className="flex flex-col gap-4">
+            <LegacyTab />
+            <ToolkitLegacyTab />
+          </div>
+        ) : null}
       </Tabs>
     </div>
   );
@@ -447,6 +458,73 @@ function LegacyTab() {
                   : `${imported}명을 가져왔습니다.`,
               );
             }
+          })();
+        }}
+      />
+    </Card>
+  );
+}
+
+/**
+ * 도구함 쪽 원본 4개 앱에서 가져오기.
+ *
+ * 학급 자료(위 카드)와 나눠 둔다. 가져오는 것이 다르다 — 이쪽은 수업 흐름·
+ * 문제 세트·업무·문구이고, 학급 명단과 섞이지 않는다.
+ */
+function ToolkitLegacyTab() {
+  const { update, guard } = useSuite();
+  const toast = useToast();
+  const [scan, setScan] = useState<ToolkitLegacyScan | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    setScan(scanToolkitLegacy(window.localStorage));
+  }, []);
+
+  if (scan === null || scan.sources.length === 0) return null;
+
+  return (
+    <Card title="수업·업무 도구 원본에서 가져오기">
+      <p className="text-sm text-slate-600">
+        이 브라우저에서 원본 앱 자료를 찾았습니다. 수업 흐름·문제 세트·업무·문구를 가져옵니다.
+      </p>
+
+      <ul className="mt-3 flex flex-col gap-1">
+        {scan.sources.map((source) => (
+          <li key={source.key} className="text-sm text-slate-700">
+            <Badge tone="neutral">{source.label}</Badge>
+          </li>
+        ))}
+      </ul>
+
+      <Button className="mt-3" variant="primary" icon={Upload} onClick={() => setConfirming(true)}>
+        가져오기
+      </Button>
+
+      <ConfirmDialog
+        open={confirming}
+        title="원본 자료를 가져올까요?"
+        description="지금 있는 것에 더합니다. 이미 같은 것이 있으면 건너뜁니다. 가져오기 직전 상태는 자동으로 백업됩니다."
+        confirmLabel="가져오기"
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => {
+          void (async () => {
+            await guard('도구 원본 가져오기 직전');
+
+            let added = 0;
+            update((current) => {
+              const result = importToolkitLegacy(current, window.localStorage);
+              added =
+                result.data.lessonTemplates.length -
+                current.lessonTemplates.length +
+                (result.data.quizSets.length - current.quizSets.length) +
+                (result.data.tasks.length - current.tasks.length) +
+                (result.data.messageTemplates.length - current.messageTemplates.length);
+              return result.data;
+            });
+
+            setConfirming(false);
+            toast.success(added > 0 ? `${added}건을 가져왔습니다.` : '새로 가져올 것이 없습니다.');
           })();
         }}
       />

@@ -1,8 +1,29 @@
 import type { LucideIcon } from 'lucide-react';
-import { ClipboardCheck, Home, Sparkles, Users, Wand2 } from 'lucide-react';
+import {
+  CheckSquare,
+  ClipboardCheck,
+  Home,
+  ListChecks,
+  MessageSquareText,
+  Presentation,
+  Sparkles,
+  Users,
+  Wand2,
+} from 'lucide-react';
 
 /** 기능 식별자. 라우트·색상 토큰·저장소 키가 모두 이 값을 공유한다. */
-export type FeatureId = 'home' | 'seating' | 'duty' | 'reward' | 'assignment';
+export type FeatureId =
+  | 'home'
+  // 학급 자료를 다루는 기능
+  | 'seating'
+  | 'duty'
+  | 'reward'
+  | 'assignment'
+  // 수업·업무를 돕는 기능. 학급에 매이지 않는다.
+  | 'lesson'
+  | 'quiz'
+  | 'task'
+  | 'message';
 
 export interface FeatureNavItem {
   id: FeatureId;
@@ -13,6 +34,8 @@ export interface FeatureNavItem {
   icon: LucideIcon;
   /** index.css의 --color-{id}-500 토큰과 짝을 이룬다. home은 brand를 쓴다. */
   accentClass: string;
+  /** 홈 카드 배경. --color-{id}-50과 짝을 이룬다. */
+  tintClass: string;
 }
 
 export const FEATURE_NAV: readonly FeatureNavItem[] = [
@@ -23,6 +46,7 @@ export const FEATURE_NAV: readonly FeatureNavItem[] = [
     hasBoardView: false,
     icon: Home,
     accentClass: 'text-brand-600',
+    tintClass: 'bg-brand-50',
   },
   {
     id: 'seating',
@@ -31,6 +55,7 @@ export const FEATURE_NAV: readonly FeatureNavItem[] = [
     hasBoardView: true,
     icon: Users,
     accentClass: 'text-seating-500',
+    tintClass: 'bg-seating-50',
   },
   {
     id: 'duty',
@@ -39,6 +64,7 @@ export const FEATURE_NAV: readonly FeatureNavItem[] = [
     hasBoardView: true,
     icon: Wand2,
     accentClass: 'text-duty-500',
+    tintClass: 'bg-duty-50',
   },
   {
     id: 'reward',
@@ -47,6 +73,7 @@ export const FEATURE_NAV: readonly FeatureNavItem[] = [
     hasBoardView: true,
     icon: Sparkles,
     accentClass: 'text-reward-500',
+    tintClass: 'bg-reward-50',
   },
   {
     id: 'assignment',
@@ -55,7 +82,44 @@ export const FEATURE_NAV: readonly FeatureNavItem[] = [
     hasBoardView: true,
     icon: ClipboardCheck,
     accentClass: 'text-assignment-500',
+    tintClass: 'bg-assignment-50',
   },
+    {
+      id: 'lesson',
+      path: '/lesson',
+      label: '수업 진행',
+      hasBoardView: true,
+      icon: Presentation,
+      accentClass: 'text-lesson-500',
+      tintClass: 'bg-lesson-50',
+    },
+    {
+      id: 'quiz',
+      path: '/quiz',
+      label: '형성평가',
+      hasBoardView: true,
+      icon: CheckSquare,
+      accentClass: 'text-quiz-500',
+      tintClass: 'bg-quiz-50',
+    },
+    {
+      id: 'task',
+      path: '/task',
+      label: '업무 체크',
+      hasBoardView: false,
+      icon: ListChecks,
+      accentClass: 'text-task-500',
+      tintClass: 'bg-task-50',
+    },
+    {
+      id: 'message',
+      path: '/message',
+      label: '문구 템플릿',
+      hasBoardView: false,
+      icon: MessageSquareText,
+      accentClass: 'text-message-500',
+      tintClass: 'bg-message-50',
+    },
 ] as const;
 
 export function findFeature(id: string): FeatureNavItem | undefined {

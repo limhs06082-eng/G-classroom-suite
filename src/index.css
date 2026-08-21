@@ -47,6 +47,20 @@
   --color-assignment-500: oklch(0.62 0.16 25);
   --color-assignment-700: oklch(0.46 0.14 25);
 
+  /* 도구함에서 옮겨 온 기능 색 */
+  --color-lesson-50: oklch(0.96 0.02 265);
+  --color-lesson-500: oklch(0.62 0.15 265);
+  --color-lesson-700: oklch(0.45 0.13 265);
+  --color-quiz-50: oklch(0.96 0.03 155);
+  --color-quiz-500: oklch(0.6 0.13 155);
+  --color-quiz-700: oklch(0.44 0.11 155);
+  --color-message-50: oklch(0.97 0.03 75);
+  --color-message-500: oklch(0.68 0.14 75);
+  --color-message-700: oklch(0.5 0.12 75);
+  --color-task-50: oklch(0.96 0.02 25);
+  --color-task-500: oklch(0.62 0.16 25);
+  --color-task-700: oklch(0.46 0.14 25);
+
   /* ── 의미색 ─────────────────────────────────────────────── */
   --color-success-50: oklch(0.96 0.03 150);
   --color-success-200: oklch(0.87 0.07 150);

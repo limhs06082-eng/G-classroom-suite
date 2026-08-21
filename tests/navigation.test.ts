@@ -28,10 +28,19 @@ describe('FEATURE_NAV', () => {
     }
   });
 
-  it('홈을 제외한 모든 기능이 전자칠판 화면을 지원한다', () => {
-    for (const item of FEATURE_NAV.filter((f) => f.id !== 'home')) {
-      expect(item.hasBoardView).toBe(true);
-    }
+  /*
+   * 합치기 전에는 '홈 말고는 전부 전자칠판을 지원한다'가 참이었다.
+   * 도구함에서 업무 체크·문구 템플릿이 들어오면서 더 이상 아니다.
+   * 그 둘은 교사가 혼자 보는 화면이라 학생에게 띄울 것이 없다.
+   */
+  it('전자칠판은 학생에게 보여 줄 것이 있는 기능만 지원한다', () => {
+    const withBoard = FEATURE_NAV.filter((f) => f.hasBoardView).map((f) => f.id);
+
+    expect(withBoard).toEqual(['seating', 'duty', 'reward', 'assignment', 'lesson', 'quiz']);
+  });
+
+  it('홈은 전자칠판을 갖지 않는다', () => {
+    expect(FEATURE_NAV.find((f) => f.id === 'home')?.hasBoardView).toBe(false);
   });
 
   it('findFeature가 존재하는 id를 찾고 없는 id에는 undefined를 준다', () => {
