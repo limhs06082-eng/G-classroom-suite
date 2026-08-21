@@ -1,4 +1,4 @@
-import { Lock, Settings, Users, Wrench } from 'lucide-react';
+import { Lock, Settings, Users } from 'lucide-react';
 import { Suspense, useCallback } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 
@@ -6,7 +6,6 @@ import { ToolsBar } from '../features/tools/ToolsBar';
 import { LockScreen } from '../shared/lock/LockScreen';
 import { engageLock, tryUnlock } from '../shared/lock/lockOps';
 import { useSuite } from '../shared/roster/SuiteDataProvider';
-import { siblingAppHref, SIBLING_APP_LABEL } from '../shared/siblingApp';
 import { ClassSwitcher } from './ClassSwitcher';
 import { ErrorBoundary } from './ErrorBoundary';
 import { FEATURE_NAV } from './navigation';
@@ -20,7 +19,6 @@ import { PageLoader } from './PageLoader';
  */
 export function AppShell() {
   const { data, update } = useSuite();
-  const siblingHref = siblingAppHref();
 
   /*
    * update의 콜백은 반환값을 밖으로 낼 수 없다. 맞았는지는 지금 자료로
@@ -85,20 +83,6 @@ export function AppShell() {
               <Users className="size-4" aria-hidden />
             </NavLink>
 
-            {/*
-              짝이 되는 앱으로 넘어가는 버튼.
-              src/shared/siblingApp.ts에 주소를 넣으면 나타나고, 비어 있으면 숨는다.
-              같은 탭에서 넘어간다 — 앱마다 창을 쌓지 않는다.
-            */}
-            {siblingHref === null ? null : (
-              <a
-                href={siblingHref}
-                className="ml-2 inline-flex items-center gap-1.5 rounded-control border border-slate-300 px-2.5 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                <Wrench className="size-4 shrink-0 text-slate-400" aria-hidden />
-                <span className="hidden lg:inline">{SIBLING_APP_LABEL}</span>
-              </a>
-            )}
 
             {/* PIN을 만든 교사에게만 보인다. 누를 수 없는 버튼을 보일 이유가 없다. */}
             {data.lockPin === '' ? null : (
