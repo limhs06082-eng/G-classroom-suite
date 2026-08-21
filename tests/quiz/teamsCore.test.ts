@@ -7,6 +7,7 @@ import {
   normalizeTeams,
   renameTeam,
   resizeTeams,
+  resolveTeams,
   teamsOrDefault,
 } from '../../src/features/quiz/teamsCore';
 
@@ -92,5 +93,58 @@ describe('normalizeTeams', () => {
 
   it('멀쩡한 이름은 그대로 둔다', () => {
     expect(normalizeTeams([...DEFAULT_TEAMS])).toEqual([...DEFAULT_TEAMS]);
+  });
+});
+
+describe('resolveTeams', () => {
+  const groups = [{ name: '독수리' }, { name: '호랑이' }, { name: '거북이' }];
+
+  it('직접 정한 것이 모둠보다 우선한다', () => {
+    // 남녀 대항처럼 모둠과 다르게 나누고 싶을 때가 있다.
+    const result = resolveTeams(['남학생', '여학생'], groups);
+
+    expect(result.teams).toEqual(['남학생', '여학생']);
+    expect(result.source).toBe('manual');
+  });
+
+  it('직접 정한 것이 없으면 모둠 이름을 쓴다', () => {
+    const result = resolveTeams([], groups);
+
+    expect(result.teams).toEqual(['독수리', '호랑이', '거북이']);
+    expect(result.source).toBe('groups');
+  });
+
+  it('둘 다 없으면 기본 팀', () => {
+    const result = resolveTeams([], []);
+
+    expect(result.teams).toEqual([...DEFAULT_TEAMS]);
+    expect(result.source).toBe('default');
+  });
+
+  it('모둠이 하나뿐이어도 깨지지 않는다', () => {
+    const result = resolveTeams([], [{ name: '하나' }]);
+
+    expect(result.teams).toEqual(['하나']);
+    expect(result.source).toBe('groups');
+  });
+
+  it('모둠 이름이 겹치면 갈라 놓는다', () => {
+    // 이름이 기록의 열쇠라 같은 이름 둘이면 점수가 섞인다.
+    const result = resolveTeams([], [{ name: '가' }, { name: '가' }]);
+
+    expect(new Set(result.teams).size).toBe(2);
+  });
+
+  it('모둠 이름이 비어 있으면 기본 이름으로 채운다', () => {
+    const result = resolveTeams([], [{ name: '독수리' }, { name: '  ' }]);
+
+    expect(result.teams).toEqual(['독수리', '2모둠']);
+  });
+
+  it('모둠이 여섯이면 여섯 팀이 된다', () => {
+    // 두 앱으로 나뉘어 있을 때는 네 팀 고정이라 두 모둠이 참여할 수 없었다.
+    const six = Array.from({ length: 6 }, (_, i) => ({ name: `${i + 1}모둠` }));
+
+    expect(resolveTeams([], six).teams).toHaveLength(6);
   });
 });

@@ -207,10 +207,25 @@ function TeamSettings({ quiz }: { quiz: ReturnType<typeof useQuiz> }) {
           퀴즈를 진행하는 동안에는 모둠을 바꿀 수 없습니다. 지금까지의 점수가 어느 모둠 것인지
           알 수 없게 됩니다. 진행을 멈춘 뒤 바꿔 주세요.
         </p>
+      ) : quiz.teamSource === 'groups' ? (
+        <p className="mb-3 text-sm text-slate-600">
+          <strong>자리·모둠에서 편성한 {teams.length}모둠</strong>을 그대로 씁니다. 거기서 모둠을
+          바꾸면 여기도 함께 바뀝니다. 아래에서 고치면 이 퀴즈만의 팀이 됩니다.
+        </p>
+      ) : quiz.teamSource === 'manual' ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <p className="text-sm text-slate-600">직접 정한 팀을 씁니다.</p>
+          <Button size="sm" variant="ghost" onClick={quiz.useGroupTeams}>
+            자리·모둠 따라가기
+          </Button>
+        </div>
       ) : (
         <p className="mb-3 text-sm text-slate-500">
-          여기서 정한 모둠으로 퀴즈가 시작됩니다. 한 번 정하면 계속 쓰이니 학기 초에 한 번만
-          맞춰 두면 됩니다.
+          아직 편성한 모둠이 없어 기본 팀을 씁니다.{' '}
+          <Link to="/seating" className="font-medium text-brand-600 hover:text-brand-700">
+            자리·모둠
+          </Link>
+          에서 편성하면 그것을 그대로 씁니다.
         </p>
       )}
 
@@ -245,6 +260,11 @@ function TeamSettings({ quiz }: { quiz: ReturnType<typeof useQuiz> }) {
             <li key={index}>
               <input
                 type="text"
+                /*
+                 * 값을 열쇠에 넣어야 한다. defaultValue는 처음 그릴 때만 읽히므로,
+                 * '자리·모둠 따라가기'로 바탕 값이 바뀌어도 칸은 옛 글자를 붙들고 있다.
+                 */
+                key={`${index}-${team}`}
                 defaultValue={team}
                 disabled={locked}
                 onBlur={(event) => {

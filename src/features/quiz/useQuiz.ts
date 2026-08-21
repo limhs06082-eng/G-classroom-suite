@@ -3,10 +3,10 @@ import { useCallback, useMemo } from 'react';
 import { createQuestion, createQuizSet } from '../../shared/domain/factories';
 import { createId } from '../../shared/ids';
 import type { QuizQuestion, QuizResult, QuizSet } from '../../shared/domain/types';
-import { useSuite } from '../../shared/roster/SuiteDataProvider';
+import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { normalizeSubject } from '../../shared/subjects';
 import { createRunState, teamScores, toResult, validateQuizSet, type QuizRunState } from './quizCore';
-import { normalizeTeams, teamsOrDefault } from './teamsCore';
+import { normalizeTeams, resolveTeams, type TeamSource } from './teamsCore';
 import { mergeAutoGrading } from './session/sessionCore';
 import type { QuizResponse } from './session/types';
 
@@ -45,6 +45,10 @@ export interface QuizView {
    * 바꾸면 앞 문제에서 맞힌 기록이 어느 팀 것인지 알 수 없게 된다.
    */
   setTeams: (teams: string[]) => void;
+  /** 지금 팀 이름이 어디서 왔는지. 화면이 교사에게 설명한다. */
+  teamSource: TeamSource;
+  /** 직접 정한 팀을 지워 모둠 쓰기로 되돌린다. */
+  useGroupTeams: () => void;
   /** 퀴즈가 돌고 있어 모둠을 못 바꾸는 상태인가 */
   isTeamsLocked: boolean;
   startRun: (setId: string) => void;
@@ -70,12 +74,30 @@ export function useQuiz(): QuizView {
    * 진행 중이면 그 판이 시작할 때의 팀을 쓴다. 도중에 설정이 바뀌어도
    * 이미 쌓인 점수와 어긋나지 않는다.
    */
-  const teams = useMemo(
-    () => (run !== null && run.teams.length > 0 ? run.teams : teamsOrDefault(data.quizTeams)),
-    [run, data.quizTeams],
+  const activeClass = useActiveClass();
+
+  /*
+   * 자리·모둠에서 편성한 모둠을 그대로 읽는다. 복사해 두지 않으므로
+   * 거기서 모둠을 하나 더 만들면 퀴즈에도 바로 나타난다.
+   */
+  const classGroups = useMemo(
+    () =>
+      activeClass === null ? [] : data.groups.filter((group) => group.classId === activeClass.id),
+    [data.groups, activeClass],
   );
 
-  const savedTeams = useMemo(() => teamsOrDefault(data.quizTeams), [data.quizTeams]);
+  const resolved = useMemo(
+    () => resolveTeams(data.quizTeams, classGroups),
+    [data.quizTeams, classGroups],
+  );
+
+  const teams = useMemo(
+    () => (run !== null && run.teams.length > 0 ? run.teams : resolved.teams),
+    [run, resolved],
+  );
+
+  const savedTeams = resolved.teams;
+  const teamSource = resolved.source;
 
   const setRun = useCallback(
     (recipe: (current: QuizRunState | null) => QuizRunState | null): void => {
@@ -186,6 +208,11 @@ export function useQuiz(): QuizView {
     },
     [patchSet],
   );
+
+  const useGroupTeams = useCallback((): void => {
+    // 비우면 resolveTeams가 다시 모둠을 고른다.
+    update((current) => ({ ...current, quizTeams: [] }));
+  }, [update]);
 
   const startRun = useCallback(
     (setId: string): void => {
@@ -336,6 +363,8 @@ export function useQuiz(): QuizView {
     removeQuestion,
     validate: validateQuizSet,
     setTeams,
+    teamSource,
+    useGroupTeams,
     startRun,
     stopRun,
     markCorrect,

@@ -16,6 +16,38 @@ export function defaultTeamName(index: number): string {
   return `${index + 1}모둠`;
 }
 
+/** 팀 이름이 어디서 왔는지. 화면이 교사에게 설명할 때 쓴다. */
+export type TeamSource = 'manual' | 'groups' | 'default';
+
+export interface ResolvedTeams {
+  teams: string[];
+  source: TeamSource;
+}
+
+/**
+ * 퀴즈 팀을 정한다.
+ *
+ * 직접 정한 것 → 자리·모둠에서 편성한 모둠 → 기본 팀 순으로 고른다.
+ *
+ * **직접 정한 것이 이긴다.** 남녀 대항이나 두 팀 대결처럼 모둠과 다르게
+ * 나누고 싶을 때가 있고, 그때 앱이 모둠으로 되돌리면 교사가 싸워야 한다.
+ *
+ * **모둠은 복사하지 않는다.** 부르는 쪽이 지금 모둠을 넘기므로, 자리·모둠에서
+ * 하나 더 만들면 퀴즈에도 바로 나타난다. 복사해 두면 "왜 6모둠인데 퀴즈는
+ * 4개지"가 생긴다.
+ */
+export function resolveTeams(
+  manual: readonly string[],
+  groups: readonly { name: string }[],
+): ResolvedTeams {
+  if (manual.length > 0) return { teams: normalizeTeams(manual), source: 'manual' };
+  if (groups.length > 0) {
+    return { teams: normalizeTeams(groups.map((group) => group.name)), source: 'groups' };
+  }
+
+  return { teams: [...DEFAULT_TEAMS], source: 'default' };
+}
+
 /** 저장된 값이 비어 있으면 기본값. 화면과 훅이 같은 답을 보게 한다. */
 export function teamsOrDefault(saved: readonly string[]): string[] {
   return saved.length > 0 ? [...saved] : [...DEFAULT_TEAMS];
