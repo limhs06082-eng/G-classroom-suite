@@ -11,11 +11,12 @@ import {
 import { useSuite } from '../../shared/roster/SuiteDataProvider';
 import { formatBytes, measureDataSize } from '../../shared/storage/dataSize';
 import type { BackupSummary } from '../../shared/storage/StorageAdapter';
+import { AccountPanel } from '../../shared/account/AccountPanel';
 import { Badge, Button, Card, ConfirmDialog, cx, EmptyState, Tabs, useToast } from '../../shared/ui';
 import { ClassTermTab } from './ClassTermTab';
 import { LockTab } from './LockTab';
 
-type SettingsTab = 'school' | 'classes' | 'lock' | 'backup' | 'legacy';
+type SettingsTab = 'school' | 'classes' | 'lock' | 'sync' | 'backup' | 'legacy';
 
 /**
  * 설정.
@@ -35,6 +36,7 @@ export default function SettingsPage() {
           { id: 'school', label: '학교 정보' },
           { id: 'classes', label: '학급·학기' },
           { id: 'lock', label: '교사 잠금' },
+          { id: 'sync', label: '계정·동기화' },
           { id: 'backup', label: '백업·복원' },
           { id: 'legacy', label: '기존 앱에서 가져오기' },
         ]}
@@ -44,6 +46,7 @@ export default function SettingsPage() {
         {tab === 'school' ? <SchoolTab /> : null}
         {tab === 'classes' ? <ClassTermTab /> : null}
         {tab === 'lock' ? <LockTab /> : null}
+        {tab === 'sync' ? <AccountPanel /> : null}
         {tab === 'backup' ? <BackupTab /> : null}
         {tab === 'legacy' ? (
           <div className="flex flex-col gap-4">

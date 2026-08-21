@@ -25,6 +25,7 @@ const TaskPage = lazy(() => import('../features/task/TaskPage'));
 const MessagePage = lazy(() => import('../features/message/MessagePage'));
 const BoardPage = lazy(() => import('../features/board/BoardPage'));
 const JoinPage = lazy(() => import('../features/quiz/JoinPage'));
+const LoginPage = lazy(() => import('./LoginPage'));
 
 /*
  * 개발 전용 컴포넌트 갤러리.
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
       { path: 'message', element: <MessagePage /> },
       { path: 'roster', element: <RosterPage /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'login', element: <LoginPage /> },
       { path: 'setup', element: <SetupPage /> },
       ...devRoutes,
       { path: '*', element: <NotFoundPage /> },
