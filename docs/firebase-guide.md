@@ -109,7 +109,7 @@ fork한 저장소를 AI 스튜디오로 연 뒤, **아래 내용을 그대로 �
 > 3. `src/features/` 아래 파일은 **한 줄도 고치지 마.** 화면 코드는 어댑터만 알고 있어야 해.
 > 4. `src/main.tsx`에서 `SuiteDataProvider`에 어댑터를 넘길 때, Firebase 설정이 채워져 있으면 `FirestoreAdapter`를, 비어 있으면 지금처럼 `LocalStorageAdapter`를 쓰도록 해. 설정이 없어도 앱이 그대로 동작해야 해.
 > 5. Firestore 경로는 `teachers/{uid}/suite/data` 한 문서에 `SuiteData` 전체를 저장하는 방식으로 해. 문서 1MB 제한이 있으니, 저장 직전에 크기를 재서 900KB를 넘으면 사용자에게 알림을 띄우고 저장은 계속 진행해.
-> 6. 로그인은 이메일/비밀번호로 하고, 로그인 화면을 `/login` 경로에 만들어. 로그인하지 않으면 `LocalStorageAdapter`로 동작하게 해.
+> 6. 로그인은 이메일/비밀번호로 하고, 로그인 화면을 `/login` 경로에 만들어. 로그인하지 않으면 `LocalStorageAdapter`로 동작하게 해. **그리고 설정 화면에 그 `/login`으로 가는 링크를 반드시 넣어.** 경로만 만들면 주소를 직접 치는 사람 말고는 아무도 로그인 화면에 닿을 수 없어. 로그인했을 때는 계정 이메일과 로그아웃 단추가 같은 자리에 보여야 해.
 > 7. **처음 로그인했을 때 원격 문서가 비어 있으면, 이 브라우저에 저장돼 있던 자료를 그대로 올려.** 원격에 이미 자료가 있으면 원격 것을 쓰고 덮어쓰지 마. 이걸 빠뜨리면 몇 달 쓰던 교사가 로그인하자마자 빈 화면을 보게 돼.
 > 8. **`firebase` 꾸러미는 정적으로 import하지 말고 `await import(...)`로 불러.** 정적으로 부르면 첫 화면 번들이 364KB에서 1,028KB로 커지고, Firebase를 안 쓰는 사람도 그 664KB를 내려받게 돼. `firebaseConfig.ts`가 비어 있으면 꾸러미를 아예 건드리지 않아야 해.
 > 9. **`SuiteData`를 객체 그대로 문서에 넣지 마.** `SuiteData`에는 `officeCode?: string`처럼 값이 없을 수 있는 칸이 있는데 Firestore는 `undefined`를 거부해. `JSON.stringify`한 글자 하나를 `json` 칸에 담아. 배열 안의 배열도 Firestore가 막으니 이 방법이 안전해.
@@ -182,6 +182,8 @@ Vercel이 자동으로 다시 배포합니다. 배포가 끝나면 `/login`에�
 - [ ] 로그인 후 학급을 만들고 새로고침해도 자료가 남아 있다
 - [ ] 다른 브라우저(또는 휴대폰)에서 같은 계정으로 로그인하면 같은 자료가 보인다
 - [ ] 로그아웃하면 이 브라우저에만 저장되는 모드로 돌아간다
+- [ ] **로그아웃해도 이 브라우저에 있던 자료가 그대로 남아 있다**
+- [ ] 주소를 직접 치지 않고 **화면 안의 링크만 눌러서** 로그인 화면에 갈 수 있다
 - [ ] Firebase 콘솔 → Firestore에 `teachers/{내 uid}/suite/data` 문서가 보인다
 - [ ] **쓰던 자료가 있었다면** 로그인한 뒤에도 학급·명단·점수가 그대로 보인다
 - [ ] `npm run build` 뒤 `dist/assets`에서 가장 큰 `.js`가 400KB 안쪽이다 (firebase가 따로 떨어져 나왔다는 뜻)
@@ -200,6 +202,7 @@ Vercel이 자동으로 다시 배포합니다. 배포가 끝나면 `/login`에�
 | `Top-level await is not available` | 3단계 지시문 12번이 빠졌습니다. `src/main.tsx`의 최상위 `await`를 `.then()`으로 바꾸세요 |
 | 첫 화면이 눈에 띄게 느려짐 | 3단계 지시문 8번이 빠졌습니다. `firebase`를 `await import(...)`로 부르는지 확인하세요 |
 | 설정값을 채웠더니 `This comparison appears to be unintentional` | `firebaseConfig`에 붙은 `as const`를 지우고 타입을 따로 적으세요 (3단계 지시문 1번) |
+| 로그인 화면을 못 찾겠음 | 주소 끝에 `/login`을 직접 쳐 보세요. 그걸로 열린다면 링크만 빠진 것입니다 — 3단계 지시문 6번을 다시 요청하세요 |
 
 ---
 
