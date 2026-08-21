@@ -61,7 +61,7 @@ function sampleData(): SuiteData {
 
   return {
     ...createEmptySuiteData(),
-    profile: { schoolName: '한빛초등학교', teacherName: '임한솔' },
+    profile: { schoolName: '한빛초등학교', teacherName: '임한솔', grade: '', classNo: '' },
     terms: [term],
     classRooms: [classRoom],
     students: [
@@ -120,7 +120,7 @@ describe('LocalStorageAdapter — 손상 복구', () => {
 
     // 백업이 생기도록 시간을 넘긴 뒤 한 번 더 저장
     clock.advanceMinutes(30);
-    await adapter.save({ ...sampleData(), profile: { schoolName: '두번째', teacherName: '임한솔' } });
+    await adapter.save({ ...sampleData(), profile: { schoolName: '두번째', teacherName: '임한솔', grade: '', classNo: '' } });
     expect((await adapter.listBackups()).length).toBeGreaterThan(0);
 
     // 본 데이터만 깨뜨린다
@@ -237,7 +237,7 @@ describe('LocalStorageAdapter — 내보내기와 가져오기', () => {
     await adapter.save(sampleData());
     clock.advanceMinutes(30);
 
-    const incoming = { ...createEmptySuiteData(), profile: { schoolName: '새 학교', teacherName: '새 교사' } };
+    const incoming = { ...createEmptySuiteData(), profile: { schoolName: '새 학교', teacherName: '새 교사', grade: '', classNo: '' } };
     const result = await adapter.importJson(JSON.stringify(incoming));
 
     expect(result.ok).toBe(true);

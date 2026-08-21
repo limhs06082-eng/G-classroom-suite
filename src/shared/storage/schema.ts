@@ -40,9 +40,231 @@ import {
   type SuiteData,
   type Term,
   type TermStatus,
+  // 도구함에서 옮겨 온 것
+  MESSAGE_CATEGORIES,
+  TASK_AREAS,
+  type ActivityMode,
+  type LessonPhase,
+  type LessonRun,
+  type LessonStage,
+  type LessonTemplate,
+  type MessageTemplate,
+  type QuestionType,
+  type QuizQuestion,
+  type QuizResult,
+  type QuizRun,
+  type QuizSet,
+  type TaskItem,
+  type TaskPriority,
+  type TaskStep,
 } from '../domain/types';
 
 import { isValidPin } from '../lock/lockOps';
+
+// ─────────────────────────────────────────────────────────────
+// 아래 해석기는 2단계 도구함에서 옮겨 왔다.
+// 헬퍼(isRecord·str·num…)는 양쪽 구현이 글자까지 같아 suite 것을 그대로 쓴다.
+// ─────────────────────────────────────────────────────────────
+
+const PHASES: readonly LessonPhase[] = ['intro', 'activity', 'wrapup'];
+const MODES: readonly ActivityMode[] = ['individual', 'pair', 'group', 'whole'];
+const QUESTION_TYPES: readonly QuestionType[] = ['choice', 'ox', 'short'];
+const PRIORITIES: readonly TaskPriority[] = ['high', 'normal', 'low'];
+
+// ── 엔티티 해석 ────────────────────────────────────────────────
+
+function parseStage(raw: unknown): LessonStage | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  if (id === null) return null;
+
+  return {
+    id,
+    phase: oneOf(raw['phase'], PHASES, 'activity'),
+    title: str(raw['title'], '이름 없는 단계'),
+    guide: str(raw['guide']),
+    // 음수 분은 타이머를 즉시 끝내 버린다.
+    minutes: Math.max(0, Math.round(num(raw['minutes'], 0))),
+    mode: oneOf(raw['mode'], MODES, 'whole'),
+  };
+}
+
+function parseLessonTemplate(raw: unknown, now: string): LessonTemplate | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  if (id === null) return null;
+
+  return {
+    id,
+    title: str(raw['title'], '이름 없는 수업'),
+    subject: str(raw['subject']),
+    stages: asArray(raw['stages']).flatMap((s) => {
+      const stage = parseStage(s);
+      return stage === null ? [] : [stage];
+    }),
+    createdAt: str(raw['createdAt'], now),
+    updatedAt: str(raw['updatedAt'], now),
+  };
+}
+
+function parseLessonRun(raw: unknown, templates: readonly LessonTemplate[]): LessonRun | null {
+  if (!isRecord(raw)) return null;
+  const templateId = requiredStr(raw['templateId']);
+  if (templateId === null) return null;
+
+  // 없어진 수업을 가리키면 진행 상태를 버린다. 그대로 두면 빈 화면이 뜬다.
+  const template = templates.find((item) => item.id === templateId);
+  if (template === undefined) return null;
+
+  const stageIndex = Math.round(num(raw['stageIndex'], 0));
+
+  return {
+    templateId,
+    stageIndex: Math.max(0, Math.min(stageIndex, Math.max(0, template.stages.length - 1))),
+    doneStageIds: strArray(raw['doneStageIds']),
+    startedAt: str(raw['startedAt']),
+  };
+}
+
+function parseQuestion(raw: unknown): QuizQuestion | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  if (id === null) return null;
+
+  const type = oneOf(raw['type'], QUESTION_TYPES, 'choice');
+
+  return {
+    id,
+    type,
+    text: str(raw['text']),
+    choices: strArray(raw['choices']),
+    answer: str(raw['answer']),
+    explanation: str(raw['explanation']),
+    timeLimitSec: Math.max(0, Math.round(num(raw['timeLimitSec'], 0))),
+    // 0점짜리 문제는 점수판을 이상하게 만든다.
+    points: Math.max(1, Math.round(num(raw['points'], 1))),
+  };
+}
+
+function parseQuizSet(raw: unknown, now: string): QuizSet | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  if (id === null) return null;
+
+  return {
+    id,
+    title: str(raw['title'], '이름 없는 문제 세트'),
+    subject: str(raw['subject']),
+    questions: asArray(raw['questions']).flatMap((q) => {
+      const question = parseQuestion(q);
+      return question === null ? [] : [question];
+    }),
+    createdAt: str(raw['createdAt'], now),
+    updatedAt: str(raw['updatedAt'], now),
+  };
+}
+
+function parseNumberRecord(value: unknown): Record<string, number> {
+  if (!isRecord(value)) return {};
+
+  const result: Record<string, number> = {};
+  for (const [key, raw] of Object.entries(value)) {
+    if (typeof raw === 'number' && Number.isFinite(raw)) result[key] = raw;
+  }
+  return result;
+}
+
+function parseQuizResult(raw: unknown, now: string): QuizResult | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  const quizSetId = requiredStr(raw['quizSetId']);
+  if (id === null || quizSetId === null) return null;
+
+  return {
+    id,
+    quizSetId,
+    teamScores: parseNumberRecord(raw['teamScores']),
+    correctByQuestion: parseNumberRecord(raw['correctByQuestion']),
+    totalTeams: Math.max(0, Math.round(num(raw['totalTeams'], 0))),
+    playedAt: str(raw['playedAt'], now),
+  };
+}
+
+function parseStringArrayRecord(value: unknown): Record<string, string[]> {
+  if (!isRecord(value)) return {};
+
+  const result: Record<string, string[]> = {};
+  for (const [key, raw] of Object.entries(value)) result[key] = strArray(raw);
+  return result;
+}
+
+function parseQuizRun(raw: unknown, sets: readonly QuizSet[]): QuizRun | null {
+  if (!isRecord(raw)) return null;
+  const quizSetId = requiredStr(raw['quizSetId']);
+  if (quizSetId === null) return null;
+
+  // 없어진 문제 세트를 가리키면 진행 상태를 버린다. 그대로 두면 빈 화면이 뜬다.
+  const set = sets.find((item) => item.id === quizSetId);
+  if (set === undefined) return null;
+
+  const index = Math.round(num(raw['questionIndex'], 0));
+
+  return {
+    quizSetId,
+    questionIndex: Math.max(0, Math.min(index, Math.max(0, set.questions.length - 1))),
+    correctTeamsByQuestion: parseStringArrayRecord(raw['correctTeamsByQuestion']),
+    manualTeamsByQuestion: parseStringArrayRecord(raw['manualTeamsByQuestion']),
+    sessionCode: requiredStr(raw['sessionCode']),
+    revealed: bool(raw['revealed'], false),
+    teams: strArray(raw['teams']),
+    startedAt: str(raw['startedAt']),
+  };
+}
+
+function parseStep(raw: unknown): TaskStep | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  if (id === null) return null;
+
+  return { id, text: str(raw['text']), done: bool(raw['done'], false) };
+}
+
+function parseTask(raw: unknown, now: string): TaskItem | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  if (id === null) return null;
+
+  return {
+    id,
+    title: str(raw['title'], '이름 없는 업무'),
+    area: oneOf(raw['area'], TASK_AREAS, '기타'),
+    dueDate: str(raw['dueDate']),
+    priority: oneOf(raw['priority'], PRIORITIES, 'normal'),
+    steps: asArray(raw['steps']).flatMap((s) => {
+      const step = parseStep(s);
+      return step === null ? [] : [step];
+    }),
+    memo: str(raw['memo']),
+    done: bool(raw['done'], false),
+    createdAt: str(raw['createdAt'], now),
+    updatedAt: str(raw['updatedAt'], now),
+  };
+}
+
+function parseMessageTemplate(raw: unknown, now: string): MessageTemplate | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  if (id === null) return null;
+
+  return {
+    id,
+    category: oneOf(raw['category'], MESSAGE_CATEGORIES, '기타'),
+    title: str(raw['title'], '이름 없는 문구'),
+    body: str(raw['body']),
+    isBuiltIn: bool(raw['isBuiltIn'], false),
+    createdAt: str(raw['createdAt'], now),
+  };
+}
 
 /**
  * 저장된 원시 데이터를 SuiteData로 해석한다.
@@ -565,6 +787,12 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
 
   const profileRaw = isRecord(root['profile']) ? root['profile'] : {};
 
+  // 진행 상태가 가리키는 대상을 확인하려면 목록이 먼저 있어야 한다.
+  const lessonTemplates = parseList('lessonTemplates', '수업 흐름', (r) =>
+    parseLessonTemplate(r, now),
+  );
+  const quizSets = parseList('quizSets', '문제 세트', (r) => parseQuizSet(r, now));
+
   const shaped: SuiteData = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     profile: {
@@ -572,6 +800,9 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
       teacherName: str(profileRaw['teacherName']),
       ...(typeof profileRaw['officeCode'] === 'string' ? { officeCode: profileRaw['officeCode'] } : {}),
       ...(typeof profileRaw['schoolCode'] === 'string' ? { schoolCode: profileRaw['schoolCode'] } : {}),
+      // 도구함에서 옮겨 온 것. 가정 통신 문구에 그대로 끼워 넣는 글자다.
+      grade: str(profileRaw['grade']),
+      classNo: str(profileRaw['classNo']),
     },
     terms: parseList('terms', '학기', (r) => parseTerm(r, now)),
     classRooms: parseList('classRooms', '학급', (r) => parseClassRoom(r, now)),
@@ -594,6 +825,21 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     activeTermId: typeof root['activeTermId'] === 'string' ? root['activeTermId'] : null,
     activeClassId: typeof root['activeClassId'] === 'string' ? root['activeClassId'] : null,
     ...parseLock(root),
+
+    // ── 도구함에서 옮겨 온 것 ────────────────────────────────
+    // lessonRun·quizRun은 목록을 먼저 읽어야 가리키는 대상을 확인할 수 있다.
+    lessonTemplates,
+    lessonRun: parseLessonRun(root['lessonRun'], lessonTemplates),
+    quizSets,
+    quizResults: parseList('quizResults', '퀴즈 결과', (r) => parseQuizResult(r, now)),
+    quizRun: parseQuizRun(root['quizRun'], quizSets),
+    tasks: parseList('tasks', '업무', (r) => parseTask(r, now)),
+    messageTemplates: parseList('messageTemplates', '문구 템플릿', (r) =>
+      parseMessageTemplate(r, now),
+    ),
+    messageFavorites: strArray(root['messageFavorites']),
+    messageHidden: strArray(root['messageHidden']),
+    quizTeams: strArray(root['quizTeams']),
   };
 
   const repaired = validateAndRepair(shaped, now);

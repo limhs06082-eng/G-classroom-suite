@@ -1,6 +1,7 @@
 import { createEmptySuiteData, createId } from '../domain/factories';
 import type { RepairLog } from '../domain/invariants';
 import type { SuiteData } from '../domain/types';
+import { adoptToolkitData, SPLIT_APP_KEYS } from './adoptSplitApps';
 import { applyRetention, byteLength } from './backup';
 import { parseSuiteData, serializeSuiteData } from './schema';
 import type {
@@ -121,6 +122,23 @@ export class LocalStorageAdapter implements StorageAdapter {
     const raw = this.read(STORAGE_KEYS.data);
 
     if (raw === null) {
+      /*
+       * 새 열쇠에 자료가 없다. 두 앱으로 나뉘어 있던 시절의 도구함 자료가
+       * 남아 있으면 여기서 한 번 이어받는다. 덮어쓸 것이 없으므로 안전하다.
+       */
+      const legacy = this.read(SPLIT_APP_KEYS.toolkit);
+      if (legacy !== null) {
+        try {
+          const adopted = adoptToolkitData(createEmptySuiteData(), JSON.parse(legacy));
+          if (adopted.adopted) {
+            const parsed = parseSuiteData(adopted.data);
+            return { data: parsed.data, repairs: parsed.repairs, isFirstRun: false };
+          }
+        } catch {
+          // 옛 자료가 깨졌으면 그냥 새로 시작한다. 여기서 멈출 이유가 없다.
+        }
+      }
+
       return { data: createEmptySuiteData(), repairs: [], isFirstRun: true };
     }
 
