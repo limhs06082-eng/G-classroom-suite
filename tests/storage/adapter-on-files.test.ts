@@ -42,11 +42,13 @@ describe('파일 저장소를 끼운 LocalStorageAdapter', () => {
     expect(result.isFirstRun).toBe(true);
   });
 
-  it('저장한 것을 다시 불러온다', async () => {
+  it('저장한 것이 파일에 닿는다', async () => {
     await adapter.save(sample('한빛초등학교'));
+    await storage.flush();
 
-    const result = await adapter.load();
-    expect(result.data.profile.schoolName).toBe('한빛초등학교');
+    // 메모리가 아니라 파일에서 확인한다. 이 파일의 존재 이유가 그것이다.
+    const onDisk: unknown = JSON.parse((await files.read('data.json')) ?? '{}');
+    expect((onDisk as SuiteData).profile.schoolName).toBe('한빛초등학교');
   });
 
   it('앱을 다시 켜도 자료가 남아 있다', async () => {

@@ -108,6 +108,27 @@ describe('FileBackedStorage — 쓰기', () => {
     expect(second.getItem('classroom-suite:v1:meta')).toBe('M');
     expect(second.getItem('classroom-suite:v1:neis-key')).toBe('K');
   });
+
+  it('한 파일의 다른 열쇠를 고쳐도 이웃이 살아남는다', async () => {
+    // 지난 학기에 넣어 둔 NEIS 키가, 이번에 meta만 고쳤다고 사라지면 안 된다.
+    await files.writeAtomic(
+      'prefs.json',
+      JSON.stringify({
+        'classroom-suite:v1:meta': 'OLD_META',
+        'classroom-suite:v1:neis-key': 'KEEP_ME',
+      }),
+    );
+
+    const storage = await open();
+    storage.setItem('classroom-suite:v1:meta', 'NEW_META');
+    await storage.flush();
+
+    const prefs: unknown = JSON.parse((await files.read('prefs.json')) ?? '{}');
+    expect(prefs).toEqual({
+      'classroom-suite:v1:meta': 'NEW_META',
+      'classroom-suite:v1:neis-key': 'KEEP_ME',
+    });
+  });
 });
 
 describe('FileBackedStorage — 지우기', () => {
@@ -159,6 +180,21 @@ describe('FileBackedStorage — 쓰기가 실패해도', () => {
     expect(storage.getItem('classroom-suite:v1:data')).toBe('Y');
     expect(failures).toHaveLength(1);
     expect(failures[0]).toContain('data.json');
+  });
+
+  it('실패한 쓰기가 다음 기회에 다시 나간다', async () => {
+    const storage = await FileBackedStorage.open(files, { onWriteError: () => undefined });
+
+    files.failNextWrite = true;
+    storage.setItem('classroom-suite:v1:data', 'FIRST');
+    await vi.advanceTimersByTimeAsync(300);
+    expect(await files.read('data.json')).toBeNull();
+
+    // 다음 저장이 오면 실패했던 것까지 함께 나간다.
+    storage.setItem('classroom-suite:v1:data', 'SECOND');
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(await files.read('data.json')).toBe('SECOND');
   });
 });
 

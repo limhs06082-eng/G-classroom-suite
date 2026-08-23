@@ -46,7 +46,8 @@ export class FileBackedStorage implements Storage {
   private map = new Map<string, string>();
   private dirty = new Set<string>();
   private timer: ReturnType<typeof setTimeout> | null = null;
-  private pending: Promise<void> | null = null;
+  /** 줄 세운 쓰기. 슬롯이 아니라 사슬이라 앞의 것을 잃지 않는다. */
+  private pending: Promise<void> = Promise.resolve();
 
   private constructor(
     private readonly files: FileStore,
@@ -134,8 +135,24 @@ export class FileBackedStorage implements Storage {
     if (this.timer !== null) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
       this.timer = null;
-      this.pending = this.writeDirty();
+      this.enqueueWrite();
     }, WRITE_DELAY_MS);
+  }
+
+  /**
+   * 쓰기를 줄 세운다.
+   *
+   * 약속을 슬롯 하나에 담아 두면, 앞의 쓰기가 아직 디스크에 있는 동안
+   * 다음 쓰기가 그 자리를 덮어쓴다. 그러면 flush가 기다릴 대상을 잃고
+   * 아직 안 끝난 쓰기를 두고 먼저 돌아온다 — 창을 닫는 순간 마지막
+   * 몇 초가 그렇게 사라진다. 앞의 것에 이어 붙여야 한다.
+   *
+   * 줄을 세우면 같은 파일에 대한 쓰기 둘이 뒤바뀌어 닿는 일도 없어진다.
+   */
+  private enqueueWrite(): void {
+    this.pending = this.pending
+      .catch(() => undefined)
+      .then(() => this.writeDirty());
   }
 
   /** 예약된 쓰기를 곧바로 내보낸다. 창을 닫을 때 반드시 부른다. */
@@ -143,10 +160,15 @@ export class FileBackedStorage implements Storage {
     if (this.timer !== null) {
       clearTimeout(this.timer);
       this.timer = null;
-      this.pending = this.writeDirty();
+      this.enqueueWrite();
     }
 
-    await this.pending;
+    // 줄에 남은 것이 다 빠질 때까지 기다린다. 기다리는 사이 또 들어올 수 있다.
+    let previous: Promise<void> | null = null;
+    while (previous !== this.pending) {
+      previous = this.pending;
+      await this.pending;
+    }
   }
 
   private async writeDirty(): Promise<void> {
@@ -183,6 +205,14 @@ export class FileBackedStorage implements Storage {
             error instanceof Error ? error.message : String(error)
           }`,
         );
+
+        /*
+         * 다시 더럽다고 표시한다. 이걸 안 하면 실패한 파일이 목록에서
+         * 빠져 다음에 그 파일을 건드리는 저장이 올 때까지 영영 안 쓰인다.
+         * data.json은 저장할 때마다 다시 쓰이니 저절로 낫지만,
+         * backups.json은 10분에 한 번뿐이라 그 사이에 앱이 닫히면 잃는다.
+         */
+        this.dirty.add(fileName);
       }
     }
   }
