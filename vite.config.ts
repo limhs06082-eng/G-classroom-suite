@@ -6,6 +6,14 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   // Vercel 배포 기준. 원본 dashboard의 GitHub Pages base 로직은 이식하지 않는다.
   base: '/',
+  define: {
+    /*
+     * 빌드 대상을 글자로 박아 넣는다. import.meta.env.VITE_TARGET은
+     * VITE_ 접두사 덕에 자동으로 들어가지만, 값이 없을 때 undefined가
+     * 되어 타입이 흔들린다. 여기서 못 박아 둔다.
+     */
+    'import.meta.env.VITE_TARGET': JSON.stringify(process.env.VITE_TARGET ?? 'web'),
+  },
   plugins: [react(), tailwindcss()],
   server: {
     // 포트가 이미 쓰이는 환경이 흔하다. PORT가 있으면 그것을 따른다.
