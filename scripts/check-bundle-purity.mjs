@@ -10,19 +10,25 @@
  * 조용히 떨어진다 — 교사는 껐다 켤 때마다 자료를 잃는다. grep 한 번 깜빡하는 사람에게
  * 맡기지 않고 검증 파이프라인에 못 박아 둔다.
  *
- * 표지자는 __TAURI_INTERNALS__ 하나다.
+ * 표지자는 둘 다 Tauri 자신의 코드에만 있는 문자열이다. 식별자는 축약되어
+ * 사라지지만 문자열 리터럴은 남으므로, 번들을 열어 보면 그대로 걸린다.
  *
- * 이것은 Tauri API 모듈이 저마다 지고 다니는 IPC 다리라, 모듈이 번들에
- * 실리면 반드시 나오고 안 실리면 절대 안 나온다. 딱 그 질문에만 답한다.
+ * __TAURI_INTERNALS__   IPC 다리. 명령을 부르는 모듈이면 반드시 지고 있다.
+ * __TAURI_TO_IPC_KEY__  core.js의 상수. dpi처럼 명령을 아예 안 부르는
+ *                       모듈이 있어서 필요하다 — dpi.js에는 __TAURI_INTERNALS__가
+ *                       하나도 없고, core에서 이 상수 하나만 가져온다.
+ *                       그 상태로 실리면 첫 표지자만으로는 못 잡는다.
  *
  * readTextFile·writeTextFile·onCloseRequested를 표지자로 쓰면 안 된다.
  * 그건 우리 소스가 부르는 이름이라, external로 Tauri를 통째로 빼내도
  * 우리 코드 쪽에 그대로 남는다. 실제로 main.tsx의
- * `currentWindow.onCloseRequested(...)`가 그렇게 걸렸다 — 죽은 글자인데
- * 검사만 붉게 만들었다.
+ * `currentWindow.onCloseRequested(...)`가 그렇게 걸려 검사만 붉게 만들었다.
  *
- * 맨 특정자(`import("@tauri-apps/api/window")`)도 같은 이유로 표지자가
- * 아니다. external을 쓰면 나오는 것이 정상이고, 실행되지 않는다.
+ * 맨 특정자(`import("@tauri-apps/api/window")`)도 표지자가 아니다.
+ * external을 쓰면 나오는 것이 정상이고, 실행되지 않는다.
+ *
+ * 설치형 쪽은 __TAURI_INTERNALS__만 본다. 다리가 실제로 실렸는지가
+ * 확인할 것이지, 상수 하나가 딸려 왔는지가 아니다.
  *
  *   node scripts/check-bundle-purity.mjs web
  *   node scripts/check-bundle-purity.mjs desktop
@@ -32,8 +38,11 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 const ASSETS_DIR = 'dist/assets';
 const MAX_WEB_BYTES = 400 * 1024;
 
-// invoke 브리지 — Tauri API 모듈이면 반드시 지니고, 아니면 절대 없다.
-const MARKER = '__TAURI_INTERNALS__';
+const TAURI_INTERNALS = '__TAURI_INTERNALS__';
+const TAURI_TO_IPC_KEY = '__TAURI_TO_IPC_KEY__';
+
+// 웹에서는 둘 다 없어야 한다. 설치형에서는 IPC 다리 자체가 실렸는지만 본다.
+const WEB_MARKERS = [TAURI_INTERNALS, TAURI_TO_IPC_KEY];
 
 const target = process.argv[2];
 if (target !== 'web' && target !== 'desktop') {
@@ -58,7 +67,8 @@ function listJsFiles(dir) {
 
 const files = listJsFiles(ASSETS_DIR);
 
-const foundIn = [];
+// 표지자별로 어느 파일에서 나왔는지 모은다.
+const foundIn = new Map([TAURI_INTERNALS, TAURI_TO_IPC_KEY].map((marker) => [marker, []]));
 let largest = { file: null, size: 0 };
 
 for (const file of files) {
@@ -66,7 +76,9 @@ for (const file of files) {
   if (size > largest.size) largest = { file, size };
 
   const text = readFileSync(file, 'utf8');
-  if (text.includes(MARKER)) foundIn.push(file);
+  for (const marker of foundIn.keys()) {
+    if (text.includes(marker)) foundIn.get(marker).push(file);
+  }
 }
 
 const largestKb = (largest.size / 1024).toFixed(1);
@@ -75,16 +87,18 @@ const largestLabel = largest.file ? `${largest.file} (${largestKb}KB)` : '(청�
 const problems = [];
 
 if (target === 'web') {
-  for (const file of foundIn) {
-    problems.push(`"${MARKER}"가 ${file}에 있습니다 — Tauri 런타임이 웹 번들에 실렸습니다`);
+  for (const marker of WEB_MARKERS) {
+    for (const file of foundIn.get(marker)) {
+      problems.push(`"${marker}"가 ${file}에 있습니다 — Tauri 런타임이 웹 번들에 실렸습니다`);
+    }
   }
   if (largest.size > MAX_WEB_BYTES) {
     problems.push(`가장 큰 청크가 ${largestKb}KB로 400KB 한도를 넘었습니다 (${largest.file})`);
   }
 } else {
-  if (foundIn.length === 0) {
+  if (foundIn.get(TAURI_INTERNALS).length === 0) {
     problems.push(
-      `${MARKER}가 어디에도 없습니다 — 설치형 분기가 두 빌드 모두에서 죽은 코드로 ` +
+      `${TAURI_INTERNALS}가 어디에도 없습니다 — 설치형 분기가 두 빌드 모두에서 죽은 코드로 ` +
         '지워졌다는 뜻입니다. 이 상태로는 파일 저장소가 아니라 브라우저 저장소로 조용히 ' +
         '떨어져, 껐다 켤 때마다 자료를 잃습니다.',
     );
