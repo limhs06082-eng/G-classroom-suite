@@ -157,9 +157,16 @@ export class FileBackedStorage implements Storage {
 
   /** 예약된 쓰기를 곧바로 내보낸다. 창을 닫을 때 반드시 부른다. */
   async flush(): Promise<void> {
-    if (this.timer !== null) {
-      clearTimeout(this.timer);
-      this.timer = null;
+    /*
+     * 타이머만 보면 안 된다. 쓰기가 실패한 직후에는 그 타이머가 이미
+     * 발화해 null인데 dirty에는 실패한 파일이 남아 있다. 그 상태로 창을
+     * 닫으면 마지막 구제 기회를 그냥 흘려보낸다.
+     */
+    if (this.timer !== null || this.dirty.size > 0) {
+      if (this.timer !== null) {
+        clearTimeout(this.timer);
+        this.timer = null;
+      }
       this.enqueueWrite();
     }
 

@@ -202,6 +202,23 @@ describe('FileBackedStorage — 쓰기가 실패해도', () => {
     expect(await files.read('backups.json')).toBe('SNAPSHOT');
     expect(await files.read('data.json')).toBe('UNRELATED');
   });
+
+  it('쓰기가 실패한 뒤 곧바로 닫아도 flush가 한 번 더 시도한다', async () => {
+    const storage = await FileBackedStorage.open(files, { onWriteError: () => undefined });
+
+    files.failNextWrite = true;
+    storage.setItem('classroom-suite:v1:backups', 'SNAPSHOT');
+    await vi.advanceTimersByTimeAsync(300);
+    expect(await files.read('backups.json')).toBeNull();
+
+    /*
+     * 아무것도 더 건드리지 않고 창을 닫는다. 실패한 직후라 타이머는
+     * 이미 null이므로, flush가 dirty를 보지 않으면 그냥 돌아간다.
+     */
+    await storage.flush();
+
+    expect(await files.read('backups.json')).toBe('SNAPSHOT');
+  });
 });
 
 describe('열쇠와 파일의 대응', () => {
