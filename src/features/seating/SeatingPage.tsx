@@ -10,6 +10,7 @@ import {
 } from '../../shared/domain/types';
 import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { Badge, Button, Card, ConfirmDialog, cx, EmptyState, Tabs, useToast } from '../../shared/ui';
+import { openBoard } from '../../shared/window/openBoard';
 import { ClassroomGrid, type GridMode } from './ClassroomGrid';
 import { GroupingPanel } from './GroupingPanel';
 import { useSeating } from './useSeating';
@@ -174,15 +175,9 @@ export default function SeatingPage() {
           <Button icon={Shuffle} variant="primary" onClick={handleShuffle}>
             무작위 배치
           </Button>
-          <Link
-            to="/board/seating"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-10 items-center gap-2 rounded-control border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <Monitor className="size-4" aria-hidden />
+          <Button variant="secondary" icon={Monitor} onClick={() => openBoard('/board/seating')}>
             전자칠판
-          </Link>
+          </Button>
         </div>
       </div>
 

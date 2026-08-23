@@ -9,11 +9,11 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 
 import type { LessonPhase, LessonStage, LessonTemplate } from '../../shared/domain/types';
 import { TitleSubjectFields } from '../../shared/TitleSubjectFields';
 import { Badge, Button, Card, ConfirmDialog, cx, EmptyState, Modal, useToast } from '../../shared/ui';
+import { openBoard } from '../../shared/window/openBoard';
 import { MODE_LABELS, PHASE_LABELS, totalMinutes } from './lessonCore';
 import { useLesson } from './useLesson';
 
@@ -52,15 +52,9 @@ export default function LessonPage() {
             수업 흐름 만들기
           </Button>
           {lesson.running === null ? null : (
-            <Link
-              to="/board/lesson"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-10 items-center gap-2 rounded-control border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <Monitor className="size-4" aria-hidden />
+            <Button variant="secondary" icon={Monitor} onClick={() => openBoard('/board/lesson')}>
               전자칠판
-            </Link>
+            </Button>
           )}
         </div>
       </div>
