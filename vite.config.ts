@@ -19,8 +19,20 @@ export default defineConfig({
   },
   plugins: [react(), tailwindcss()],
   server: {
-    // 포트가 이미 쓰이는 환경이 흔하다. PORT가 있으면 그것을 따른다.
-    // Tauri가 devUrl로 이 포트를 본다. 자동으로 옮겨 다니면 흰 화면이 뜬다.
+    /*
+     * strictPort가 없으면 포트가 이미 쓰이는 환경에서 Vite가 조용히
+     * 3001로 옮겨 붙는다. src-tauri/tauri.conf.json의 devUrl은 3000에
+     * 고정돼 있어서, 그렇게 옮겨 가면 Tauri 셸은 아무 안내 없이 빈
+     * 화면을 띄운다. 그래서 조용히 옮기는 대신 strictPort: true로 묶어
+     * 포트가 막혀 있으면 그 자리에서 개발 서버가 곧바로(fatal) 죽게
+     * 한다 — 흰 화면보다 에러 메시지가 낫다.
+     *
+     * PORT 환경변수는 그 에러를 피하는 탈출구지만 **웹 개발에만** 듣는다.
+     * devUrl은 이 값을 보지 않고 3000으로 박혀 있으므로, PORT=3001로
+     * 웹 쪽 충돌만 피하면 `tauri dev`는 여전히 3000을 찾다가 흰 화면을
+     * 만난다. PORT를 바꾸려면 tauri.conf.json의 devUrl도 같이 바꿔야
+     * 한다.
+     */
     port: Number(process.env.PORT ?? 3000),
     strictPort: true,
   },

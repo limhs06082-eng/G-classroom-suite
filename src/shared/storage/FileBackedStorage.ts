@@ -255,11 +255,22 @@ export class FileBackedStorage implements Storage {
          * 메모리 값은 되돌리지 않는다. 저장이 실패했다고 화면의 자료까지
          * 잃으면 방금 준 점수가 눈앞에서 사라진다.
          */
-        this.onWriteError(
-          `${fileName}에 저장하지 못했습니다: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
+        const message = `${fileName}에 저장하지 못했습니다: ${
+          error instanceof Error ? error.message : String(error)
+        }`;
+        this.onWriteError(message);
+
+        /*
+         * onWriteError만으로는 화면에 아무것도 뜨지 않는다 — 이 클래스를
+         * 여는 쪽(main.tsx)이 console.warn만 하고 끝낼 수도 있기 때문이다.
+         * SuiteDataProvider의 저장 실패 토스트는 adapter.save()가 던져야
+         * 뜨는데, 여기 setItem은 Map에 쓰고 예약만 할 뿐 절대 던지지
+         * 않으므로 그 토스트는 설치형에서 결코 뜨지 않는다. window 이벤트로
+         * 따로 알려, WriteErrorToast.tsx가 같은 자리에 토스트를 띄우게
+         * 한다. 웹에서는 이 클래스 자체가 안 쓰이므로 이 이벤트가 나갈 일이
+         * 없다.
+         */
+        window.dispatchEvent(new CustomEvent('gboard-write-error', { detail: message }));
 
         /*
          * 다시 더럽다고 표시한다. 이걸 안 하면 실패한 파일이 목록에서

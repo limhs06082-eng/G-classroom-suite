@@ -7,6 +7,7 @@ import { resolveAdapter } from './shared/storage/firebaseApp';
 import { isDesktop } from './shared/platform/target';
 import { LocalStorageAdapter } from './shared/storage/LocalStorageAdapter';
 import type { StorageAdapter } from './shared/storage/StorageAdapter';
+import { WriteErrorToast } from './shared/storage/WriteErrorToast';
 import { SuiteDataProvider } from './shared/roster/SuiteDataProvider';
 import { ToastProvider } from './shared/ui';
 import './index.css';
@@ -26,6 +27,16 @@ if (!rootElement) {
  *
  * 최상위 await를 쓰지 않는다. 타입 검사와 테스트는 통과하지만 빌드 목표가
  * es2020이라 esbuild가 거부한다. then으로 받아야 빌드까지 지나간다.
+ *
+ * 바로 아래 if (!isDesktop())는 FileBackedStorage·TauriFileStore를 불러오는
+ * import()의 guard다. lazy()/import() 자체를 가르는 분기라 target.ts의
+ * 규칙대로면 isDesktop()이 아니라 import.meta.env.VITE_TARGET 리터럴
+ * 비교를 써야 하는 자리인데, 여기서는 예외로 isDesktop()을 쓴다. 안전한
+ * 이유는 main.tsx가 진입 청크 자신이고 target.ts를 다른 청크를 거치지
+ * 않고 곧장 정적으로 불러오기 때문이다 — 청크 경계가 없으니 Rollup이
+ * 값을 상수로 못 접을 상황 자체가 생기지 않는다. 이 전제를 짐작으로
+ * 남겨 두지 않고, check:bundle desktop이 설치형 산출물에 __TAURI_INTERNALS__가
+ * 실제로 실렸는지 매번 확인한다.
  */
 async function chooseAdapter(): Promise<StorageAdapter> {
   if (!isDesktop()) {
@@ -106,6 +117,12 @@ void chooseAdapter().then((adapter) => {
         Toast가 바깥이어야 SuiteDataProvider가 복구 내역을 알릴 수 있다.
       */}
       <ToastProvider>
+        {/*
+          FileBackedStorage의 쓰기 실패를 토스트로 띄운다. 웹에서는
+          gboard-write-error가 한 번도 안 던져지므로 그냥 아무 일도 안
+          한다 — 그래서 target 분기 없이 무조건 마운트한다.
+        */}
+        <WriteErrorToast />
         <SuiteDataProvider adapter={adapter}>
           <RouterProvider router={router} />
         </SuiteDataProvider>

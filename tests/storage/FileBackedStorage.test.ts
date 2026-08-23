@@ -345,3 +345,44 @@ describe('FileBackedStorage — 내가 쓴 것을 알린다', () => {
     expect(written).toEqual([]);
   });
 });
+
+describe('FileBackedStorage — 쓰기 실패를 창에 알린다', () => {
+  /*
+   * onWriteError 콜백만으로는 화면에 아무것도 뜨지 않는다 — main.tsx가
+   * 그 콜백에 console.warn만 넘길 수도 있어서다. WriteErrorToast.tsx가
+   * 이 window 이벤트를 들어야 저장 실패가 교사 눈에 토스트로 보인다.
+   * gboard-local-write와 같은 모양의 이벤트라 시험도 같은 모양으로 쓴다.
+   */
+  it('쓰기가 실패하면 gboard-write-error를 던진다', async () => {
+    const storage = await FileBackedStorage.open(files, { onWriteError: () => undefined });
+    const errors: string[] = [];
+    const handle = (event: Event): void => {
+      errors.push((event as CustomEvent<string>).detail);
+    };
+    window.addEventListener('gboard-write-error', handle);
+
+    files.failNextWrite = true;
+    storage.setItem('classroom-suite:v1:data', 'X');
+    await vi.advanceTimersByTimeAsync(300);
+    window.removeEventListener('gboard-write-error', handle);
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('data.json');
+  });
+
+  it('쓰기가 성공하면 gboard-write-error를 던지지 않는다', async () => {
+    const storage = await open();
+    const errors: string[] = [];
+    const handle = (event: Event): void => {
+      errors.push((event as CustomEvent<string>).detail);
+    };
+    window.addEventListener('gboard-write-error', handle);
+
+    storage.setItem('classroom-suite:v1:data', 'X');
+    await vi.advanceTimersByTimeAsync(300);
+    window.removeEventListener('gboard-write-error', handle);
+
+    // 성공한 저장에까지 오류 토스트가 뜨면 교사가 매번 놀란다.
+    expect(errors).toEqual([]);
+  });
+});
