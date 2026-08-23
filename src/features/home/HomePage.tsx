@@ -22,6 +22,7 @@ import {
   useRoster,
   useSuite,
 } from '../../shared/roster/SuiteDataProvider';
+import { isDesktop } from '../../shared/platform/target';
 import { Button, Card, EmptyState, useToast } from '../../shared/ui';
 import { AssignmentSummary } from '../assignment/AssignmentSummary';
 import { DutySummary } from '../duty/DutySummary';
@@ -206,26 +207,49 @@ export default function HomePage() {
           />
         </SummaryCard>
 
-        <SummaryCard
-          to="/quiz"
-          label="형성평가"
-          icon={CheckSquare}
-          accentClass="text-quiz-500"
-          tintClass="bg-quiz-50"
-          cta="형성평가 열기"
-        >
-          <BigStat
-            value={data.quizSets.length}
-            unit="개"
-            note={
-              data.quizRun !== null
-                ? '지금 퀴즈 진행 중'
-                : data.quizResults.length > 0
-                  ? `지난 결과 ${data.quizResults.length}건`
-                  : '문제 세트'
-            }
-          />
-        </SummaryCard>
+        {isDesktop() ? (
+          /*
+           * 설치형에는 서버가 없어 학생 폰이 들어올 길이 없다. 화면을
+           * 반쯤 살려 두면 "되는 줄 알았는데 안 되는" 자리가 되므로
+           * 라우트째 뺐다(router.tsx의 desktopHiddenPaths). 여기서는
+           * 사라진 것처럼 보이지 않도록 웹으로 가는 안내만 남긴다.
+           */
+          <SummaryCard
+            to="/settings"
+            label="형성평가"
+            icon={CheckSquare}
+            accentClass="text-quiz-500"
+            tintClass="bg-quiz-50"
+            pending
+            cta="웹에서 여는 법 보기"
+          >
+            <PendingNote>
+              학생 폰으로 참여하는 형성평가는 웹에서 쓰실 수 있습니다.
+              g-classroom-suite.vercel.app
+            </PendingNote>
+          </SummaryCard>
+        ) : (
+          <SummaryCard
+            to="/quiz"
+            label="형성평가"
+            icon={CheckSquare}
+            accentClass="text-quiz-500"
+            tintClass="bg-quiz-50"
+            cta="형성평가 열기"
+          >
+            <BigStat
+              value={data.quizSets.length}
+              unit="개"
+              note={
+                data.quizRun !== null
+                  ? '지금 퀴즈 진행 중'
+                  : data.quizResults.length > 0
+                    ? `지난 결과 ${data.quizResults.length}건`
+                    : '문제 세트'
+              }
+            />
+          </SummaryCard>
+        )}
 
         <SummaryCard
           to="/task"
