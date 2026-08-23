@@ -17,3 +17,13 @@ node scripts/audit-dead-api.mjs .
 ```bash
 node scripts/check-vercel-json.mjs
 ```
+
+빌드 산출물도 눈으로 보고 넘기지 않는다. 웹 번들에 Tauri 런타임이 실리거나, 반대로
+설치형 번들에서 Tauri 분기가 죽은 코드로 지워지면(둘 다 타입 검사·테스트·빌드는
+그대로 초록불이다) 산출물을 직접 grep해야만 드러난다. `npm run verify`에 이미
+물려 있고, 필요하면 따로도 돌릴 수 있다.
+
+```bash
+npm run build && node scripts/check-bundle-purity.mjs web
+npm run build:desktop && node scripts/check-bundle-purity.mjs desktop
+```

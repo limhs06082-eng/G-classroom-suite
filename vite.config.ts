@@ -43,7 +43,11 @@ export default defineConfig({
        * 번들에서 통째로 빠진다. 데스크톱 빌드에서는 그대로 번들에
        * 넣어야 하므로 그때는 비운다.
        */
-      external: VITE_TARGET === 'desktop' ? [] : [/^@tauri-apps\//],
+      external: VITE_TARGET === 'desktop'
+        ? []
+        : (source) =>
+            /^@tauri-apps\//.test(source) ||
+            /[\\/]storage[\\/](TauriFileStore|FileBackedStorage)\.ts$/.test(source),
     },
   },
   test: {
