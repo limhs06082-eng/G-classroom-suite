@@ -58,7 +58,7 @@
 - Modify: `vite.config.ts`
 
 **Interfaces:**
-- Produces: `isDesktop(): boolean`, `TARGET: 'web' | 'desktop'`
+- Produces: `resolveTarget(raw: string | undefined): 'web' | 'desktop'`, `TARGET: 'web' | 'desktop'`, `isDesktop(): boolean`
 
 판단을 한 곳에 모은다. 여기저기서 `import.meta.env`를 읽으면 나중에 조건이
 바뀔 때 새는 곳이 생긴다.
@@ -70,20 +70,38 @@
 ```ts
 import { describe, expect, it } from 'vitest';
 
-import { isDesktop, TARGET } from '../../src/shared/platform/target';
+import { isDesktop, resolveTarget, TARGET } from '../../src/shared/platform/target';
 
-describe('빌드 대상 판단', () => {
-  it('VITE_TARGET이 없으면 웹이다', () => {
+describe('빌드 대상 옮기기', () => {
+  it("'desktop'이면 설치형이다", () => {
+    expect(resolveTarget('desktop')).toBe('desktop');
+  });
+
+  it('값이 없으면 웹이다', () => {
     // 아무 설정 없이 fork해 배포해도 웹으로 도는 것이 기본값이다.
+    expect(resolveTarget(undefined)).toBe('web');
+  });
+
+  it('모르는 값이면 웹이다', () => {
+    // 오타 하나로 앱이 이상한 모드로 뜨는 것보다 웹으로 도는 편이 낫다.
+    expect(resolveTarget('desktopp')).toBe('web');
+    expect(resolveTarget('')).toBe('web');
+  });
+});
+
+describe('이 빌드의 대상', () => {
+  it('시험에서는 웹이다', () => {
+    // VITE_TARGET을 안 준 채로 도므로 웹이어야 한다.
     expect(TARGET).toBe('web');
     expect(isDesktop()).toBe(false);
   });
-
-  it('둘은 항상 같은 답을 준다', () => {
-    expect(isDesktop()).toBe(TARGET === 'desktop');
-  });
 });
 ```
+
+> **왜 `resolveTarget`을 따로 두는가.** `TARGET`을 바로 만들면 그 값이 빌드
+> 때 글자로 박혀서, 시험이 도는 동안에는 늘 `'web'`이다. 그러면 설치형
+> 갈래가 통째로 깨져도 시험이 통과한다. 순수 함수로 빼야 두 갈래를 다
+> 확인할 수 있다.
 
 - [ ] **Step 2: 실패를 확인한다**
 
@@ -107,8 +125,18 @@ Expected: FAIL — `Failed to resolve import "../../src/shared/platform/target"`
  *
  * 값이 없으면 웹이다. 설정 없이 fork해 배포하는 것이 기본 흐름이다.
  */
-export const TARGET: 'web' | 'desktop' =
-  import.meta.env.VITE_TARGET === 'desktop' ? 'desktop' : 'web';
+/**
+ * 값 하나를 빌드 대상으로 옮긴다.
+ *
+ * 이 함수를 따로 두는 이유는 시험할 수 있게 하기 위해서다. TARGET을 바로
+ * 만들면 그 값이 빌드 때 글자로 박혀서, 시험이 도는 동안에는 늘 'web'이다.
+ * 그러면 설치형 갈래가 통째로 깨져도 시험은 통과한다.
+ */
+export function resolveTarget(raw: string | undefined): 'web' | 'desktop' {
+  return raw === 'desktop' ? 'desktop' : 'web';
+}
+
+export const TARGET: 'web' | 'desktop' = resolveTarget(import.meta.env.VITE_TARGET);
 
 export function isDesktop(): boolean {
   return TARGET === 'desktop';
@@ -118,7 +146,7 @@ export function isDesktop(): boolean {
 - [ ] **Step 4: 통과를 확인한다**
 
 Run: `npx vitest run tests/platform/target.test.ts`
-Expected: PASS (2 tests)
+Expected: PASS (4 tests)
 
 - [ ] **Step 5: vite.config.ts에 값을 넣는다**
 
@@ -846,7 +874,7 @@ Expected: PASS (5 tests)
 - [ ] **Step 7: 전체 확인**
 
 Run: `npm run verify`
-Expected: 771 tests passed (745 기준 + 2 + 5 + 19)
+Expected: 773 tests passed (745 기준 + 4 + 5 + 19)
 
 - [ ] **Step 8: 커밋**
 
@@ -1002,7 +1030,7 @@ Expected:
 npm run verify
 ```
 
-Expected: 771 tests passed, `✓ built in ...`
+Expected: 773 tests passed, `✓ built in ...`
 
 - [ ] **Step 10: 커밋**
 
@@ -1207,7 +1235,7 @@ Expected:
 npm run verify
 ```
 
-Expected: 771 tests passed
+Expected: 773 tests passed
 
 - [ ] **Step 7: 웹 번들에 Tauri 코드가 안 섞였는지 확인한다**
 
@@ -1408,7 +1436,7 @@ Expected: `다 바꿨다`
 - [ ] **Step 7: 전체 확인**
 
 Run: `npm run verify`
-Expected: 773 tests passed
+Expected: 775 tests passed
 
 기존 화면 테스트가 `링크`를 찾다가 깨질 수 있다. 그러면 그 테스트를
 `getByRole('button', { name: '전자칠판' })`으로 고친다 — 화면이 실제로
@@ -1730,7 +1758,7 @@ Expected:
 - [ ] **Step 9: 전체 확인**
 
 Run: `npm run verify`
-Expected: 779 tests passed
+Expected: 781 tests passed
 
 - [ ] **Step 10: 커밋**
 
@@ -1903,7 +1931,7 @@ import { isDesktop } from '../../shared/platform/target';
 - [ ] **Step 6: 전체 확인**
 
 Run: `npm run verify`
-Expected: 782 tests passed
+Expected: 784 tests passed
 
 - [ ] **Step 7: 설치형 번들에 형성평가가 안 들어갔는지 확인한다**
 
@@ -2048,7 +2076,7 @@ rm -f "$APPDATA/net.ssamdongne.gboard/data.json" "$APPDATA/net.ssamdongne.gboard
 npm run verify
 ```
 
-Expected: 782 tests passed
+Expected: 784 tests passed
 
 - [ ] **Step 8: 커밋**
 
