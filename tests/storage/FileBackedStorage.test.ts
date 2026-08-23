@@ -182,19 +182,25 @@ describe('FileBackedStorage — 쓰기가 실패해도', () => {
     expect(failures[0]).toContain('data.json');
   });
 
-  it('실패한 쓰기가 다음 기회에 다시 나간다', async () => {
+  it('실패한 쓰기가 다른 파일 저장에 얹혀 다시 나간다', async () => {
     const storage = await FileBackedStorage.open(files, { onWriteError: () => undefined });
 
+    /*
+     * backups.json이 실질 노출이다. 10분에 한 번뿐이라, 실패한 채로
+     * 목록에서 빠지면 다음 백업까지 영영 안 쓰인다. 그 사이 앱이 닫히면
+     * 되돌릴 것이 없어진다.
+     */
     files.failNextWrite = true;
-    storage.setItem('classroom-suite:v1:data', 'FIRST');
+    storage.setItem('classroom-suite:v1:backups', 'SNAPSHOT');
     await vi.advanceTimersByTimeAsync(300);
-    expect(await files.read('data.json')).toBeNull();
+    expect(await files.read('backups.json')).toBeNull();
 
-    // 다음 저장이 오면 실패했던 것까지 함께 나간다.
-    storage.setItem('classroom-suite:v1:data', 'SECOND');
+    // 전혀 다른 파일을 저장한다. 실패했던 쪽은 아무도 다시 건드리지 않았다.
+    storage.setItem('classroom-suite:v1:data', 'UNRELATED');
     await vi.advanceTimersByTimeAsync(300);
 
-    expect(await files.read('data.json')).toBe('SECOND');
+    expect(await files.read('backups.json')).toBe('SNAPSHOT');
+    expect(await files.read('data.json')).toBe('UNRELATED');
   });
 });
 
