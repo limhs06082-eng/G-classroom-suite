@@ -10,17 +10,19 @@
  * 조용히 떨어진다 — 교사는 껐다 켤 때마다 자료를 잃는다. grep 한 번 깜빡하는 사람에게
  * 맡기지 않고 검증 파이프라인에 못 박아 둔다.
  *
- * 표시자는 실제 Tauri 런타임 코드의 흔적이다. IPC 경계를 문자열로 건너가야 해서
- * minify를 거쳐도 이름이 그대로 남는다:
- *   - __TAURI_INTERNALS__      : invoke 브리지 (@tauri-apps/api/core)
- *   - readTextFile/writeTextFile : @tauri-apps/plugin-fs
- *   - onCloseRequested         : @tauri-apps/api/window
+ * 표지자는 __TAURI_INTERNALS__ 하나다.
  *
- * `import("@tauri-apps/api/window")`처럼 맨 스펙(bare specifier)만 남은 동적 import는
- * 표시자로 세지 않는다. vite.config.ts의 external 처리로 웹 빌드에서 의도적으로 남기는
- * 흔적이고, isDesktop()이 항상 거짓인 웹에서는 절대 실행되지 않는 죽은 코드다. 나중에
- * 이 검사를 "더 엄격하게" 만들려고 bare import 문자열까지 표시자에 넣으면 웹 빌드가
- * 매번 실패한다 — 넣지 말 것.
+ * 이것은 Tauri API 모듈이 저마다 지고 다니는 IPC 다리라, 모듈이 번들에
+ * 실리면 반드시 나오고 안 실리면 절대 안 나온다. 딱 그 질문에만 답한다.
+ *
+ * readTextFile·writeTextFile·onCloseRequested를 표지자로 쓰면 안 된다.
+ * 그건 우리 소스가 부르는 이름이라, external로 Tauri를 통째로 빼내도
+ * 우리 코드 쪽에 그대로 남는다. 실제로 main.tsx의
+ * `currentWindow.onCloseRequested(...)`가 그렇게 걸렸다 — 죽은 글자인데
+ * 검사만 붉게 만들었다.
+ *
+ * 맨 특정자(`import("@tauri-apps/api/window")`)도 같은 이유로 표지자가
+ * 아니다. external을 쓰면 나오는 것이 정상이고, 실행되지 않는다.
  *
  *   node scripts/check-bundle-purity.mjs web
  *   node scripts/check-bundle-purity.mjs desktop
@@ -30,8 +32,8 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 const ASSETS_DIR = 'dist/assets';
 const MAX_WEB_BYTES = 400 * 1024;
 
-// IPC 경계를 문자열로 건너가야 해서 minify에도 살아남는, 진짜 Tauri 런타임의 흔적.
-const MARKERS = ['__TAURI_INTERNALS__', 'readTextFile', 'writeTextFile', 'onCloseRequested'];
+// invoke 브리지 — Tauri API 모듈이면 반드시 지니고, 아니면 절대 없다.
+const MARKER = '__TAURI_INTERNALS__';
 
 const target = process.argv[2];
 if (target !== 'web' && target !== 'desktop') {
@@ -56,8 +58,7 @@ function listJsFiles(dir) {
 
 const files = listJsFiles(ASSETS_DIR);
 
-// 표시자별로 어느 파일에서 나왔는지 모은다.
-const foundIn = new Map(MARKERS.map((marker) => [marker, []]));
+const foundIn = [];
 let largest = { file: null, size: 0 };
 
 for (const file of files) {
@@ -65,9 +66,7 @@ for (const file of files) {
   if (size > largest.size) largest = { file, size };
 
   const text = readFileSync(file, 'utf8');
-  for (const marker of MARKERS) {
-    if (text.includes(marker)) foundIn.get(marker).push(file);
-  }
+  if (text.includes(MARKER)) foundIn.push(file);
 }
 
 const largestKb = (largest.size / 1024).toFixed(1);
@@ -76,18 +75,16 @@ const largestLabel = largest.file ? `${largest.file} (${largestKb}KB)` : '(청�
 const problems = [];
 
 if (target === 'web') {
-  for (const marker of MARKERS) {
-    for (const file of foundIn.get(marker)) {
-      problems.push(`"${marker}"가 ${file}에 있습니다 — Tauri 런타임이 웹 번들에 실렸습니다`);
-    }
+  for (const file of foundIn) {
+    problems.push(`"${MARKER}"가 ${file}에 있습니다 — Tauri 런타임이 웹 번들에 실렸습니다`);
   }
   if (largest.size > MAX_WEB_BYTES) {
     problems.push(`가장 큰 청크가 ${largestKb}KB로 400KB 한도를 넘었습니다 (${largest.file})`);
   }
 } else {
-  if (foundIn.get('__TAURI_INTERNALS__').length === 0) {
+  if (foundIn.length === 0) {
     problems.push(
-      '__TAURI_INTERNALS__가 어디에도 없습니다 — 설치형 분기가 두 빌드 모두에서 죽은 코드로 ' +
+      `${MARKER}가 어디에도 없습니다 — 설치형 분기가 두 빌드 모두에서 죽은 코드로 ` +
         '지워졌다는 뜻입니다. 이 상태로는 파일 저장소가 아니라 브라우저 저장소로 조용히 ' +
         '떨어져, 껐다 켤 때마다 자료를 잃습니다.',
     );
