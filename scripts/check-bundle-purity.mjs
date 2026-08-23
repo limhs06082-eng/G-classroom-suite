@@ -30,6 +30,24 @@
  * 설치형 쪽은 __TAURI_INTERNALS__만 본다. 다리가 실제로 실렸는지가
  * 확인할 것이지, 상수 하나가 딸려 왔는지가 아니다.
  *
+ * 설치형에는 형성평가 코드가 없어야 한다.
+ *
+ * 학생 폰이 들어올 서버가 없어 뺀 기능이다(Task 8). 라우트를 감추는
+ * import.meta.env.VITE_TARGET 조건이 하나라도 되돌아가면 청크가
+ * 되살아나는데, 시험은 그걸 못 잡는다 — 시험이 도는 환경은 늘 웹이기
+ * 때문이다(VITE_TARGET을 안 준 채로 돈다). 결과물을 직접 열어 봐야 한다.
+ *
+ * 클래스·인터페이스 이름(QuizSessionRelay·LocalSessionRelay)만으로는
+ * 못 잡는 경우가 있다는 것을 직접 되돌려 확인했다: quiz 라우트 하나만
+ * 되살리면(join·QuizBoard는 그대로 가려진 채) QuizSessionRelay.ts를
+ * 부르는 곳이 QuizPage 하나뿐이 되어, Rollup이 그 코드를 별도 청크로
+ * 안 쪼개고 QuizPage 청크 안으로 그대로 합친다. 그러면 청크 경계를
+ * 넘는 import 문(파일명 문자열)이 없어지고, 클래스 이름은 그냥 지역
+ * 식별자가 되어 축약 과정에서 다른 이름으로 바뀐다 — 위 Tauri
+ * 표지자와 같은 이유(식별자는 축약되지만 문자열 리터럴은 남는다)로,
+ * LocalSessionRelay가 쓰는 저장소 키('teacher-toolkit:v1:quiz-sessions')를
+ * 함께 봐야 어느 쪽으로 청크가 갈리든 잡을 수 있다.
+ *
  *   node scripts/check-bundle-purity.mjs web
  *   node scripts/check-bundle-purity.mjs desktop
  */
@@ -43,6 +61,25 @@ const TAURI_TO_IPC_KEY = '__TAURI_TO_IPC_KEY__';
 
 // 웹에서는 둘 다 없어야 한다. 설치형에서는 IPC 다리 자체가 실렸는지만 본다.
 const WEB_MARKERS = [TAURI_INTERNALS, TAURI_TO_IPC_KEY];
+
+/*
+ * 설치형에서는 이 넷이 있으면 안 된다 — 학생 참여 통로(형성평가) 코드다.
+ *
+ * 앞의 둘은 식별자라 QuizSessionRelay.ts가 별도 청크로 갈릴 때만(여러
+ * 곳에서 불릴 때) 청크 경계를 넘는 import 문의 파일명으로 남는다.
+ * 마지막 하나는 LocalSessionRelay.ts의 저장소 키 문자열 리터럴이라,
+ * 그 코드가 어느 청크에 어떤 모양으로 실리든(별도 청크든 다른 청크에
+ * 합쳐지든) 축약되지 않고 그대로 남는다 — 실제로 되돌려 보니 이
+ * 마지막 표지자만 모든 경우를 잡았다.
+ */
+const DESKTOP_FORBIDDEN = [
+  'QuizSessionRelay',
+  'LocalSessionRelay',
+  'teacher-toolkit:v1:quiz-sessions',
+];
+
+// 파일 하나를 훑어 표지자별로 있는지 없는지 모을 때 쓰는 전체 표지자 목록.
+const ALL_MARKERS = [TAURI_INTERNALS, TAURI_TO_IPC_KEY, ...DESKTOP_FORBIDDEN];
 
 const target = process.argv[2];
 if (target !== 'web' && target !== 'desktop') {
@@ -68,7 +105,7 @@ function listJsFiles(dir) {
 const files = listJsFiles(ASSETS_DIR);
 
 // 표지자별로 어느 파일에서 나왔는지 모은다.
-const foundIn = new Map([TAURI_INTERNALS, TAURI_TO_IPC_KEY].map((marker) => [marker, []]));
+const foundIn = new Map(ALL_MARKERS.map((marker) => [marker, []]));
 let largest = { file: null, size: 0 };
 
 for (const file of files) {
@@ -102,6 +139,15 @@ if (target === 'web') {
         '지워졌다는 뜻입니다. 이 상태로는 파일 저장소가 아니라 브라우저 저장소로 조용히 ' +
         '떨어져, 껐다 켤 때마다 자료를 잃습니다.',
     );
+  }
+  for (const marker of DESKTOP_FORBIDDEN) {
+    for (const file of foundIn.get(marker)) {
+      problems.push(
+        `"${marker}"가 ${file}에 있습니다 — 형성평가(학생 참여 통로) 코드가 설치형 ` +
+          '번들에 실렸습니다. router.tsx나 BoardPage.tsx의 VITE_TARGET 조건이 되돌아간 ' +
+          '것은 아닌지 확인하세요.',
+      );
+    }
   }
 }
 

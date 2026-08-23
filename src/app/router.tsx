@@ -46,30 +46,6 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
     ]
   : [];
 
-/**
- * 설치형에서 감추는 경로.
- *
- * 형성평가는 학생 폰이 들어올 서버가 있어야 성립한다. 설치형에는 없다.
- * 반쯤 살려 두면 "되는 줄 알았는데 안 되는" 자리가 되므로 통째로 뺀다.
- * 홈에는 웹으로 가는 안내 카드를 둔다.
- *
- * 목록으로 내보내는 이유는 시험할 수 있게 하기 위해서다. 조건을 라우트
- * 배열 안에 흩어 놓으면 무엇이 빠졌는지 밖에서 확인할 수 없다.
- *
- * board/:feature는 넣지 않는다. 전자칠판은 이 라우트 하나뿐이고 무엇을
- * 그릴지는 BoardPage가 정한다. 감추면 자리·당번·보상·과제·수업 칠판까지
- * 함께 죽는다. 설치형에서 /board/quiz로 갈 길은 형성평가 화면뿐인데 그
- * 화면이 없으므로 아무도 그리로 가지 않는다.
- *
- * 아래 라우트 배열은 이 목록을 직접 읽지 않는다. quiz·join/:code의 lazy()는
- * import.meta.env.VITE_TARGET을 직접 비교해서 가른다 — 그 이유는 바로
- * 아래 주석에 있다(isDesktop()은 함수 호출이라 청크가 갈리는 시점에
- * Rollup이 상수로 접지 못한다). 이 목록은 그 사실을 시험으로 고정해 두는
- * 문서 역할이다 — 라우트 배열이 바뀌어도 "설치형엔 이 둘이 없다"는
- * 사실 자체는 여기서 계속 확인할 수 있다.
- */
-export const desktopHiddenPaths: readonly string[] = ['quiz', 'join/:code'];
-
 export const router = createBrowserRouter([
   {
     element: <AppShell />,
@@ -82,6 +58,13 @@ export const router = createBrowserRouter([
       { path: 'assignment', element: <AssignmentPage /> },
       { path: 'lesson', element: <LessonPage /> },
       /*
+       * 형성평가는 설치형에서 뺀다.
+       *
+       * 학생 폰이 들어올 서버가 있어야 성립하는 기능인데 설치형에는 서버가
+       * 없다. 반쯤 살려 두면 "되는 줄 알았는데 안 되는" 자리가 되므로
+       * 라우트째 통째로 뺀다. 홈(HomePage.tsx)에는 웹으로 가는 안내 카드를
+       * 둔다.
+       *
        * isDesktop()이 아니라 import.meta.env.VITE_TARGET을 직접 비교한다.
        *
        * 라우트를 거르기만 한다면 isDesktop()으로도 맞다. 하지만 여기 있는
@@ -91,7 +74,12 @@ export const router = createBrowserRouter([
        * (vite.config.ts에 있는 external 설정 옆 주석이 실제로 겪은 같은
        * 문제를 설명한다). 그러면 라우트는 안 걸려도 QuizPage 청크는
        * 설치형 번들에 그대로 남는다 — 실제로 그렇게 되는 것을 빌드해서
-       * 확인했다.
+       * 확인했다. desktopHiddenPaths라는 배열로 이 조건을 대신 시험한 적이
+       * 있었는데, 그 배열은 라우터가 읽지 않아 조건을 되돌려도 시험이
+       * 계속 통과했다 — 그래서 지웠다. 이제는 scripts/check-bundle-purity.mjs가
+       * 설치형 번들에서 QuizSessionRelay·LocalSessionRelay 문자열을 직접
+       * 찾고, tests/app/desktopRoutes.test.ts가 이 router 객체를 실제로
+       * 훑어서 확인한다.
        *
        * import.meta.env.VITE_TARGET은 이 파일 안에서 빌드 시 글자로
        * 치환되므로, 이 삼항 전체가 devRoutes와 같은 방식으로 청크가
@@ -116,9 +104,14 @@ export const router = createBrowserRouter([
      * 전자칠판 화면은 AppShell(헤더·네비) 밖에 둔다.
      * 별도 창이나 보조 모니터에 URL로 바로 띄우는 용도다.
      *
-     * quiz를 desktopHiddenPaths에 넣어도 이 라우트는 그대로 둔다.
-     * board/:feature는 자리·당번·보상·과제·수업 칠판이 함께 쓰는
-     * 하나뿐인 라우트라, 여기서 감추면 그것들도 다 죽는다.
+     * 설치형에서도 이 라우트는 감추지 않는다. board/:feature는 자리·당번·
+     * 보상·과제·수업 칠판이 함께 쓰는 하나뿐인 라우트라, 여기서 감추면
+     * 그것들도 다 죽는다. 설치형에서 /board/quiz로 갈 길은 형성평가
+     * 화면(quiz 라우트, 위에서 뺐다)뿐인데 그 화면이 없으므로 아무도
+     * 그리로 가지 않는다. BoardPage.tsx 안의 QuizBoard도 같은 이유로
+     * import.meta.env.VITE_TARGET으로 따로 가른다(그 파일의 주석 참고) —
+     * 이 라우트 자체는 살아 있어도 형성평가 칠판 코드까지 함께 실릴
+     * 필요는 없다.
      */
     path: 'board/:feature',
     element: (
@@ -131,8 +124,10 @@ export const router = createBrowserRouter([
   /*
    * 학생 화면. 셸 밖에 둔다. 폰에는 교사용 내비게이션이 필요 없다.
    *
-   * quiz 라우트와 같은 이유로 import.meta.env.VITE_TARGET을 직접 비교한다
-   * — isDesktop()을 쓰면 JoinPage 청크가 설치형 번들에 그대로 남는다.
+   * 형성평가와 같은 이유(서버가 없다)로 설치형에서 뺀다. quiz 라우트와
+   * 같은 이유로 import.meta.env.VITE_TARGET을 직접 비교한다 — isDesktop()을
+   * 쓰면 JoinPage 청크가 설치형 번들에 그대로 남는다(위 quiz 라우트 옆
+   * 주석 참고).
    */
   ...(import.meta.env.VITE_TARGET === 'desktop'
     ? []

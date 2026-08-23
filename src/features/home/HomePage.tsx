@@ -211,7 +211,7 @@ export default function HomePage() {
           /*
            * 설치형에는 서버가 없어 학생 폰이 들어올 길이 없다. 화면을
            * 반쯤 살려 두면 "되는 줄 알았는데 안 되는" 자리가 되므로
-           * 라우트째 뺐다(router.tsx의 desktopHiddenPaths). 여기서는
+           * 라우트째 뺐다(router.tsx의 quiz 라우트 옆 주석 참고). 여기서는
            * 사라진 것처럼 보이지 않도록 웹으로 가는 안내만 남긴다.
            */
           <SummaryCard

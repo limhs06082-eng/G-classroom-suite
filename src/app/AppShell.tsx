@@ -16,10 +16,10 @@ import { PageLoader } from './PageLoader';
  * 헤더 내비게이션에서도 형성평가를 뺀다.
  *
  * router.tsx가 /quiz 라우트를 설치형에서 안 걸어도 FEATURE_NAV는 그대로
- * 아이콘을 보여준다 — 누르면 라우트가 없어 404로 떨어진다. router.tsx의
- * desktopHiddenPaths를 여기서 import하지 않는 이유는 그러면 router.tsx가
- * AppShell을(엘리먼트로) 부르고 AppShell은 router를 부르는 순환
- * import가 되기 때문이다. 값은 하나뿐이라 여기서 그냥 다시 적는다.
+ * 아이콘을 보여준다 — 누르면 라우트가 없어 404로 떨어진다. router.tsx에서
+ * 값을 가져오지 않는 이유는 router.tsx가 `<AppShell />`을 엘리먼트로
+ * 참조하는데 AppShell이 router.tsx를 다시 import하면 순환 import가 되기
+ * 때문이다. 값은 하나뿐이라 여기서 그냥 다시 적는다.
  */
 const HIDDEN_NAV_IDS_ON_DESKTOP: readonly string[] = ['quiz'];
 
