@@ -58,11 +58,18 @@ async function chooseAdapter(): Promise<StorageAdapter> {
   await currentWindow.onCloseRequested(async (event) => {
     event.preventDefault();
 
-    // 화면 쪽 대기분을 저장소 메모리로 먼저 밀어 넣는다. 이 핸들러는 동기라 곧 끝난다.
-    window.dispatchEvent(new Event('beforeunload'));
-
-    await storage.flush();
-    await currentWindow.destroy();
+    try {
+      // 화면 쪽 대기분을 저장소 메모리로 먼저 밀어 넣는다. 이 핸들러는 동기라 곧 끝난다.
+      window.dispatchEvent(new Event('beforeunload'));
+      await storage.flush();
+    } finally {
+      /*
+       * 무슨 일이 있어도 창은 닫는다. preventDefault로 닫기를 이미 가로챘으므로,
+       * 여기서 못 빠져나가면 앱이 안 닫히는 상태로 남는다. 그러면 선생님은
+       * 강제 종료를 하게 되고, 이 과업이 막으려던 바로 그 자료 손실이 난다.
+       */
+      await currentWindow.destroy();
+    }
   });
 
   return new LocalStorageAdapter(storage);
