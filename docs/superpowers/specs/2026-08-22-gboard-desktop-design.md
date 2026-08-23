@@ -255,7 +255,7 @@ interface TimetableEntry {
 `source`가 핵심이다. NEIS를 다시 불러올 때 **`manual`은 덮지 않는다.**
 교사가 고쳐 놓은 것을 자동 갱신이 지우면 두 번 다시 안 쓴다.
 
-### 파일을 셋으로 가른다
+### 파일을 넷으로 가른다
 
 무엇을 백업하느냐로 가른다. 급식과 날씨는 자료가 아니라 캐시고, 테마는
 자료가 아니라 취향이다. 백업 파일에 지난주 급식이나 고른 테마가 섞이면 안 된다.
@@ -263,7 +263,8 @@ interface TimetableEntry {
 ```
 %APPDATA%\G-board\
   data.json      학급 자료 + 시간표 + 일과 시간   백업 O · 내보내기 O
-  prefs.json     테마, 창 크기·위치               백업 X · 오래돼도 안 버림
+  backups.json   되돌리기용 스냅샷                 백업 X
+  prefs.json     테마, 창 크기·위치, NEIS 키       백업 X · 오래돼도 안 버림
   cache.json     급식, 날씨                       백업 X · 오래되면 버림
 ```
 
@@ -336,7 +337,55 @@ npm run build:desktop  → 설치형 (형성평가 X, 오늘 보드 O, FileSyste
 첫째는 자료가 아니라 화면을 어떻게 여는지에 대한 것이다. 둘째는 새 화면을
 **더하는** 것이지 기존 홈을 고치는 것이 아니다. 웹앱 홈은 그대로 남는다.
 
-## 자료 저장 — FileSystemAdapter
+## 자료 저장 — 어댑터가 아니라 그 아래를 바꾼다
+
+계획을 짜며 찾은 것이다. 설계 초안은 `FileSystemAdapter`를 새로 만들려
+했는데, `LocalStorageAdapter`가 `Storage`에서 쓰는 것은 **`getItem`·
+`setItem`·`removeItem` 셋뿐**이었다. 그렇다면 어댑터를 새로 쓸 것이 아니라
+**파일로 뒷받침하는 `Storage`**를 만들어 지금 어댑터에 끼우면 된다.
+
+```
+SuiteDataProvider
+   └ LocalStorageAdapter          ← 그대로. 445줄, 시험 25개
+        └ Storage
+             ├ window.localStorage   (웹)
+             └ FileBackedStorage     (설치형) ← 새로 만드는 것은 이것뿐
+```
+
+깨진 파일이면 백업으로 되돌리기, 자동 백업 간격 10분, 보관 정책
+(`backup.ts` 107줄) — **이미 시험을 통과한 552줄을 그대로 물려받는다.**
+새 어댑터를 쓰면 그 전부를 다시 쓰고 다시 시험해야 한다.
+
+### 동기와 비동기를 잇는 법
+
+`Storage`는 동기고 파일은 비동기다. 그 사이를 이렇게 잇는다.
+
+```
+켤 때    파일을 읽어 메모리 지도를 채운다        (한 번, 비동기)
+읽기     메모리에서 곧바로 답한다                (동기)
+쓰기     메모리를 고치고 파일 쓰기를 예약한다    (동기 → 비동기)
+```
+
+쓰기를 예약하는 이유는 저장이 몰아치기 때문이다. 보상 점수는 수업 중
+분당 여러 번 눌린다. 매번 파일을 쓰면 디스크가 쉬지 않는다. **200밀리초
+안에 온 쓰기를 묶어 한 번에** 내보낸다.
+
+창을 닫을 때는 예약된 것을 반드시 흘려보낸다(`flush`). 이걸 빠뜨리면
+마지막 몇 초가 사라진다.
+
+### 열쇠와 파일의 대응
+
+```
+classroom-suite:v1:data      →  data.json      백업 O · 내보내기 O
+classroom-suite:v1:backups   →  backups.json   백업 X
+classroom-suite:v1:meta      →  prefs.json     백업 X · 안 버림
+classroom-suite:v1:neis-key  →  prefs.json     (같은 파일 안)
+```
+
+백업을 폴더가 아니라 한 파일에 담는다. 초안은 `backups\` 폴더에 스냅샷을
+하나씩 두려 했지만, 그러면 `LocalStorageAdapter`의 백업 논리를 못 쓴다.
+되돌리기는 앱 화면(설정 → 백업·복원)에서 하지 폴더를 뒤져서 하지 않으므로,
+사람이 폴더를 보기 좋은 것보다 **시험을 통과한 논리를 쓰는 편**이 낫다.
 
 ### 반쪽 파일을 만들지 않는다
 
@@ -450,10 +499,10 @@ GitHub Releases
 새로  src-tauri/icons/
 
 ── 저장
-새로  src/shared/storage/FileStore.ts           인터페이스 + Tauri 구현
-새로  src/shared/storage/FileSystemAdapter.ts
+새로  src/shared/storage/FileStore.ts           파일 접근 인터페이스
+새로  src/shared/storage/TauriFileStore.ts      Tauri 구현
+새로  src/shared/storage/FileBackedStorage.ts   Storage를 파일로 (어댑터는 그대로)
 새로  src/shared/storage/CacheStore.ts          급식·날씨 (오래되면 버림)
-새로  src/shared/storage/PrefsStore.ts          테마·창 (안 버림)
 
 ── 테마
 새로  src/shared/theme/themes.css               넷의 색 변수 덩어리
@@ -504,12 +553,14 @@ GitHub Releases
 | NEIS를 다시 불러도 `manual`을 안 덮는다 | 이걸 어기면 두 번 다시 안 쓴다 |
 | 급식 캐시가 백업 파일에 안 들어간다 | 자료와 캐시의 경계 |
 | 고른 테마가 백업 파일에 안 들어간다 | 자료와 취향의 경계 |
-| 캐시를 비워도 고른 테마가 남는다 | 파일을 셋으로 가른 이유 |
+| 캐시를 비워도 고른 테마가 남는다 | 파일을 나눈 이유 |
 | 네 테마 모두 글자·바탕 대비가 기준을 넘는다 | '또렷하게'는 존재 이유가 대비다 |
 | 테마를 바꿔도 기능 색상각이 그대로다 | 색으로 익힌 것이 무너지면 안 된다 |
 | 인터넷이 끊겨도 캐시로 오늘 급식이 보인다 | 학교 인터넷은 끊긴다 |
 | 빈 폴더에서 첫 실행 | 새로 설치한 분이 처음 만나는 상태 |
-| 쓰기 도중 죽어도 옛 자료가 남는다 | FileSystemAdapter의 존재 이유 |
+| 쓰기 도중 죽어도 옛 자료가 남는다 | 원자적 쓰기의 존재 이유 |
+| 예약된 쓰기가 창 닫을 때 흘러나간다 | 이걸 빠뜨리면 마지막 몇 초가 사라진다 |
+| 기존 어댑터 시험 25개가 FileBackedStorage로도 통과한다 | 물려받은 논리가 진짜 도는지 |
 | 깨진 `data.json`이면 백업으로 되돌린다 | `LocalStorageAdapter`와 같은 보호 |
 | 창 하나가 저장하면 다른 창이 따라온다 | 전자칠판 |
 | 웹 빌드에 Tauri·NEIS 코드가 없다 | 번들 검사 |
