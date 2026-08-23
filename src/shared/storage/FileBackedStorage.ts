@@ -178,6 +178,49 @@ export class FileBackedStorage implements Storage {
     }
   }
 
+  /**
+   * 다른 창이 파일을 고쳤을 때 그 내용을 받아 들인다.
+   *
+   * 메모리를 고친 뒤 `window`에 `storage` 이벤트를 던지는 것이 핵심이다.
+   * `LocalStorageAdapter.subscribe()`가 그 이벤트를 듣기 때문에, 어댑터를
+   * 한 줄도 고치지 않고 창 간 동기화를 얻는다. Tauri 창 둘은 서로 남이라
+   * 브라우저가 그 이벤트를 대신 쏴 주지 않는다.
+   */
+  async acceptExternalChange(fileName: string): Promise<void> {
+    const raw = await this.files.read(fileName);
+    const keys = ownersOf(fileName);
+    const single = keys.length === 1 ? keys[0] : undefined;
+
+    if (single !== undefined) {
+      if (raw === null) this.map.delete(single);
+      else this.map.set(single, raw);
+      this.announce(single, raw);
+      return;
+    }
+
+    if (raw === null) return;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      // 남의 창이 파일을 망가뜨렸다고 내 화면까지 비우지 않는다.
+      return;
+    }
+
+    if (typeof parsed !== 'object' || parsed === null) return;
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof value !== 'string') continue;
+      this.map.set(key, value);
+      this.announce(key, value);
+    }
+  }
+
+  /** 브라우저가 다른 탭에 알릴 때 쓰는 것과 같은 모양의 이벤트를 만든다. */
+  private announce(key: string, newValue: string | null): void {
+    window.dispatchEvent(new StorageEvent('storage', { key, newValue }));
+  }
+
   private async writeDirty(): Promise<void> {
     const targets = [...this.dirty];
     this.dirty.clear();
@@ -191,17 +234,22 @@ export class FileBackedStorage implements Storage {
           const value = this.map.get(single);
           if (value === undefined) await this.files.remove(fileName);
           else await this.files.writeAtomic(fileName, value);
-          continue;
+        } else {
+          const bundle: Record<string, string> = {};
+          for (const key of keys) {
+            const value = this.map.get(key);
+            if (value !== undefined) bundle[key] = value;
+          }
+
+          if (Object.keys(bundle).length === 0) await this.files.remove(fileName);
+          else await this.files.writeAtomic(fileName, JSON.stringify(bundle));
         }
 
-        const bundle: Record<string, string> = {};
-        for (const key of keys) {
-          const value = this.map.get(key);
-          if (value !== undefined) bundle[key] = value;
-        }
-
-        if (Object.keys(bundle).length === 0) await this.files.remove(fileName);
-        else await this.files.writeAtomic(fileName, JSON.stringify(bundle));
+        /*
+         * 파일에 닿은 뒤에 알린다. 예약 단계에서 알리면 아직 파일에 없는
+         * 것을 다른 창이 읽으러 가서 옛 내용을 본다.
+         */
+        window.dispatchEvent(new CustomEvent('gboard-local-write', { detail: fileName }));
       } catch (error) {
         /*
          * 메모리 값은 되돌리지 않는다. 저장이 실패했다고 화면의 자료까지

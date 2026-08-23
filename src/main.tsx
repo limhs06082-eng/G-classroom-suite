@@ -42,6 +42,29 @@ async function chooseAdapter(): Promise<StorageAdapter> {
   });
 
   /*
+   * 창끼리 알린다. 교사 창에서 자리를 바꾸면 전자칠판 창이 따라와야
+   * 하는데, Tauri 창 둘은 각자 다른 webview라 브라우저의 storage
+   * 이벤트가 없다. Tauri의 창 간 이벤트로 그 자리를 채운다.
+   */
+  const [{ emit, listen }, { getCurrentWebviewWindow }] = await Promise.all([
+    import('@tauri-apps/api/event'),
+    import('@tauri-apps/api/webviewWindow'),
+  ]);
+
+  const me = getCurrentWebviewWindow().label;
+
+  window.addEventListener('gboard-local-write', (event) => {
+    const fileName = (event as CustomEvent<string>).detail;
+    void emit('gboard://file-changed', { from: me, fileName });
+  });
+
+  void listen<{ from: string; fileName: string }>('gboard://file-changed', (event) => {
+    // 내가 보낸 것이 돌아온 것이면 버린다. 안 그러면 끝없이 돈다.
+    if (event.payload.from === me) return;
+    void storage.acceptExternalChange(event.payload.fileName);
+  });
+
+  /*
    * 창을 닫을 때 예약된 쓰기를 반드시 흘려보낸다.
    *
    * beforeunload로는 안 된다. 두 가지가 걸린다. 첫째, SuiteDataProvider가

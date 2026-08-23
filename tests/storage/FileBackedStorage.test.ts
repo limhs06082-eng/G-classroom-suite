@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FileBackedStorage, KEY_TO_FILE } from '../../src/shared/storage/FileBackedStorage';
 import { MemoryFileStore } from '../../src/shared/storage/MemoryFileStore';
@@ -8,6 +8,20 @@ let files: MemoryFileStore;
 beforeEach(() => {
   files = new MemoryFileStore();
   vi.useFakeTimers();
+});
+
+/*
+ * 아직 발화 안 한 setTimeout을 다음 시험까지 들고 가면 안 된다.
+ *
+ * 몇몇 시험은 flush나 advanceTimers 없이 setItem만 하고 끝난다(의도적으로 —
+ * 그 시험의 관심사가 아니다). 정리를 안 하면 그 타이머가 다음 시험에서
+ * 발화해, 이번 시험의 storage가 아닌 지난 시험의 storage가 파일을 쓰고
+ * `gboard-local-write`를 window에 던진다. 각 시험은 자기 files 객체만
+ * 들여다보므로 그 잘못 쓴 파일 자체는 안 보이지만, window 이벤트는
+ * 시험 사이에 공유되는 통로라 새는 것이 그대로 다음 시험의 리스너에 잡힌다.
+ */
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 async function open(): Promise<FileBackedStorage> {
@@ -229,5 +243,105 @@ describe('열쇠와 파일의 대응', () => {
       'classroom-suite:v1:meta',
       'classroom-suite:v1:neis-key',
     ]);
+  });
+});
+
+describe('FileBackedStorage — 다른 창이 고친 것 받아 들이기', () => {
+  it('파일에서 다시 읽어 메모리를 고친다', async () => {
+    const storage = await open();
+
+    await files.writeAtomic('data.json', 'FROM_OTHER_WINDOW');
+    await storage.acceptExternalChange('data.json');
+
+    expect(storage.getItem('classroom-suite:v1:data')).toBe('FROM_OTHER_WINDOW');
+  });
+
+  it('window에 storage 이벤트를 던진다', async () => {
+    const storage = await open();
+    const seen: StorageEvent[] = [];
+    const handle = (event: Event): void => {
+      seen.push(event as StorageEvent);
+    };
+    window.addEventListener('storage', handle);
+
+    await files.writeAtomic('data.json', 'NEW');
+    await storage.acceptExternalChange('data.json');
+    window.removeEventListener('storage', handle);
+
+    /*
+     * LocalStorageAdapter.subscribe가 이 이벤트를 듣는다. 어댑터를
+     * 고치지 않고 창 간 동기화를 얻는 방법이 이것이다.
+     */
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.key).toBe('classroom-suite:v1:data');
+    expect(seen[0]?.newValue).toBe('NEW');
+  });
+
+  it('한 파일에 여럿이 살면 각각 이벤트를 던진다', async () => {
+    const storage = await open();
+    const keys: (string | null)[] = [];
+    const handle = (event: Event): void => {
+      keys.push((event as StorageEvent).key);
+    };
+    window.addEventListener('storage', handle);
+
+    await files.writeAtomic(
+      'prefs.json',
+      JSON.stringify({
+        'classroom-suite:v1:meta': 'M',
+        'classroom-suite:v1:neis-key': 'K',
+      }),
+    );
+    await storage.acceptExternalChange('prefs.json');
+    window.removeEventListener('storage', handle);
+
+    expect(keys.sort()).toEqual(['classroom-suite:v1:meta', 'classroom-suite:v1:neis-key']);
+  });
+
+  it('파일이 깨져 있으면 지금 들고 있는 것을 지킨다', async () => {
+    const storage = await open();
+    storage.setItem('classroom-suite:v1:meta', 'GOOD');
+
+    await files.writeAtomic('prefs.json', '{ 이건 JSON이 아니다');
+    await storage.acceptExternalChange('prefs.json');
+
+    // 남의 창이 파일을 망가뜨렸다고 내 화면까지 비우지 않는다.
+    expect(storage.getItem('classroom-suite:v1:meta')).toBe('GOOD');
+  });
+});
+
+describe('FileBackedStorage — 내가 쓴 것을 알린다', () => {
+  it('파일에 닿은 뒤에 알린다', async () => {
+    const storage = await open();
+    const written: string[] = [];
+    const handle = (event: Event): void => {
+      written.push((event as CustomEvent<string>).detail);
+    };
+    window.addEventListener('gboard-local-write', handle);
+
+    storage.setItem('classroom-suite:v1:data', 'X');
+    await vi.advanceTimersByTimeAsync(300);
+    window.removeEventListener('gboard-local-write', handle);
+
+    expect(written).toEqual(['data.json']);
+    // 알림이 나갈 때 파일에는 이미 들어 있어야 한다.
+    expect(await files.read('data.json')).toBe('X');
+  });
+
+  it('쓰기가 실패하면 알리지 않는다', async () => {
+    const storage = await FileBackedStorage.open(files, { onWriteError: () => undefined });
+    const written: string[] = [];
+    const handle = (event: Event): void => {
+      written.push((event as CustomEvent<string>).detail);
+    };
+    window.addEventListener('gboard-local-write', handle);
+
+    files.failNextWrite = true;
+    storage.setItem('classroom-suite:v1:data', 'X');
+    await vi.advanceTimersByTimeAsync(300);
+    window.removeEventListener('gboard-local-write', handle);
+
+    // 안 들어간 것을 들어갔다고 알리면 다른 창이 옛 내용을 읽는다.
+    expect(written).toEqual([]);
   });
 });
