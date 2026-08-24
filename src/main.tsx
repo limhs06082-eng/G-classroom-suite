@@ -101,8 +101,26 @@ async function chooseAdapter(): Promise<StorageAdapter> {
        * 무슨 일이 있어도 창은 닫는다. preventDefault로 닫기를 이미 가로챘으므로,
        * 여기서 못 빠져나가면 앱이 안 닫히는 상태로 남는다. 그러면 선생님은
        * 강제 종료를 하게 되고, 이 과업이 막으려던 바로 그 자료 손실이 난다.
+       *
+       * destroy()가 거부되면 이 await가 finally 안에서 던진다 — try/finally는
+       * flush()가 던지는 것만 막아 줄 뿐 destroy() 자신이 던지는 것은 못
+       * 막는다. 여기서 잡지 않으면 처리되지 않은 프라미스 거부로 조용히
+       * 사라지고, 선생님은 종료 버튼이 죽은 것으로만 본다 — 앱을 끌
+       * 유일한 수단이 실패했는데 아무도 모르는 셈이니 반드시 알려야 한다.
+       * destroy가 안 되면 다른 수단으로 억지로 닫지 않는다: 권한만 제대로
+       * 주면 되는 문제를 여기서 우회로로 덮으면, 다음에 빠진 권한도 똑같이
+       * 조용히 숨어 버린다. 알리고 멈춘다.
        */
-      await currentWindow.destroy();
+      try {
+        await currentWindow.destroy();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        window.dispatchEvent(
+          new CustomEvent('gboard-write-error', {
+            detail: { message: `창을 닫지 못했습니다: ${message}` },
+          }),
+        );
+      }
     }
   });
 

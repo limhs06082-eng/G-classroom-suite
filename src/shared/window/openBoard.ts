@@ -28,7 +28,25 @@ export function openBoard(path: string): void {
     return;
   }
 
-  void openDesktopWindow(path);
+  /*
+   * catch 없이 void만 쓰면 거부(reject)가 처리되지 않은 프라미스 거부로
+   * 조용히 사라진다. 실제로 이렇게 됐다 — create-webview-window 권한이
+   * 빠져 있어 이 호출이 거부됐는데, 화면에는 아무 표시도 안 나서 "전자칠판
+   * 단추가 고장 났다"로만 보였다. 실패를 삼키면 진짜 실패가 이유 없이
+   * 고장난 것처럼 보이는 버튼이 된다 — 첫 실행에서 실제로 벌어진 일이
+   * 바로 이거다. gboard-write-error 이벤트는 WriteErrorToast.tsx가 이미
+   * 듣고 있으니 그대로 재사용한다. detail을 객체({message})로 보내는
+   * 이유는 WriteErrorToast.tsx 참고 — 문자열로 보내면 그쪽에 있는 저장
+   * 실패 전용 고정 문구("백업 파일을 내려받으세요")가 엉뚱하게 붙는다.
+   */
+  openDesktopWindow(path).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    window.dispatchEvent(
+      new CustomEvent('gboard-write-error', {
+        detail: { message: `전자칠판 창을 열지 못했습니다: ${message}` },
+      }),
+    );
+  });
 }
 
 async function openDesktopWindow(path: string): Promise<void> {
