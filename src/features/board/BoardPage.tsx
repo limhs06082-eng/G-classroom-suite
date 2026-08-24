@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { findFeature } from '../../app/navigation';
 import { useActiveClass, useActiveTerm } from '../../shared/roster/SuiteDataProvider';
 import { BoardScreen, EmptyState } from '../../shared/ui';
+import { closeBoard } from '../../shared/window/openBoard';
 import { AssignmentBoard } from '../assignment/AssignmentBoard';
 import { DutyBoard } from '../duty/DutyBoard';
 import { LessonBoard } from '../lesson/LessonBoard';
@@ -47,7 +48,7 @@ export default function BoardPage() {
 
   if (item === undefined || !item.hasBoardView) {
     return (
-      <BoardScreen title="전자칠판" onExit={() => void navigate('/')}>
+      <BoardScreen title="전자칠판" onExit={() => closeBoard(() => void navigate('/'))}>
         <EmptyState
           title="표시할 화면이 없습니다"
           description="주소를 확인해 주세요. 자리·모둠, 역할·당번, 활동·보상, 과제 제출 화면을 띄울 수 있습니다."
@@ -62,7 +63,7 @@ export default function BoardPage() {
     <BoardScreen
       title={item.label}
       {...(subtitle === '' ? {} : { subtitle })}
-      onExit={() => void navigate(item.path)}
+      onExit={() => closeBoard(() => void navigate(item.path))}
     >
       {item.id === 'seating' ? (
         <SeatingBoard />

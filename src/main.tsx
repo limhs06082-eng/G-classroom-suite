@@ -112,6 +112,43 @@ async function chooseAdapter(): Promise<StorageAdapter> {
        * 조용히 숨어 버린다. 알리고 멈춘다.
        */
       try {
+        /*
+         * 교사 창을 닫을 때 전자칠판 창도 같이 부순다. Tauri는 창을
+         * 자동으로 연쇄 종료하지 않는다 — 그냥 두면 교사 창만 닫히고
+         * 전자칠판 창은 보조 모니터에 전체 화면으로 그대로 남는다.
+         * BoardScreen의 X 버튼(closeBoard)이 칠판 창 자신을 닫는
+         * 경로라면, 이건 교사 창을 닫을 때 나머지 창을 정리하는 경로다.
+         *
+         * label 가드가 반드시 있어야 한다: 이 main.tsx 부트스트랩은
+         * 전자칠판 창에서도 그대로 돌아가므로, 전자칠판 창도 자기 자신의
+         * onCloseRequested를 이 코드로 등록한다. 가드 없이 "나 아닌
+         * 창을 모두 부순다"를 실행하면, 전자칠판 창을 닫을 때 교사
+         * 창까지 같이 부서진다 — 칠판만 닫아도 되는데 앱 전체가 꺼지는
+         * 것이니 정확히 반대 방향의 사고다. 교사 창(label 'main')일
+         * 때만 이 정리를 한다.
+         */
+        if (currentWindow.label === 'main') {
+          const { getAllWindows } = await import('@tauri-apps/api/window');
+          const others = await getAllWindows();
+          await Promise.all(
+            others
+              .filter((w) => w.label !== currentWindow.label)
+              .map((w) =>
+                // 형제 창 하나가 안 닫혀도 교사 창까지 발이 묶이면 안 된다.
+                // 그러면 갇힌 전자칠판 창 하나가 교사 창마저 못 닫는 창으로
+                // 만들어, 이 수정이 막으려던 문제를 다른 자리에서 재현한다.
+                w.destroy().catch((error: unknown) => {
+                  const message = error instanceof Error ? error.message : String(error);
+                  window.dispatchEvent(
+                    new CustomEvent('gboard-write-error', {
+                      detail: { message: `전자칠판 창을 닫지 못했습니다: ${message}` },
+                    }),
+                  );
+                }),
+              ),
+          );
+        }
+
         await currentWindow.destroy();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

@@ -49,6 +49,43 @@ export function openBoard(path: string): void {
   });
 }
 
+/**
+ * 전자칠판 화면에서 나간다.
+ *
+ * 웹에서는 앱으로 되돌아가는 것이 맞다 — 칠판이 새 탭으로 열렸으니
+ * 닫기는 곧 돌아가기였다. 그런데 설치형에서 같은 짓을 하면 전체 화면
+ * 창이 앱 복제본으로 바뀐다. 제목 표시줄도 X도 없어 빠져나갈 길이
+ * 사라지고, 보조 모니터에 그대로 박힌다. 실제로 그렇게 됐다.
+ *
+ * 그래서 설치형에서는 창을 부순다.
+ */
+export function closeBoard(fallback: () => void): void {
+  if (!isDesktop()) {
+    fallback();
+    return;
+  }
+
+  /*
+   * 여기서도 openBoard와 같은 이유로 catch 없이 두면 안 된다. 이 함수가
+   * 막으려는 사고가 바로 "닫기가 조용히 실패해 창이 화면에 남는 것"이므로,
+   * 실패를 삼키면 이 수정 자체가 없는 것과 같아진다.
+   */
+  void closeDesktopBoard().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    window.dispatchEvent(
+      new CustomEvent('gboard-write-error', {
+        detail: { message: `전자칠판 창을 닫지 못했습니다: ${message}` },
+      }),
+    );
+  });
+}
+
+async function closeDesktopBoard(): Promise<void> {
+  // 이 창(전자칠판 창) 자신을 부순다.
+  const { getCurrentWindow } = await import('@tauri-apps/api/window');
+  await getCurrentWindow().destroy();
+}
+
 async function openDesktopWindow(path: string): Promise<void> {
   const [{ WebviewWindow }, { availableMonitors, primaryMonitor }] = await Promise.all([
     import('@tauri-apps/api/webviewWindow'),
