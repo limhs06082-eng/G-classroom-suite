@@ -25,6 +25,7 @@ import {
   Tabs,
   useToast,
 } from '../../shared/ui';
+import { openBoard } from '../../shared/window/openBoard';
 import { groupColorStyle } from '../seating/groupColors';
 import { GoalCelebration } from './GoalCelebration';
 import { goalTargetLabel, type CyclePeriod } from './rewardCore';
@@ -132,15 +133,14 @@ export default function RewardPage() {
           ))}
         </div>
 
-        <Link
-          to="/board/reward"
-          target="_blank"
-          rel="noreferrer"
-          className="ml-auto inline-flex h-10 items-center gap-2 rounded-control border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        <Button
+          variant="secondary"
+          icon={Monitor}
+          className="ml-auto"
+          onClick={() => openBoard('/board/reward')}
         >
-          <Monitor className="size-4" aria-hidden />
           전자칠판
-        </Link>
+        </Button>
       </div>
 
       <Tabs

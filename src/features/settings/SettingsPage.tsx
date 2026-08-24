@@ -8,6 +8,7 @@ import {
   scanLegacy as scanToolkitLegacy,
   type LegacyScan as ToolkitLegacyScan,
 } from './legacyImport';
+import { isDesktop } from '../../shared/platform/target';
 import { useSuite } from '../../shared/roster/SuiteDataProvider';
 import { formatBytes, measureDataSize } from '../../shared/storage/dataSize';
 import type { BackupSummary } from '../../shared/storage/StorageAdapter';
@@ -36,9 +37,23 @@ export default function SettingsPage() {
           { id: 'school', label: '학교 정보' },
           { id: 'classes', label: '학급·학기' },
           { id: 'lock', label: '교사 잠금' },
-          { id: 'sync', label: '계정·동기화' },
+          /*
+           * '계정·동기화'는 Firebase 로그인 화면이다. 설치형에는 Firebase도,
+           * 교사가 채울 설정 파일도 없다 — AccountPanel이 안내하는
+           * src/shared/storage/firebaseConfig.ts는 .exe로 설치한 사람에게는
+           * 존재하지 않는 경로라 탭째 뺀다. router.tsx가 quiz 라우트를
+           * 빼는 것과 같은 결(반쯤 살려 두지 않는다), 다만 여기는 lazy()가
+           * 없는 보통 렌더 분기라 isDesktop()이 맞다.
+           */
+          ...(isDesktop() ? [] : [{ id: 'sync', label: '계정·동기화' }]),
           { id: 'backup', label: '백업·복원' },
-          { id: 'legacy', label: '기존 앱에서 가져오기' },
+          /*
+           * '기존 앱에서 가져오기'는 브라우저 localStorage를 뒤진다.
+           * 설치형은 애초에 그 저장소를 쓰지 않으니 뒤질 대상이 있을 수
+           * 없고, 이 탭은 열어 봤자 "찾지 못했습니다"만 보여 주는 죽은
+           * 화면이 된다.
+           */
+          ...(isDesktop() ? [] : [{ id: 'legacy', label: '기존 앱에서 가져오기' }]),
         ]}
         activeId={tab}
         onChange={(id) => setTab(id as SettingsTab)}
@@ -46,9 +61,10 @@ export default function SettingsPage() {
         {tab === 'school' ? <SchoolTab /> : null}
         {tab === 'classes' ? <ClassTermTab /> : null}
         {tab === 'lock' ? <LockTab /> : null}
-        {tab === 'sync' ? <AccountPanel /> : null}
+        {/* 탭 목록에서 빼는 것만으로는 안 된다 — tab 상태가 무슨 값이든 설치형에서는 이 패널이 렌더되면 안 된다. */}
+        {tab === 'sync' && !isDesktop() ? <AccountPanel /> : null}
         {tab === 'backup' ? <BackupTab /> : null}
-        {tab === 'legacy' ? (
+        {tab === 'legacy' && !isDesktop() ? (
           <div className="flex flex-col gap-4">
             <LegacyTab />
             <ToolkitLegacyTab />
@@ -162,6 +178,16 @@ function SchoolTab() {
  */
 function DataSizeCard() {
   const { data } = useSuite();
+
+  /*
+   * 이 카드가 재는 한도(dataSize.ts의 DOCUMENT_LIMIT_BYTES, 1MB)는 Firestore
+   * 문서 하나의 상한이지 저장 방식 자체의 한도가 아니다. 설치형은 그 문서를
+   * 아예 안 쓰고 파일(data.json)에 저장하므로 그런 상한이 없다 — 설치형에서
+   * 이 카드를 보이면 존재하지 않는 제약을 근거로 없는 위험을 경고하는
+   * 거짓 알림이 된다.
+   */
+  if (isDesktop()) return null;
+
   const report = measureDataSize(data);
 
   // 여유로울 때는 말을 걸지 않는다. 겁줄 이유가 없다.
@@ -285,9 +311,30 @@ function BackupTab() {
       <Card title="백업" icon={Shield}>
         <div className="flex flex-col gap-3">
           <p className="text-sm text-slate-600">
-            이 앱은 학급 자료를 이 브라우저에만 저장합니다. 브라우저 기록을 지우거나
-            다른 기기를 쓰면 자료가 보이지 않습니다.{' '}
-            <strong className="font-semibold">정기적으로 파일로 내려받아 두세요.</strong>
+            {isDesktop() ? (
+              /*
+               * 웹 문구를 그대로 두면 거짓말이 된다 — 설치형은 브라우저가
+               * 아니라 파일에 저장하므로, 브라우저 기록을 지워도 자료는
+               * 그대로 남는다. 대신 이 파일이 있는 컴퓨터 자체가 고장
+               * 나거나 바뀌면 잃는다는, 파일 저장이 실제로 지닌 위험을
+               * 알리고 그 파일이 어디 있는지 짚어 준다.
+               */
+              <>
+                학급 자료는 이 컴퓨터의 파일 하나(
+                <code>%APPDATA%\net.ssamdongne.gboard\data.json</code>
+                )에 저장되며, 브라우저 기록을 지워도 사라지지 않습니다. 다만 이 컴퓨터의
+                디스크가 고장 나거나 컴퓨터를 바꾸면 그 파일도 함께 잃게 되므로,{' '}
+                <strong className="font-semibold">
+                  정기적으로 파일로 내려받아 USB나 클라우드 폴더에 따로 보관해 두세요.
+                </strong>
+              </>
+            ) : (
+              <>
+                이 앱은 학급 자료를 이 브라우저에만 저장합니다. 브라우저 기록을 지우거나
+                다른 기기를 쓰면 자료가 보이지 않습니다.{' '}
+                <strong className="font-semibold">정기적으로 파일로 내려받아 두세요.</strong>
+              </>
+            )}
           </p>
 
           <div className="flex flex-wrap items-center gap-2">

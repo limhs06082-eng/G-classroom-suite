@@ -27,6 +27,7 @@ import {
   Tabs,
   useToast,
 } from '../../shared/ui';
+import { openBoard } from '../../shared/window/openBoard';
 import { useDuty } from './useDuty';
 
 type DutyTab = 'today' | 'roles' | 'fairness';
@@ -113,15 +114,9 @@ export default function DutyPage() {
           <Button icon={Shuffle} variant="primary" disabled={!duty.hasRoles} onClick={handleAssign}>
             이번 주 배정
           </Button>
-          <Link
-            to="/board/duty"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-10 items-center gap-2 rounded-control border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <Monitor className="size-4" aria-hidden />
+          <Button variant="secondary" icon={Monitor} onClick={() => openBoard('/board/duty')}>
             전자칠판
-          </Link>
+          </Button>
         </div>
       </div>
 

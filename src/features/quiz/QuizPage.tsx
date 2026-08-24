@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 import type { QuizQuestion, QuizSet } from '../../shared/domain/types';
 import { Badge, Button, Card, ConfirmDialog, cx, EmptyState, Modal, Tabs, useToast } from '../../shared/ui';
+import { openBoard } from '../../shared/window/openBoard';
 import { questionStats, QUESTION_TYPE_LABELS } from './quizCore';
 import { TitleSubjectFields } from '../../shared/TitleSubjectFields';
 import { QuizSessionPanel } from './QuizSessionPanel';
@@ -43,15 +44,9 @@ export default function QuizPage() {
           </Button>
           {quiz.runningSet === null ? null : (
             <>
-              <Link
-                to="/board/quiz"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-10 items-center gap-2 rounded-control border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                <Monitor className="size-4" aria-hidden />
+              <Button variant="secondary" icon={Monitor} onClick={() => openBoard('/board/quiz')}>
                 전자칠판
-              </Link>
+              </Button>
               <Button icon={Square} variant="ghost" onClick={quiz.stopRun}>
                 진행 중단
               </Button>

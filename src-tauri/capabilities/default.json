@@ -1,0 +1,24 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "enables the default permissions. Tauri의 기본 권한은 창을 **묻는 것**만 준다. `is-maximized`, `available-monitors` 같은 조회 28개가 전부고, 창 상태를 **바꾸는** 것은 하나도 없다. 그래서 창을 만들거나 부수려면 여기 하나씩 적어야 한다. 이걸 빠뜨리면 증상이 조용하다 — 앱이 안 닫히고, 전자칠판 단추가 아무 반응이 없다.",
+  "windows": [
+    "main",
+    "board"
+  ],
+  "permissions": [
+    "core:default",
+    "fs:allow-appdata-read-recursive",
+    "fs:allow-appdata-write-recursive",
+    "fs:allow-mkdir",
+    "fs:allow-rename",
+    "fs:allow-exists",
+    "fs:allow-remove",
+    "core:webview:allow-create-webview-window",
+    "core:window:allow-destroy",
+    "core:window:allow-close",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-set-position"
+  ]
+}
