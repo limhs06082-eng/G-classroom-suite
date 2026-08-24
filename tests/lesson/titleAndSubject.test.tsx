@@ -11,7 +11,7 @@ import {
   createStage,
 } from '../../src/shared/domain/factories';
 import type { SuiteData } from '../../src/shared/domain/types';
-import { SuiteDataProvider } from '../../src/shared/roster/SuiteDataProvider';
+import { SuiteDataProvider, useSuite } from '../../src/shared/roster/SuiteDataProvider';
 import { ToastProvider } from '../../src/shared/ui';
 import { stubAdapter } from '../helpers/stubAdapter';
 
@@ -41,9 +41,21 @@ let lessonView: LessonView | null = null;
 let quizView: QuizView | null = null;
 
 function Probe() {
+  /*
+   * 자료를 다 불러온 뒤에만 'ready'를 내건다.
+   *
+   * 처음에는 이 표시가 첫 렌더부터 있었다. 그러면 findByTestId가 곧바로
+   * 통과해 버려서, 아래 훅 값들이 아직 안 채워진 채로 단언이 돌 수 있다.
+   * 보통은 로드가 먼저 끝나 통과하지만 기계가 바쁘면 순서가 미끄러진다 —
+   * 실제로 전체 시험을 돌리는 중에 세 번 그렇게 깨졌다.
+   *
+   * 기다리는 척이 아니라 진짜로 기다리게 한다.
+   */
+  const { isLoading } = useSuite();
   lessonView = useLesson();
   quizView = useQuiz();
-  return <p data-testid="ready">ok</p>;
+
+  return isLoading ? null : <p data-testid="ready">ok</p>;
 }
 
 async function mount(): Promise<void> {
