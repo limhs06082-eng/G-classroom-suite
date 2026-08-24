@@ -2,6 +2,7 @@ import { Lock, LockOpen } from 'lucide-react';
 import { useState } from 'react';
 
 import { clearPin, engageLock, isValidPin, PIN_LENGTH, setPin } from '../../shared/lock/lockOps';
+import { isDesktop } from '../../shared/platform/target';
 import { useSuite } from '../../shared/roster/SuiteDataProvider';
 import { Button, Card, ConfirmDialog, useToast } from '../../shared/ui';
 
@@ -38,8 +39,23 @@ export function LockTab() {
 
         {/* 정직하게 적는다. 이 장치를 믿고 민감한 것을 남겨 두면 안 된다. */}
         <p className="mt-2 rounded-control bg-warning-50 px-3 py-2 text-sm text-warning-800">
-          학생이 지나가다 실수로 누르는 것을 막는 장치입니다. PIN은 이 브라우저에 그대로
-          저장되므로, 마음먹고 열려는 사람은 막지 못합니다.
+          {isDesktop() ? (
+            /*
+             * "이 브라우저에"는 설치형에서는 거짓이다 — PIN은 파일(data.json)에
+             * 그대로 저장된다. 자리를 옮겨도 정직함은 그대로 지킨다: "안전하다"고
+             * 말하지 않고, 마음먹은 사람은 그 파일을 열어 그대로 읽을 수 있다는
+             * 한계를 웹판과 똑같이 밝힌다.
+             */
+            <>
+              학생이 지나가다 실수로 누르는 것을 막는 장치입니다. PIN은 이 컴퓨터의 파일에
+              그대로 저장되므로, 마음먹고 파일을 열어 보려는 사람은 막지 못합니다.
+            </>
+          ) : (
+            <>
+              학생이 지나가다 실수로 누르는 것을 막는 장치입니다. PIN은 이 브라우저에 그대로
+              저장되므로, 마음먹고 열려는 사람은 막지 못합니다.
+            </>
+          )}
         </p>
 
         <p className="mt-2 text-sm text-slate-500">

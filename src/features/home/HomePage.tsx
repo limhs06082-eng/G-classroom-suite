@@ -355,6 +355,17 @@ function BackupBanner({
 
   if (!reminder.show || dismissed) return null;
 
+  /*
+   * '아직 백업한 적이 없다' 경고의 원인은 플랫폼마다 다르다. 웹은 브라우저
+   * 기록을 지우면 자료가 실제로 전부 사라지지만, 설치형은 파일(data.json)에
+   * 있어 그 위험이 없다 — 없는 위험을 경고하면 거짓 알림이 된다. 대신
+   * 파일 저장이 실제로 지닌 위험(이 컴퓨터가 고장 나거나 바뀌면 잃는다)으로
+   * 이유를 바꿔서, 백업을 권하는 것 자체는 그대로 유지한다.
+   */
+  const neverBackedUpMessage = isDesktop()
+    ? '아직 백업한 적이 없습니다. 이 컴퓨터가 고장 나거나 바뀌면 학급 데이터를 잃을 수 있습니다.'
+    : '아직 백업한 적이 없습니다. 브라우저 기록을 지우면 학급 데이터가 모두 사라집니다.';
+
   const handleExport = async (): Promise<void> => {
     try {
       const json = await adapter.exportJson();
@@ -378,7 +389,7 @@ function BackupBanner({
       <Shield className="size-5 shrink-0 text-warning-700" aria-hidden />
       <p className="min-w-0 flex-1 text-sm text-warning-700">
         {reminder.kind === 'never'
-          ? '아직 백업한 적이 없습니다. 브라우저 기록을 지우면 학급 데이터가 모두 사라집니다.'
+          ? neverBackedUpMessage
           : `마지막 백업이 ${reminder.days}일 전입니다. 그 사이 바뀐 내용은 백업에 없습니다.`}
       </p>
       <div className="flex shrink-0 gap-2">
