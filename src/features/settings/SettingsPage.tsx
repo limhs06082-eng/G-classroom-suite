@@ -8,6 +8,8 @@ import {
   scanLegacy as scanToolkitLegacy,
   type LegacyScan as ToolkitLegacyScan,
 } from './legacyImport';
+import { NeisSource } from '../../shared/external/NeisSource';
+import { TauriHttpClient } from '../../shared/external/TauriHttpClient';
 import { isDesktop } from '../../shared/platform/target';
 import { useSuite } from '../../shared/roster/SuiteDataProvider';
 import { formatBytes, measureDataSize } from '../../shared/storage/dataSize';
@@ -16,6 +18,7 @@ import { AccountPanel } from '../../shared/account/AccountPanel';
 import { Badge, Button, Card, ConfirmDialog, cx, EmptyState, Tabs, useToast } from '../../shared/ui';
 import { ClassTermTab } from './ClassTermTab';
 import { LockTab } from './LockTab';
+import { SchoolSearch } from './SchoolSearch';
 
 type SettingsTab = 'school' | 'classes' | 'lock' | 'sync' | 'backup' | 'legacy';
 
@@ -75,6 +78,17 @@ export default function SettingsPage() {
   );
 }
 
+/**
+ * 설치형에서 쓸 NeisSource를 만든다.
+ *
+ * 화면이 통신 구현을 직접 아는 것은 좋지 않지만, 이 하나를 위해 Provider를
+ * 새로 세우는 것도 과하다. 화면이 아는 것은 `NeisSource`까지고 그 아래
+ * `TauriHttpClient`는 이 함수 안에만 있다.
+ */
+function neisSource(): NeisSource {
+  return new NeisSource(new TauriHttpClient());
+}
+
 function SchoolTab() {
   const { data, update } = useSuite();
   const toast = useToast();
@@ -117,53 +131,41 @@ function SchoolTab() {
         </p>
 
         <div className="border-t border-slate-100 pt-3">
-          <div className="flex gap-3">
-            <label className="block flex-1 text-sm">
-              <span className="text-slate-700">교육청 코드</span>
-              <input
-                defaultValue={data.profile.officeCode}
-                placeholder="예: D10"
-                onBlur={(event) => {
-                  const officeCode = event.target.value.trim();
-                  if (officeCode !== data.profile.officeCode) {
-                    update((current) => ({
-                      ...current,
-                      profile: { ...current.profile, officeCode },
-                    }));
-                    toast.success('교육청 코드를 저장했습니다.');
-                  }
-                }}
-                className="mt-1 h-10 w-full rounded-control border border-slate-300 px-3"
-              />
-            </label>
+          {isDesktop() ? (
+            <>
+              <p className="mb-2 text-sm text-slate-600">
+                급식을 받아 오려면 학교를 정해야 합니다. 이름으로 찾으면 코드가
+                저절로 채워집니다.
+              </p>
 
-            <label className="block flex-1 text-sm">
-              <span className="text-slate-700">학교 코드</span>
-              <input
-                defaultValue={data.profile.schoolCode}
-                placeholder="예: 7000000"
-                onBlur={(event) => {
-                  const schoolCode = event.target.value.trim();
-                  if (schoolCode !== data.profile.schoolCode) {
-                    update((current) => ({
-                      ...current,
-                      profile: { ...current.profile, schoolCode },
-                    }));
-                    toast.success('학교 코드를 저장했습니다.');
-                  }
+              <SchoolSearch
+                source={neisSource()}
+                onPick={(hit) => {
+                  update((current) => ({
+                    ...current,
+                    profile: {
+                      ...current.profile,
+                      schoolName: hit.schoolName,
+                      officeCode: hit.officeCode,
+                      schoolCode: hit.schoolCode,
+                    },
+                  }));
+                  toast.success(`${hit.schoolName}으로 정했습니다.`);
                 }}
-                className="mt-1 h-10 w-full rounded-control border border-slate-300 px-3"
               />
-            </label>
-          </div>
 
-          {/*
-            지금 아무 일도 일어나지 않는 칸이다.
-            설명이 없으면 교사가 고장으로 읽는다.
-          */}
-          <p className="mt-2 text-sm text-slate-500">
-            나중에 급식·시간표를 불러올 때 쓰는 값입니다. 지금은 저장만 해 둡니다.
-          </p>
+              {data.profile.schoolCode === undefined || data.profile.schoolCode === '' ? null : (
+                <p className="mt-2 text-sm text-slate-500">
+                  지금 정해진 학교: <strong>{data.profile.schoolName}</strong>
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-slate-500">
+              급식·시간표는 설치형 G-board에서만 받아 옵니다. NEIS가 브라우저의
+              직접 요청을 막기 때문입니다.
+            </p>
+          )}
         </div>
       </div>
     </Card>
