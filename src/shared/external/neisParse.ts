@@ -27,7 +27,14 @@ export interface MealDish {
 export interface MealMenu {
   /** 조식 · 중식 · 석식 */
   kind: string;
-  /** YYYY-MM-DD */
+  /**
+   * `YYYY-MM-DD`.
+   *
+   * **빈 글자일 수 있다.** NEIS가 날짜 칸을 안 주거나 모양이 다르면 그대로
+   * 통과시킨다 — 여기서 버리면 급식은 있는데 안 보이고, 던지면 앱이 멈춘다.
+   * 이걸 캐시 열쇠로 쓰는 쪽은 빈 글자를 걸러야 한다. 안 그러면 날짜를 못
+   * 읽은 서로 다른 끼니가 같은 열쇠로 서로를 덮는다.
+   */
   date: string;
   dishes: MealDish[];
   /** "489.7 Kcal" 같은 글자 그대로. 계산할 일이 없어 숫자로 바꾸지 않는다. */

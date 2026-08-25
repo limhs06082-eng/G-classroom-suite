@@ -104,4 +104,68 @@ describe('급식 응답 읽기', () => {
     expect(parseMeals('<html>')).toEqual([]);
     expect(parseMeals(undefined)).toEqual([]);
   });
+
+  it('이름에 괄호가 있어도 알레르기 번호만 떼어 낸다', () => {
+    /*
+     * 실제 급식 자료의 3분의 1쯤이 이 모양이다 — `한식떡갈비(수제) (2.5.6.10.13.16)`
+     * 처럼 조리법이나 원산지가 이름에 괄호로 붙는다. 번호는 늘 맨 뒤에 오므로
+     * 비탐욕 매칭이 제대로 가른다. 이 시험이 없으면 정규식을 탐욕적으로 바꿔도
+     * 아무것도 안 걸리고, 화면에는 `한식떡갈비`만 남고 번호가 사라진다.
+     */
+    const raw = {
+      mealServiceDietInfo: [
+        { head: [] },
+        {
+          row: [
+            {
+              MMEAL_SC_NM: '중식',
+              MLSV_YMD: '20260601',
+              DDISH_NM:
+                '한식떡갈비(수제) (2.5.6.10.13.16)<br/>스크램블에그(조)(과학고) (1.5.6.8.13)<br/>모둠피클(과)',
+              CAL_INFO: '',
+            },
+          ],
+        },
+      ],
+    };
+
+    const dishes = parseMeals(raw)[0]?.dishes ?? [];
+
+    expect(dishes[0]).toEqual({ name: '한식떡갈비(수제)', allergens: [2, 5, 6, 10, 13, 16] });
+    expect(dishes[1]).toEqual({ name: '스크램블에그(조)(과학고)', allergens: [1, 5, 6, 8, 13] });
+    // 숫자가 아닌 괄호는 이름의 일부다. 떼면 무슨 피클인지 알 수 없다.
+    expect(dishes[2]).toEqual({ name: '모둠피클(과)', allergens: [] });
+  });
+
+  it('칸이 글자가 아니어도 던지지 않는다', () => {
+    /*
+     * text()의 typeof 검사가 없으면 여기서 `.split is not a function`으로
+     * 죽는다. 급식 하나를 못 보는 게 아니라 앱이 멈춘다. 그 검사를 지웠을 때
+     * 붉어지는 시험이 이것 하나뿐이다.
+     */
+    const raw = {
+      mealServiceDietInfo: [
+        { head: [] },
+        { row: [{ MMEAL_SC_NM: 123, MLSV_YMD: null, DDISH_NM: 456, CAL_INFO: undefined }] },
+      ],
+    };
+
+    const meals = parseMeals(raw);
+
+    expect(meals).toHaveLength(1);
+    expect(meals[0]?.dishes).toEqual([]);
+    expect(meals[0]?.kind).toBe('');
+  });
+
+  it('날짜를 못 읽으면 빈 글자를 통과시킨다', () => {
+    // 버리지도 던지지도 않는다. 대신 이걸 열쇠로 쓰는 쪽이 걸러야 한다.
+    const raw = {
+      mealServiceDietInfo: [
+        { head: [] },
+        { row: [{ MMEAL_SC_NM: '중식', MLSV_YMD: '2026', DDISH_NM: '밥', CAL_INFO: '' }] },
+      ],
+    };
+
+    expect(parseMeals(raw)[0]?.date).toBe('2026');
+  });
 });
