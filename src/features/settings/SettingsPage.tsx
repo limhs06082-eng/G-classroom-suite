@@ -156,7 +156,16 @@ function SchoolTab() {
 
               {data.profile.schoolCode === undefined || data.profile.schoolCode === '' ? null : (
                 <p className="mt-2 text-sm text-slate-500">
-                  지금 정해진 학교: <strong>{data.profile.schoolName}</strong>
+                  {/*
+                   * 여기서 profile.schoolName을 쓰면 안 된다. 위쪽 '학교 이름' 칸은
+                   * 인쇄물에 쓰려고 교사가 자유롭게 고치는 글자라, 코드와 어긋날 수
+                   * 있다. 그런데 이 줄은 "급식을 어디서 받아 오는가"를 말하는 줄이다.
+                   * 확실한 것만 말한다 — 코드가 정해졌다는 사실과 그 코드.
+                   */}
+                  급식을 받아 올 학교가 정해졌습니다. (코드 {data.profile.officeCode} / {data.profile.schoolCode})
+                  <br />
+                  위 `학교 이름`은 인쇄물에 쓰는 글자라 고쳐도 급식이 오는 학교는 바뀌지 않습니다.
+                  다른 학교로 바꾸려면 아래에서 다시 찾아 고르세요.
                 </p>
               )}
             </>

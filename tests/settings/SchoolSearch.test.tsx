@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { HttpClient } from '../../src/shared/external/HttpClient';
 import { MemoryHttpClient } from '../../src/shared/external/MemoryHttpClient';
 import { NeisSource } from '../../src/shared/external/NeisSource';
 import { SchoolSearch } from '../../src/features/settings/SchoolSearch';
@@ -104,17 +105,30 @@ describe('학교 이름으로 찾기', () => {
     expect(await screen.findByText(/연결하지 못했습니다/)).toBeInTheDocument();
   });
 
-  it('찾는 동안 단추를 잠근다', async () => {
-    http.put(searchUrl, withHit());
+  it('찾는 동안 단추가 잠기고, 끝나면 풀린다', async () => {
+    /*
+     * 요청을 붙들어 둬야 잠긴 상태를 볼 수 있다. MemoryHttpClient는 곧바로
+     * 값을 돌려주므로 잠기는 순간이 지나가 버려, 끝난 뒤의 모습만 보게 된다.
+     * 그러면 애초에 잠근 적이 없어도 시험이 통과한다.
+     */
+    let release: (body: unknown) => void = () => {};
+    const held: HttpClient = {
+      getJson: () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    };
     const user = userEvent.setup();
 
-    render(<SchoolSearch source={new NeisSource(http)} onPick={() => {}} />);
+    render(<SchoolSearch source={new NeisSource(held)} onPick={() => {}} />);
 
     await user.type(screen.getByLabelText('학교 이름'), '한빛초');
     await user.click(screen.getByRole('button', { name: '찾기' }));
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /찾/ })).toBeEnabled();
-    });
+    expect(screen.getByRole('button', { name: '찾는 중' })).toBeDisabled();
+
+    release(withHit());
+    expect(await screen.findByText('위례한빛초등학교')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '찾기' })).toBeEnabled();
   });
 });
