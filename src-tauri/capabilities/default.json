@@ -19,6 +19,14 @@
     "core:window:allow-close",
     "core:window:allow-set-focus",
     "core:window:allow-set-fullscreen",
-    "core:window:allow-set-position"
+    "core:window:allow-set-position",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://open.neis.go.kr/*" },
+        { "url": "https://api.open-meteo.com/*" },
+        { "url": "https://geocoding-api.open-meteo.com/*" }
+      ]
+    }
   ]
 }

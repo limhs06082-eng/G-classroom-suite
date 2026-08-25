@@ -26,6 +26,7 @@ log = "0.4"
 tauri = { version = "2.11.3", features = ["devtools"] }
 tauri-plugin-log = "2"
 tauri-plugin-fs = "2"
+tauri-plugin-http = "2"
 
 # 단일 인스턴스 잠금은 모바일에 없는 개념이라 Tauri 문서가 데스크톱
 # 타깃에만 걸도록 안내한다. G-board는 데스크톱 전용이지만 그 관례를
