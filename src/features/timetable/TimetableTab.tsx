@@ -65,6 +65,22 @@ function TimetableEditor({ room }: { room: ClassRoom }) {
   const fromData = subjectButtons(data.timetableEntries, classId);
   const buttons = [...fromData, ...added.filter((subject) => !fromData.includes(subject))];
 
+  /*
+   * 고른 과목은 반드시 `added`에도 넣는다.
+   *
+   * 안 그러면 이런 일이 난다. 지난 학기에 친 '즐거운생활'이 세 칸에 있어
+   * 단추로 보인다(자료가 임자다). 그걸 골라 세 칸을 눌러 지우면, 마지막
+   * 칸이 사라지는 순간 자료에서 빠져 **단추가 없어진다.** 그런데 `picked`는
+   * 그대로다. 아무것도 도드라지지 않은 채로 다음 칸을 누르면 보이지도 않는
+   * 과목이 국어를 덮는다. 아래 tap()이 막는 '아무 일도 안 일어남'의 반대편 —
+   * 까닭 없이 무슨 일이 일어나는 쪽이라 더 나쁘다.
+   */
+  const pick = (subject: string): void => {
+    setPicked(subject);
+    setAdded((current) => (current.includes(subject) ? current : [...current, subject]));
+    setNote('');
+  };
+
   const tap = (weekday: number, period: number): void => {
     if (picked === '') {
       // 아무 일도 안 일어나면 선생님은 앱이 고장 났다고 여긴다.
@@ -92,7 +108,7 @@ function TimetableEditor({ room }: { room: ClassRoom }) {
 
     setAdded((current) => (current.includes(name) ? current : [...current, name]));
     // 더하기 다음에 할 일은 늘 찍기다. 여기서 또 고르게 하면 손이 한 번 는다.
-    setPicked(name);
+    pick(name);
     setTyped('');
     setNote('');
   };
@@ -108,7 +124,7 @@ function TimetableEditor({ room }: { room: ClassRoom }) {
             type="button"
             aria-pressed={picked === subject}
             onClick={() => {
-              setPicked(subject);
+              pick(subject);
               setNote('');
             }}
             className={cx(

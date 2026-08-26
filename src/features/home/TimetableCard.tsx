@@ -68,14 +68,21 @@ export function TimetableCard() {
          */
         <p className="text-sm text-slate-500">
           시간표를 한 번 짜 두면 여기 나옵니다.{' '}
-          <Link to="/settings" className="font-medium text-brand-700 underline">
+          <Link to="/settings?tab=timetable" className="font-medium text-brand-700 underline">
             시간표 짜기
           </Link>
         </p>
       ) : weekday === 0 ? (
         <p className="text-sm text-slate-500">오늘은 수업이 없습니다.</p>
       ) : periods.length === 0 ? (
-        <p className="text-sm text-slate-500">오늘은 시간표가 비어 있습니다.</p>
+        <p className="text-sm text-slate-500">
+          오늘은 시간표가 비어 있습니다.{' '}
+          {/* 여기에도 길을 둔다. 할 일이 '오늘 줄을 채우기'인데 갈 데가 없으면
+              말만 하고 마는 카드가 된다. */}
+          <Link to="/settings?tab=timetable" className="font-medium text-brand-700 underline">
+            오늘 줄 채우기
+          </Link>
+        </p>
       ) : (
         <ul className="flex flex-col gap-0.5">
           {periods.map((slot) => (

@@ -1,5 +1,6 @@
 import { Database, Download, RotateCcw, School, Shield, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import { importLegacyRoster, scanLegacy, type LegacyScanResult } from '../../shared/migration/legacyImport';
 // 도구함 쪽 원본 4개 앱. 같은 이름이라 별칭으로 갈라 둔다.
@@ -30,8 +31,32 @@ type SettingsTab = 'school' | 'classes' | 'timetable' | 'lock' | 'sync' | 'backu
  * 백업·복원이 이 화면의 중심이다. localStorage는 브라우저 기록을 지우면
  * 전부 사라지므로, 교사가 스스로 지킬 수 있는 수단이 눈에 보여야 한다.
  */
+const TAB_IDS: readonly SettingsTab[] = [
+  'school',
+  'classes',
+  'timetable',
+  'lock',
+  'sync',
+  'backup',
+  'legacy',
+];
+
+/**
+ * 주소로 받은 탭. 못 알아보면 null.
+ *
+ * 홈 카드가 "시간표 짜기"로 이 화면을 부르는데, 열리는 곳이 늘 '학교 정보'면
+ * 선생님을 엉뚱한 화면에 내려놓는 셈이다. 카드가 갈래를 넷으로 가른 까닭이
+ * 바로 그것을 막으려는 것인데, 정작 그 링크가 그러면 안 된다.
+ */
+function tabFromUrl(value: string | null): SettingsTab | null {
+  return TAB_IDS.find((id) => id === value) ?? null;
+}
+
 export default function SettingsPage() {
-  const [tab, setTab] = useState<SettingsTab>('school');
+  const [params] = useSearchParams();
+  // 처음 열 때만 본다. 그 뒤 탭을 누르는 것은 주소를 안 건드린다 —
+  // 설정 안을 오가는 것마다 뒤로 가기에 쌓이면 성가시다.
+  const [tab, setTab] = useState<SettingsTab>(() => tabFromUrl(params.get('tab')) ?? 'school');
 
   return (
     <div className="flex flex-col gap-4">

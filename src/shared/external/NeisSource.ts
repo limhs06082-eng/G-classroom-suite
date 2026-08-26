@@ -29,6 +29,16 @@ export interface SchoolSearchResult {
 }
 
 /**
+ * NEIS까지는 갔는데 자료 대신 오류를 받았을 때.
+ *
+ * 보통 Error와 갈라 두는 까닭은 **선생님이 할 일이 다르기** 때문이다.
+ * 여기 닿았다는 것은 인터넷이 멀쩡하다는 뜻이라, 공유기를 다시 켤 일이
+ * 아니다. NEIS가 보낸 사유(하루 호출 한도 따위)를 그대로 보여 줘야 한다.
+ * 글자로 가르면 안 된다 — 통신 실패 쪽 글자는 무엇이 올지 모른다.
+ */
+export class NeisFaultError extends Error {}
+
+/**
  * NEIS가 오류를 보냈으면 던진다.
  *
  * 200으로 오는 오류를 '자료 없음'으로 읽으면, 화면은 방학이라고 말하고
@@ -36,7 +46,7 @@ export interface SchoolSearchResult {
  */
 function refuseFault(raw: unknown): void {
   const fault = neisFault(raw);
-  if (fault !== null) throw new Error(fault);
+  if (fault !== null) throw new NeisFaultError(fault);
 }
 
 /**

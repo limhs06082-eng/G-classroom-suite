@@ -30,6 +30,20 @@ import { Badge, Button, Card, ConfirmDialog, EmptyState, Modal, useToast } from 
  * 개수를 알려 줘도 판단에 도움이 안 된다. 지우는 것과 세는 것은 일치해야
  * 하지만, 세는 것과 보여 주는 것은 다를 수 있다.
  */
+/**
+ * 앞말에 받침이 있으면 '이', 없으면 '가'.
+ *
+ * 목록 끝에 무엇이 오느냐로 조사가 갈린다. '과제 3개'로 끝나면 '개가'지만
+ * '시간표 35칸'으로 끝나면 '칸이'다. 고정해 두면 항목을 하나 더할 때마다
+ * 문장이 어긋나고, 그건 아무도 안 고친다. 한글 음절은 (코드-0xAC00)을
+ * 28로 나눈 나머지가 0이면 받침이 없다.
+ */
+function subjectParticle(word: string): string {
+  const last = word.codePointAt(word.length - 1);
+  if (last === undefined || last < 0xac00 || last > 0xd7a3) return '가';
+  return (last - 0xac00) % 28 === 0 ? '가' : '이';
+}
+
 function deleteSummary(count: ClassDataCount): string {
   const parts = [
     count.students > 0 ? `학생 ${count.students}명` : null,
@@ -42,9 +56,10 @@ function deleteSummary(count: ClassDataCount): string {
     count.timetableEntries > 0 ? `시간표 ${count.timetableEntries}칸` : null,
   ].filter((part): part is string => part !== null);
 
-  return parts.length === 0
-    ? '이 학급에는 아직 자료가 없습니다.'
-    : `${parts.join(' · ')}가 함께 사라집니다.`;
+  if (parts.length === 0) return '이 학급에는 아직 자료가 없습니다.';
+
+  const listed = parts.join(' · ');
+  return `${listed}${subjectParticle(listed)} 함께 사라집니다.`;
 }
 
 export function ClassTermTab() {

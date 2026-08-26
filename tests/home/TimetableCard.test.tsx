@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -190,5 +190,38 @@ describe('오늘 시간표 카드', () => {
 
     expect(screen.getByText(/학급을 먼저/)).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '시간표 짜기' })).not.toBeInTheDocument();
+  });
+});
+
+describe('하루 종일 켜 둔 채로 자정을 넘길 때', () => {
+  it('날이 바뀌면 그날 시간표로 갈아탄다', async () => {
+    /*
+     * G-board는 교실 컴퓨터에서 며칠씩 켜져 있다. 그것이 이 앱의 전제다.
+     * 날짜를 그릴 때 한 번만 재면 화요일 아침 8시 반에 선생님이 보는 것은
+     * 월요일 시간표다 — 하필 그날 하루를 그 화면으로 시작하는 시각이다.
+     *
+     * useToday가 자정에 깨는 것은 useToday.test.tsx가 못 박았지만, 이 카드가
+     * 그 말을 **듣는지**는 아무도 안 봤다. 날짜를 useState로 얼려 두어도
+     * 나머지 시험은 전부 통과한다. 다들 그리기 전에 시계를 맞추고
+     * 자정을 넘기지 않기 때문이다.
+     */
+    const both: TimetableEntry[] = [
+      ...MONDAY,
+      { classId: 'class-1', weekday: 2, period: 1, subject: '화요일과목' },
+    ];
+    // 2026-08-24 월요일 23시 50분.
+    vi.setSystemTime(new Date(2026, 7, 24, 23, 50, 0));
+
+    show(seeded(both));
+    await screen.findByText('다 읽음');
+    expect(screen.getByText('국어')).toBeInTheDocument();
+
+    // 자정까지 10분 + useToday가 경계를 넘기려고 두는 1분.
+    act(() => {
+      vi.advanceTimersByTime(11 * 60 * 1000);
+    });
+
+    expect(screen.getByText('화요일과목')).toBeInTheDocument();
+    expect(screen.queryByText('국어')).not.toBeInTheDocument();
   });
 });

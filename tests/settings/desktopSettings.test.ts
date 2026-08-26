@@ -1,5 +1,6 @@
 import { createElement } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
 import SettingsPage from '../../src/features/settings/SettingsPage';
@@ -26,11 +27,15 @@ import { stubAdapter } from '../helpers/stubAdapter';
  */
 
 function renderSettings(): void {
+  // SettingsPage가 주소에서 탭을 읽는다(홈 카드가 ?tab=timetable로 부른다).
+  // useSearchParams는 Router 밖에서 던지므로 여기서도 감싸야 한다.
   render(
-    createElement(ToastProvider, {
-      children: createElement(SuiteDataProvider, {
-        adapter: stubAdapter(),
-        children: createElement(SettingsPage),
+    createElement(MemoryRouter, {
+      children: createElement(ToastProvider, {
+        children: createElement(SuiteDataProvider, {
+          adapter: stubAdapter(),
+          children: createElement(SettingsPage),
+        }),
       }),
     }),
   );

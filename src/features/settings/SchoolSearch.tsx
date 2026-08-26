@@ -1,7 +1,7 @@
 import { Search } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
-import type { NeisSource, SchoolSearchResult } from '../../shared/external/NeisSource';
+import { NeisFaultError, type NeisSource, type SchoolSearchResult } from '../../shared/external/NeisSource';
 import type { SchoolHit } from '../../shared/external/neisParse';
 import { Button } from '../../shared/ui';
 
@@ -34,12 +34,20 @@ export function SchoolSearch({
 
     try {
       setFound(await source.searchSchools(name));
-    } catch {
+    } catch (cause) {
       /*
-       * 이름을 잘못 친 것과 인터넷이 끊긴 것을 가른다. 둘 다 "찾지
-       * 못했습니다"로 보이면 선생님은 이름만 자꾸 고쳐 보게 된다.
+       * 이름을 잘못 친 것과 못 물어본 것을 가른다. 둘 다 "찾지 못했습니다"로
+       * 보이면 선생님은 이름만 자꾸 고쳐 보게 된다.
+       *
+       * NEIS까지 갔다 온 것(NeisFaultError)과 거기 못 간 것도 가른다.
+       * 하루 호출 한도(ERROR-337)에 걸린 것은 인터넷이 멀쩡하다는 뜻이라,
+       * "연결을 확인해 주세요"로 덮으면 멀쩡한 공유기를 다시 켜게 된다.
        */
-      setError('NEIS에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요.');
+      setError(
+        cause instanceof NeisFaultError
+          ? `NEIS가 자료를 주지 않았습니다. ${cause.message}`
+          : 'NEIS에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요.',
+      );
     } finally {
       setBusy(false);
     }
@@ -63,8 +71,10 @@ export function SchoolSearch({
         </Button>
       </form>
 
+      {/* danger 눈금에 600이 없다(index.css는 50·200·500·700뿐). 없는
+          유틸리티는 Tailwind가 아무것도 안 내보내 조용히 색만 안 먹는다. */}
       {error === '' ? null : (
-        <p role="alert" className="text-sm font-medium text-danger-600">
+        <p role="alert" className="text-sm font-medium text-danger-700">
           {error}
         </p>
       )}

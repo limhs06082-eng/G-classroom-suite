@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
 import SettingsPage from '../../src/features/settings/SettingsPage';
@@ -228,22 +229,69 @@ describe('시간표 짜기', () => {
  * 배열 대신 진짜 DOM을 보는 것과 같은 뜻이다.
  */
 describe('설정 화면에 붙어 있다', () => {
+  function showSettings(path = '/settings') {
+    return render(
+      <MemoryRouter initialEntries={[path]}>
+        <ToastProvider>
+          <SuiteDataProvider
+            adapter={stubAdapter({
+              load: async () => ({ data: seeded(), repairs: [], isFirstRun: false }),
+            })}
+          >
+            <SettingsPage />
+          </SuiteDataProvider>
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+  }
+
   it('시간표 탭을 누르면 표가 나온다', async () => {
     const user = userEvent.setup();
-    render(
-      <ToastProvider>
-        <SuiteDataProvider
-          adapter={stubAdapter({
-            load: async () => ({ data: seeded(), repairs: [], isFirstRun: false }),
-          })}
-        >
-          <SettingsPage />
-        </SuiteDataProvider>
-      </ToastProvider>,
-    );
+    showSettings();
 
     await user.click(await screen.findByRole('tab', { name: '시간표' }));
 
     expect(await screen.findByRole('button', { name: '월요일 1교시' })).toBeInTheDocument();
+  });
+
+  it('주소로 탭을 가리키면 거기서 열린다', async () => {
+    /*
+     * 홈 카드의 '시간표 짜기'가 이 길로 온다. 늘 '학교 정보'에서 열리면
+     * 선생님을 엉뚱한 화면에 내려놓는 셈이고, 그건 그 카드가 갈래를 넷으로
+     * 가르며 막으려던 바로 그 일이다.
+     */
+    showSettings('/settings?tab=timetable');
+
+    expect(await screen.findByRole('button', { name: '월요일 1교시' })).toBeInTheDocument();
+  });
+
+  it('모르는 탭 이름이 오면 처음 화면으로 연다', async () => {
+    showSettings('/settings?tab=없는탭');
+
+    // 주소는 밖에서 오는 값이다. 못 알아보는 값에 빈 화면을 내놓으면 안 된다.
+    expect(await screen.findByRole('tab', { name: '학교 정보', selected: true })).toBeInTheDocument();
+  });
+});
+
+describe('고른 과목은 단추에서 사라지지 않는다', () => {
+  it('마지막 칸을 지워도 고른 과목이 남는다', async () => {
+    const user = userEvent.setup();
+    const data = seeded();
+    // 지난 학기에 쳐 둔 과목이라 자료에만 있고 added에는 없다.
+    data.timetableEntries = [
+      { classId: 'class-1', weekday: 1, period: 1, subject: '즐거운생활' },
+    ];
+    show(data);
+
+    await user.click(await screen.findByRole('button', { name: '즐거운생활' }));
+    // 같은 과목을 다시 찍으면 지워진다 — 이 칸이 마지막이었다.
+    await user.click(screen.getByRole('button', { name: '월요일 1교시' }));
+
+    /*
+     * 여기서 단추가 사라지면 picked만 남아 아무것도 도드라지지 않는다.
+     * 그 상태로 다음 칸을 누르면 보이지도 않는 과목이 국어를 덮는다.
+     * tap()이 막는 '아무 일도 안 일어남'의 반대편이라 더 나쁘다.
+     */
+    expect(screen.getByRole('button', { name: '즐거운생활' })).toBeInTheDocument();
   });
 });
