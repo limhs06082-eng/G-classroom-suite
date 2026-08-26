@@ -23,9 +23,7 @@
     {
       "identifier": "http:default",
       "allow": [
-        { "url": "https://open.neis.go.kr/*" },
-        { "url": "https://api.open-meteo.com/*" },
-        { "url": "https://geocoding-api.open-meteo.com/*" }
+        { "url": "https://open.neis.go.kr/*" }
       ]
     }
   ]

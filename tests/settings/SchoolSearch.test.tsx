@@ -132,3 +132,55 @@ describe('학교 이름으로 찾기', () => {
     expect(screen.getByRole('button', { name: '찾기' })).toBeEnabled();
   });
 });
+
+describe('결과가 스무 곳에서 잘렸을 때', () => {
+  /** `head`에 전체 개수를 담아 준다. NEIS가 실제로 이렇게 보낸다. */
+  function withTotal(total: number) {
+    const body = withHit();
+    body.schoolInfo[0] = { head: [{ list_total_count: total }] } as never;
+    return body;
+  }
+
+  it('모두 몇 곳인지 알려 주고 이름을 더 길게 넣으라고 한다', async () => {
+    http.put(searchUrl, withTotal(34));
+    const user = userEvent.setup();
+
+    render(<SchoolSearch source={new NeisSource(http)} onPick={() => {}} />);
+    await user.type(screen.getByLabelText('학교 이름'), '한빛초');
+    await user.click(screen.getByRole('button', { name: '찾기' }));
+
+    /*
+     * 잘렸다고 말해 주지 않으면, 자기 학교가 없는 목록을 보고 이름을 잘못
+     * 쳤다고 여긴다. 그러면 더 짧게 고쳐서 더 많이 자른다. 빠져나올 수 없다.
+     */
+    expect(await screen.findByText(/모두 34곳 중/)).toBeInTheDocument();
+    expect(screen.getByText(/더 길게/)).toBeInTheDocument();
+  });
+
+  it('다 보여 준 때는 군더더기를 안 붙인다', async () => {
+    http.put(searchUrl, withTotal(1));
+    const user = userEvent.setup();
+
+    render(<SchoolSearch source={new NeisSource(http)} onPick={() => {}} />);
+    await user.type(screen.getByLabelText('학교 이름'), '한빛초');
+    await user.click(screen.getByRole('button', { name: '찾기' }));
+
+    await screen.findByText('위례한빛초등학교');
+    expect(screen.queryByText(/모두 1곳 중/)).not.toBeInTheDocument();
+  });
+
+  it('NEIS가 200에 오류를 실어 보내면 못 찾았다고 하지 않는다', async () => {
+    http.put(searchUrl, {
+      RESULT: { CODE: 'ERROR-337', MESSAGE: '일별 트래픽 제한을 넘은 호출입니다.' },
+    });
+    const user = userEvent.setup();
+
+    render(<SchoolSearch source={new NeisSource(http)} onPick={() => {}} />);
+    await user.type(screen.getByLabelText('학교 이름'), '한빛초');
+    await user.click(screen.getByRole('button', { name: '찾기' }));
+
+    // '못 찾았다'로 보이면 있지도 않은 오타를 찾아 이름만 자꾸 고쳐 보게 된다.
+    expect(await screen.findByRole('alert')).toHaveTextContent('NEIS에 연결하지 못했습니다');
+    expect(screen.queryByText(/찾지 못했습니다\./)).not.toBeInTheDocument();
+  });
+});

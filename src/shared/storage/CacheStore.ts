@@ -4,7 +4,17 @@ import type { FileStore } from './FileStore';
 /** 며칠 치를 남길 것인가. 지난주 급식을 볼 일은 없지만, 끊긴 날을 넘길 만큼은 든다. */
 const KEEP_DAYS = 7;
 
+/**
+ * 담긴 것의 모양이 바뀌면 올린다.
+ *
+ * 옛 파일을 새 코드로 읽으면 `MealMenu`의 칸이 달라 화면이 그리다 죽는다.
+ * 이 클래스는 던지지 않기로 한 자리라 그 죽음이 홈 화면 전체를 삼킨다.
+ * 못 알아보는 판이면 없는 셈 치는 편이 낫다 — 다시 받으면 그만이다.
+ */
+const VERSION = 1;
+
 interface CacheShape {
+  version: number;
   /** 이 캐시가 누구 것인가. 학교가 바뀌면 담아 둔 것은 전부 남의 급식이다. */
   school: string;
   meals: Record<string, MealMenu[]>;
@@ -49,7 +59,8 @@ export class CacheStore {
          * 새 학교에 묻지도 않는다. 이름만 바뀌고 급식은 그대로인 화면이 된다.
          * 검색에서 같은 이름의 다른 학교를 골랐다가 고치는 일은 흔하다.
          */
-        const meals = shape?.school === school ? shape.meals : undefined;
+        const usable = shape?.version === VERSION && shape.school === school;
+        const meals = usable ? shape.meals : undefined;
         if (typeof meals === 'object' && meals !== null) {
           for (const [date, value] of Object.entries(meals)) {
             if (Array.isArray(value)) store.meals.set(date, value as MealMenu[]);
@@ -100,7 +111,11 @@ export class CacheStore {
   }
 
   private async persist(): Promise<void> {
-    const shape: CacheShape = { school: this.school, meals: Object.fromEntries(this.meals) };
+    const shape: CacheShape = {
+      version: VERSION,
+      school: this.school,
+      meals: Object.fromEntries(this.meals),
+    };
 
     try {
       await this.files.writeAtomic('cache.json', JSON.stringify(shape));

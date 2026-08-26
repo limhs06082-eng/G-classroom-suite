@@ -55,6 +55,15 @@ export default defineConfig({
        * 번들에서 통째로 빠진다. 데스크톱 빌드에서는 그대로 번들에
        * 넣어야 하므로 그때는 비운다.
        */
+      /*
+       * TauriHttpClient는 여기 없다. 일부러 뺐다.
+       *
+       * 위 둘은 어디서나 **동적으로만** 불려서, external로 빼도 웹에서는
+       * 그 import에 닿을 일이 없다. 그런데 TauriHttpClient는 SettingsPage가
+       * 맨 위에서 정적으로 들인다. 여기 넣으면 웹 설정 화면이 그리기도 전에
+       * 모듈을 못 찾아 죽는다. 넣으려면 SettingsPage의 import부터 동적으로
+       * 바꿔야 한다. 모듈 몸통에 Tauri를 건드리는 줄이 없어 실려도 무해하다.
+       */
       external: VITE_TARGET === 'desktop'
         ? []
         : (source) =>

@@ -155,3 +155,21 @@ describe('CacheStore — 캐시는 한 학교의 것이다', () => {
     expect(cache.getMeals('2026-06-01')).toBeNull();
   });
 });
+
+describe('CacheStore — 모양이 바뀐 옛 파일', () => {
+  it('판이 다르면 버린다', async () => {
+    /*
+     * MealMenu의 칸이 달라진 뒤 옛 파일을 그대로 읽으면 카드가 그리다 죽고,
+     * 이 클래스는 안 던지기로 한 자리라 그 죽음이 홈 화면을 통째로 삼킨다.
+     * 못 알아보는 판이면 없는 셈 치는 편이 낫다.
+     */
+    await files.writeAtomic(
+      'cache.json',
+      JSON.stringify({ version: 99, school: SCHOOL, meals: { '2026-06-01': menu('먼 훗날') } }),
+    );
+
+    const cache = await open();
+
+    expect(cache.getMeals('2026-06-01')).toBeNull();
+  });
+});

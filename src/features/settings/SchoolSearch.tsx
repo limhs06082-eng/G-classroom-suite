@@ -1,7 +1,7 @@
 import { Search } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
-import type { NeisSource } from '../../shared/external/NeisSource';
+import type { NeisSource, SchoolSearchResult } from '../../shared/external/NeisSource';
 import type { SchoolHit } from '../../shared/external/neisParse';
 import { Button } from '../../shared/ui';
 
@@ -22,7 +22,7 @@ export function SchoolSearch({
   onPick: (hit: SchoolHit) => void;
 }) {
   const [name, setName] = useState('');
-  const [hits, setHits] = useState<SchoolHit[] | null>(null);
+  const [found, setFound] = useState<SchoolSearchResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -30,10 +30,10 @@ export function SchoolSearch({
     event.preventDefault();
     setBusy(true);
     setError('');
-    setHits(null);
+    setFound(null);
 
     try {
-      setHits(await source.searchSchools(name));
+      setFound(await source.searchSchools(name));
     } catch {
       /*
        * 이름을 잘못 친 것과 인터넷이 끊긴 것을 가른다. 둘 다 "찾지
@@ -69,26 +69,36 @@ export function SchoolSearch({
         </p>
       )}
 
-      {hits !== null && hits.length === 0 ? (
+      {found !== null && found.hits.length === 0 ? (
         <p className="text-sm text-slate-500">
           그 이름으로는 찾지 못했습니다. 앞 두 글자만 넣어 보세요 — `한빛초`처럼.
         </p>
       ) : null}
 
-      {hits !== null && hits.length > 0 ? (
+      {found !== null && found.total > found.hits.length ? (
+        <p className="text-sm text-slate-600">
+          {/*
+           * 잘렸다고 말해 주지 않으면, 자기 학교가 없는 목록을 보고 이름을
+           * 잘못 쳤다고 여긴다. 그러면 더 짧게 고쳐서 더 많이 자른다.
+           * 여기서는 반대로 가라고 해야 한다.
+           */}
+          모두 {found.total}곳 중 {found.hits.length}곳만 보입니다. 학교 이름을 더 길게
+          넣으면 좁혀집니다.
+        </p>
+      ) : null}
+
+      {found !== null && found.hits.length > 0 ? (
         <ul className="flex flex-col gap-1">
-          {hits.map((found) => (
-            <li key={`${found.officeCode}-${found.schoolCode}`}>
+          {found.hits.map((hit) => (
+            <li key={`${hit.officeCode}-${hit.schoolCode}`}>
               <button
                 type="button"
-                onClick={() => onPick(found)}
+                onClick={() => onPick(hit)}
                 className="w-full rounded-control border border-slate-200 px-3 py-2 text-left hover:bg-slate-50"
               >
-                <span className="block text-sm font-medium text-slate-900">
-                  {found.schoolName}
-                </span>
+                <span className="block text-sm font-medium text-slate-900">{hit.schoolName}</span>
                 <span className="block text-xs text-slate-500">
-                  {found.officeName} · {found.address}
+                  {hit.officeName} · {hit.address}
                 </span>
               </button>
             </li>

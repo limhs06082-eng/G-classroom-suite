@@ -1,3 +1,4 @@
+import { hasSchool } from '../../shared/domain/school';
 import type { MealMenu } from '../../shared/external/neisParse';
 import type { MealState } from './MealCard';
 
@@ -16,16 +17,6 @@ export interface MealCache {
 /** 급식을 받아 오는 곳. `NeisSource`가 이 모양이다. */
 export interface MealSource {
   fetchMeals(officeCode: string, schoolCode: string, date: string): Promise<MealMenu[]>;
-}
-
-/**
- * 학교가 정해졌는가.
- *
- * 둘 중 하나라도 비면 NEIS에 물을 수 없다. 화면과 아래 함수가 같은
- * 기준을 봐야 해서 한 자리에 둔다.
- */
-export function hasSchool(officeCode: string, schoolCode: string): boolean {
-  return officeCode !== '' && schoolCode !== '';
 }
 
 /**

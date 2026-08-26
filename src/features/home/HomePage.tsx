@@ -22,6 +22,7 @@ import {
   useRoster,
   useSuite,
 } from '../../shared/roster/SuiteDataProvider';
+import { hasSchool } from '../../shared/domain/school';
 import { isDesktop } from '../../shared/platform/target';
 import { useToday } from '../../shared/state/useToday';
 import { Button, Card, EmptyState, useToast } from '../../shared/ui';
@@ -33,7 +34,7 @@ import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
 import { MealCard, type MealState } from './MealCard';
 import { quoteOfDay } from './quotes';
 import { BigStat, PendingNote, SummaryCard } from './SummaryCard';
-import { hasSchool, loadTodayMeal } from './todayMeal';
+import { loadTodayMeal } from './todayMeal';
 
 /**
  * 홈.
@@ -422,7 +423,7 @@ function BackupBanner({
  * 설치형에서만 그린다. NEIS가 `Access-Control` 헤더를 안 줘서 브라우저는
  * 직접 못 부르고, 그 제약은 우리가 어쩔 수 없다.
  */
-function TodayMeal() {
+export function TodayMeal() {
   const { data } = useSuite();
   const [state, setState] = useState<MealState>({ kind: 'loading' });
 
