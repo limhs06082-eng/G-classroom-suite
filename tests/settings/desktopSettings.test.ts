@@ -1,5 +1,6 @@
 import { createElement } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
 import SettingsPage from '../../src/features/settings/SettingsPage';
@@ -26,11 +27,15 @@ import { stubAdapter } from '../helpers/stubAdapter';
  */
 
 function renderSettings(): void {
+  // SettingsPage가 주소에서 탭을 읽는다(홈 카드가 ?tab=timetable로 부른다).
+  // useSearchParams는 Router 밖에서 던지므로 여기서도 감싸야 한다.
   render(
-    createElement(ToastProvider, {
-      children: createElement(SuiteDataProvider, {
-        adapter: stubAdapter(),
-        children: createElement(SettingsPage),
+    createElement(MemoryRouter, {
+      children: createElement(ToastProvider, {
+        children: createElement(SuiteDataProvider, {
+          adapter: stubAdapter(),
+          children: createElement(SettingsPage),
+        }),
       }),
     }),
   );
@@ -58,5 +63,21 @@ describe('SettingsPage — 웹 대상에서는 설치형에서 빠지는 것들�
     fireEvent.click(screen.getByRole('tab', { name: '교사 잠금' }));
 
     expect(await screen.findByText(/PIN은 이 브라우저에 그대로/)).toBeTruthy();
+  });
+
+  it('학교 정보 탭이 급식만 말하고 시간표는 안 말한다', async () => {
+    renderSettings();
+
+    /*
+     * 이 화면에는 시간표 탭이 있다(2-나-1). 그러니 같은 화면에서 "시간표는
+     * 설치형에서만 된다"고 말하면 앞뒤가 안 맞는다 — 웹으로 쓰는 선생님이
+     * 옆 탭에 있는 기능을 못 쓰는 줄 알고 지나간다. 시간표는 손으로 짜는
+     * 것이라 NEIS와 상관이 없고, 브라우저 제약을 받는 것은 급식뿐이다.
+     */
+    const notice = await screen.findByText(/설치형 G-board에서만 받아 옵니다/);
+
+    expect(notice.textContent).toContain('급식은');
+    expect(notice.textContent).not.toContain('시간표');
+    expect(screen.getByRole('tab', { name: '시간표' })).toBeTruthy();
   });
 });

@@ -18,7 +18,7 @@ const hit: SchoolHit = {
 };
 
 const searchUrl =
-  'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=20' +
+  'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=5' +
   '&SCHUL_NM=%ED%95%9C%EB%B9%9B%EC%B4%88';
 
 function withHit() {
@@ -180,7 +180,15 @@ describe('결과가 스무 곳에서 잘렸을 때', () => {
     await user.click(screen.getByRole('button', { name: '찾기' }));
 
     // '못 찾았다'로 보이면 있지도 않은 오타를 찾아 이름만 자꾸 고쳐 보게 된다.
-    expect(await screen.findByRole('alert')).toHaveTextContent('NEIS에 연결하지 못했습니다');
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('일별 트래픽 제한을 넘은 호출입니다');
+
+    /*
+     * 여기까지 왔다는 것은 NEIS에 닿았다는 뜻이다. '연결을 확인해 주세요'로
+     * 덮으면 선생님이 멀쩡한 공유기를 다시 켠다. 기다릴 시간도 다르다 —
+     * 한도는 날이 바뀌어야 풀리고, 끊긴 인터넷은 지금 고칠 수 있다.
+     */
+    expect(alert).not.toHaveTextContent('인터넷 연결을 확인해');
     expect(screen.queryByText(/찾지 못했습니다\./)).not.toBeInTheDocument();
   });
 });

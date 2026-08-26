@@ -34,6 +34,7 @@ export interface ClassDataCount {
   behaviorPresets: number;
   scoreEntries: number;
   scoreGoals: number;
+  timetableEntries: number;
   assignments: number;
   submissions: number;
 }
@@ -73,6 +74,7 @@ export function countClassData(data: SuiteData, classId: string): ClassDataCount
     behaviorPresets: byClass(data.behaviorPresets),
     scoreEntries: byClass(data.scoreEntries),
     scoreGoals: byClass(data.scoreGoals),
+    timetableEntries: byClass(data.timetableEntries),
     assignments: assignmentIds.size,
     submissions: data.submissions.filter((row) => assignmentIds.has(row.assignmentId)).length,
   };
@@ -128,7 +130,7 @@ export function updateClassRoom(
 }
 
 /**
- * 학급과 딸린 자료 15종을 지운다.
+ * 학급과 딸린 자료 16종을 지운다.
  *
  * 불변조건 검사의 고아 정리에 맡기지 않는다. 그쪽에 맡기면 정상 삭제인데도
  * "자료가 깨졌으니 고쳤다"는 복구 경보가 뜨고, 학생은 '복구된 학급'이라는
@@ -175,6 +177,7 @@ export function deleteClassRoom(data: SuiteData, classId: string): SuiteData {
     behaviorPresets: keepClass(data.behaviorPresets),
     scoreEntries: keepClass(data.scoreEntries),
     scoreGoals: keepClass(data.scoreGoals),
+    timetableEntries: keepClass(data.timetableEntries),
     assignments: data.assignments.filter((item) => item.classId !== classId),
     submissions: data.submissions.filter((row) => !assignmentIds.has(row.assignmentId)),
     activeClassId: nextActive,
@@ -186,7 +189,7 @@ export function deleteClassRoom(data: SuiteData, classId: string): SuiteData {
 /**
  * 학기 삭제는 만들지 않는다.
  *
- * 학기를 지우면 그 안 학급이 전부 딸려 오고, 그건 15개 배열 × 학급 수다.
+ * 학기를 지우면 그 안 학급이 전부 딸려 오고, 그건 16개 배열 × 학급 수다.
  * 위험 대비 값이 없다. 대신 보관으로 목록에서 치운다.
  */
 export function addTerm(

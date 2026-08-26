@@ -622,6 +622,34 @@ export interface MessageTemplate {
 }
 
 // ─────────────────────────────────────────────────────────────
+// 시간표 (features/timetable)
+//
+// NEIS에서 받아 오지 않고 교사가 손으로 채운다. 열쇠 없이 부르면 한 번에
+// 다섯 행만 와서 6교시가 늘 잘리기 때문이다. docs 설계 문서에 확인 내용을 적었다.
+// ─────────────────────────────────────────────────────────────
+
+/** 시간표에 둘 수 있는 가장 늦은 교시. 초등은 6교시가 흔하고 7교시를 쓰는 학교가 있다. */
+export const MAX_PERIOD = 7;
+
+/**
+ * 시간표 한 칸.
+ *
+ * id를 두지 않는다. `(classId, weekday, period)`가 자연키이고, 한 칸에 두
+ * 과목이 있을 수 없으므로 id는 중복을 허용하는 구멍만 된다.
+ *
+ * **없는 교시는 항목 자체가 없다.** 빈 글자로 두지 않는다. 그래서 요일마다
+ * 몇 교시인지 따로 묻지 않아도 된다 — 금요일에 넷만 채우면 금요일은 4교시다.
+ */
+export interface TimetableEntry {
+  classId: string;
+  /** 1(월) ~ 5(금). 초등 시간표에 주말은 없다. */
+  weekday: number;
+  /** 1 ~ MAX_PERIOD */
+  period: number;
+  subject: string;
+}
+
+// ─────────────────────────────────────────────────────────────
 // 전체 데이터 루트
 //
 // 기능별 데이터(좌석 배치, 역할, 과제, 점수 기록)는 각 feature를
@@ -659,6 +687,9 @@ export interface SuiteData {
 
   assignments: Assignment[];
   submissions: Submission[];
+
+  /** 학급마다 한 벌. 학기가 바뀌어 학급을 새로 만들면 시간표도 새로 시작한다. */
+  timetableEntries: TimetableEntry[];
 
   scoreCycle: ScoreCycle;
 

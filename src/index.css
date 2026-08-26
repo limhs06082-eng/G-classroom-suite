@@ -41,6 +41,32 @@
 
   --color-reward-50: oklch(0.97 0.03 75);
   --color-reward-500: oklch(0.68 0.14 75);
+
+  /*
+   * 과목 색 열둘.
+   *
+   * 시간표에서 같은 과목을 눈으로 훑어 찾으라고 두는 것이지 꾸미려는 게
+   * 아니다. 그래서 **밝기(0.96)와 채도(0.035)를 열둘 다 똑같이 두고 색상각만**
+   * 30도씩 돌린다. 심란해지는 까닭은 보통 색마다 밝기가 들쭉날쭉해서인데,
+   * 그러면 어떤 과목이 다른 과목보다 소리치게 된다. 여기서는 그럴 수가 없다.
+   *
+   * 위 duty-50(0.96 0.03)이 이 저장소가 이미 정해 둔 '아주 옅은 기능 배경'
+   * 공식이다. 그 공식을 그대로 따랐다.
+   *
+   * 테마 넷(2-다)은 이 열두 줄만 덮으면 된다. 화면 코드는 안 건드린다.
+   */
+  --color-subject-1: oklch(0.96 0.035 20);
+  --color-subject-2: oklch(0.96 0.035 50);
+  --color-subject-3: oklch(0.96 0.035 80);
+  --color-subject-4: oklch(0.96 0.035 110);
+  --color-subject-5: oklch(0.96 0.035 140);
+  --color-subject-6: oklch(0.96 0.035 170);
+  --color-subject-7: oklch(0.96 0.035 200);
+  --color-subject-8: oklch(0.96 0.035 230);
+  --color-subject-9: oklch(0.96 0.035 260);
+  --color-subject-10: oklch(0.96 0.035 290);
+  --color-subject-11: oklch(0.96 0.035 320);
+  --color-subject-12: oklch(0.96 0.035 350);
   --color-reward-700: oklch(0.5 0.12 75);
 
   --color-assignment-50: oklch(0.96 0.02 25);

@@ -34,6 +34,7 @@ import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
 import { MealCard, type MealState } from './MealCard';
 import { quoteOfDay } from './quotes';
 import { BigStat, PendingNote, SummaryCard } from './SummaryCard';
+import { TimetableCard } from './TimetableCard';
 import { loadTodayMeal } from './todayMeal';
 
 /**
@@ -157,20 +158,29 @@ export default function HomePage() {
           <AssignmentSummary />
         </SummaryCard>
 
+        {/*
+          isDesktop() 분기가 없다. 급식은 NEIS가 브라우저의 직접 요청을 막아
+          설치형에서만 되지만, 시간표는 선생님이 손으로 짜는 것이라 바깥에
+          물을 데가 없다 — 웹에서도 그대로 돈다.
+        */}
+        <TimetableCard />
+
         {isDesktop() ? (
           <TodayMeal />
         ) : (
           <SummaryCard
             to="/settings"
-            label="급식 · 시간표"
+            label="급식"
             icon={UtensilsCrossed}
             accentClass="text-brand-600"
             tintClass="bg-brand-50"
             pending
             cta="학교 정보 설정"
           >
+            {/* 시간표를 여기서 뺐다. 바로 위 카드가 웹에서도 뜨므로 그 말은 이제 거짓이다. */}
             <PendingNote>
-              급식과 시간표는 설치형 G-board에서 받아 옵니다.
+              급식은 설치형 G-board에서 받아 옵니다. NEIS가 브라우저의 직접 요청을
+              막기 때문입니다.
             </PendingNote>
           </SummaryCard>
         )}

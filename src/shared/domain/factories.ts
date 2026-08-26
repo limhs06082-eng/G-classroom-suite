@@ -464,6 +464,7 @@ export function createEmptySuiteData(): SuiteData {
     scoreGoals: [],
     assignments: [],
     submissions: [],
+    timetableEntries: [],
     scoreCycle: { ...DEFAULT_SCORE_CYCLE },
     activeTermId: null,
     activeClassId: null,

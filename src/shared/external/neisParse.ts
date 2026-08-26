@@ -105,8 +105,9 @@ export function neisFault(raw: unknown): string | null {
 /**
  * 이름에 걸린 학교가 모두 몇인가. 못 읽으면 -1.
  *
- * 한 번에 스무 곳만 받아 온다. 잘린 줄 모르면 자기 학교가 없는 목록을
- * 보고 이름을 잘못 쳤다고 여겨, 더 짧게 고쳐 더 많이 자르게 된다.
+ * 한 번에 다섯 곳만 받아 온다(NEIS가 열쇠 없는 호출에 매기는 상한이다).
+ * 잘린 줄 모르면 자기 학교가 없는 목록을 보고 이름을 잘못 쳤다고 여겨,
+ * 더 짧게 고쳐 더 많이 자르게 된다.
  */
 export function schoolSearchTotal(raw: unknown): number {
   if (typeof raw !== 'object' || raw === null) return -1;
