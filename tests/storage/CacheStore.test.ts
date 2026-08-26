@@ -16,8 +16,11 @@ beforeEach(() => {
   files = new MemoryFileStore();
 });
 
-async function open(now = T0): Promise<CacheStore> {
-  return CacheStore.open(files, () => now);
+const SCHOOL = 'E10:7310058';
+const OTHER_SCHOOL = 'J10:7530079';
+
+async function open(now = T0, school = SCHOOL): Promise<CacheStore> {
+  return CacheStore.open(files, school, () => now);
 }
 
 describe('CacheStore — 담고 꺼내기', () => {
@@ -102,5 +105,53 @@ describe('CacheStore — 깨져도 앱을 막지 않는다', () => {
 
     // 파일에 못 써도 오늘 화면에는 급식이 떠야 한다.
     expect(cache.getMeals('2026-06-01')?.[0]?.dishes[0]?.name).toBe('홍국쌀밥');
+  });
+});
+
+describe('CacheStore — 캐시는 한 학교의 것이다', () => {
+  it('학교를 바꾸면 앞 학교 급식을 돌려주지 않는다', async () => {
+    const first = await open(T0, SCHOOL);
+    await first.putMeals('2026-06-01', menu('앞 학교 급식'));
+
+    /*
+     * 검색에서 같은 이름의 다른 학교를 골랐다가 고치는 일은 흔하다. 날짜만
+     * 열쇠로 삼으면 고친 뒤에도 앞 학교 급식이 그대로 뜨고, 캐시에 있으니
+     * 새 학교에는 묻지도 않는다. 학교 이름만 바뀐 화면이 된다.
+     */
+    const second = await open(T0, OTHER_SCHOOL);
+
+    expect(second.getMeals('2026-06-01')).toBeNull();
+  });
+
+  it('같은 학교면 그대로 남아 있다', async () => {
+    const first = await open(T0, SCHOOL);
+    await first.putMeals('2026-06-01', menu('홍국쌀밥'));
+
+    // 학교가 그대로면 버릴 이유가 없다. 인터넷이 끊긴 날 이것이 오늘 급식이다.
+    const second = await open(T0, SCHOOL);
+
+    expect(second.getMeals('2026-06-01')?.[0]?.dishes[0]?.name).toBe('홍국쌀밥');
+  });
+
+  it('학교를 바꾼 뒤 담으면 파일에도 새 학교 것만 남는다', async () => {
+    const first = await open(T0, SCHOOL);
+    await first.putMeals('2026-06-01', menu('앞 학교 급식'));
+
+    const second = await open(T0, OTHER_SCHOOL);
+    await second.putMeals('2026-06-01', menu('새 학교 급식'));
+
+    const raw: unknown = JSON.parse((await files.read('cache.json')) ?? '{}');
+    const shape = raw as { school?: string; meals?: Record<string, MealMenu[]> };
+    expect(shape.school).toBe(OTHER_SCHOOL);
+    expect(shape.meals?.['2026-06-01']?.[0]?.dishes[0]?.name).toBe('새 학교 급식');
+  });
+
+  it('학교 표시가 없는 옛 파일은 버린다', async () => {
+    // 0.1.0에는 이 캐시가 없었지만, 누구 것인지 모르는 파일을 믿을 수는 없다.
+    await files.writeAtomic('cache.json', JSON.stringify({ meals: { '2026-06-01': menu('출처 불명') } }));
+
+    const cache = await open();
+
+    expect(cache.getMeals('2026-06-01')).toBeNull();
   });
 });

@@ -23,6 +23,7 @@ import {
   useSuite,
 } from '../../shared/roster/SuiteDataProvider';
 import { isDesktop } from '../../shared/platform/target';
+import { useToday } from '../../shared/state/useToday';
 import { Button, Card, EmptyState, useToast } from '../../shared/ui';
 import { AssignmentSummary } from '../assignment/AssignmentSummary';
 import { DutySummary } from '../duty/DutySummary';
@@ -32,6 +33,7 @@ import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
 import { MealCard, type MealState } from './MealCard';
 import { quoteOfDay } from './quotes';
 import { BigStat, PendingNote, SummaryCard } from './SummaryCard';
+import { hasSchool, loadTodayMeal } from './todayMeal';
 
 /**
  * 홈.
@@ -427,11 +429,11 @@ function TodayMeal() {
   const officeCode = data.profile.officeCode ?? '';
   const schoolCode = data.profile.schoolCode ?? '';
 
-  const today = new Date();
-  const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const date = useToday();
 
   useEffect(() => {
-    if (officeCode === '' || schoolCode === '') {
+    // 학교가 없으면 여기서 끝낸다. 물을 데가 없는데 Tauri 조각을 들일 이유가 없다.
+    if (!hasSchool(officeCode, schoolCode)) {
       setState({ kind: 'no-school' });
       return;
     }
@@ -448,26 +450,18 @@ function TodayMeal() {
           import('../../shared/storage/TauriFileStore'),
         ]);
 
-      const cache = await CacheStore.open(new TauriFileStore());
+      // 캐시에 임자를 달아 연다. 학교를 고치면 앞 학교 급식은 통째로 버려진다.
+      const cache = await CacheStore.open(new TauriFileStore(), `${officeCode}:${schoolCode}`);
 
-      const cached = cache.getMeals(date);
-      if (cached !== null) {
-        if (!cancelled) setState({ kind: 'ready', meals: cached });
-        return;
-      }
+      const next = await loadTodayMeal(
+        cache,
+        new NeisSource(new TauriHttpClient()),
+        officeCode,
+        schoolCode,
+        date,
+      );
 
-      try {
-        const meals = await new NeisSource(new TauriHttpClient()).fetchMeals(
-          officeCode,
-          schoolCode,
-          date,
-        );
-        await cache.putMeals(date, meals);
-        if (!cancelled) setState({ kind: 'ready', meals });
-      } catch {
-        // 조용히 넘어가지 않는다. 카드가 왜 비었는지 말해 줘야 한다.
-        if (!cancelled) setState({ kind: 'failed' });
-      }
+      if (!cancelled) setState(next);
     })();
 
     return () => {

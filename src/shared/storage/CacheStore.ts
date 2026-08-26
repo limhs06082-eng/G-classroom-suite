@@ -5,6 +5,8 @@ import type { FileStore } from './FileStore';
 const KEEP_DAYS = 7;
 
 interface CacheShape {
+  /** 이 캐시가 누구 것인가. 학교가 바뀌면 담아 둔 것은 전부 남의 급식이다. */
+  school: string;
   meals: Record<string, MealMenu[]>;
 }
 
@@ -23,17 +25,31 @@ export class CacheStore {
 
   private constructor(
     private readonly files: FileStore,
+    private readonly school: string,
     private readonly clock: () => string,
   ) {}
 
-  static async open(files: FileStore, clock?: () => string): Promise<CacheStore> {
-    const store = new CacheStore(files, clock ?? (() => new Date().toISOString()));
+  /** `school`은 이 캐시의 임자다. 부르는 쪽이 시도코드와 학교코드를 엮어 넘긴다. */
+  static async open(
+    files: FileStore,
+    school: string,
+    clock?: () => string,
+  ): Promise<CacheStore> {
+    const store = new CacheStore(files, school, clock ?? (() => new Date().toISOString()));
 
     const raw = await files.read('cache.json');
     if (raw !== null) {
       try {
         const parsed: unknown = JSON.parse(raw);
-        const meals = (parsed as CacheShape | null)?.meals;
+        const shape = parsed as Partial<CacheShape> | null;
+
+        /*
+         * 담을 때의 학교와 지금 학교가 다르면 통째로 버린다. 날짜만 열쇠로
+         * 삼으면 학교를 고친 뒤에도 앞 학교 급식이 뜨는데, 캐시에 있으니
+         * 새 학교에 묻지도 않는다. 이름만 바뀌고 급식은 그대로인 화면이 된다.
+         * 검색에서 같은 이름의 다른 학교를 골랐다가 고치는 일은 흔하다.
+         */
+        const meals = shape?.school === school ? shape.meals : undefined;
         if (typeof meals === 'object' && meals !== null) {
           for (const [date, value] of Object.entries(meals)) {
             if (Array.isArray(value)) store.meals.set(date, value as MealMenu[]);
@@ -84,7 +100,7 @@ export class CacheStore {
   }
 
   private async persist(): Promise<void> {
-    const shape: CacheShape = { meals: Object.fromEntries(this.meals) };
+    const shape: CacheShape = { school: this.school, meals: Object.fromEntries(this.meals) };
 
     try {
       await this.files.writeAtomic('cache.json', JSON.stringify(shape));
