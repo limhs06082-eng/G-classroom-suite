@@ -16,7 +16,7 @@ const emptyResult = { RESULT: { CODE: 'INFO-200', MESSAGE: '해당하는 데이�
 describe('학교 검색', () => {
   it('이름을 주소에 넣어 부른다', async () => {
     http.put(
-      'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=20&SCHUL_NM=%ED%95%9C%EB%B9%9B%EC%B4%88',
+      'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=5&SCHUL_NM=%ED%95%9C%EB%B9%9B%EC%B4%88',
       emptyResult,
     );
 
@@ -27,7 +27,7 @@ describe('학교 검색', () => {
 
   it('앞뒤 공백은 떼고 보낸다', async () => {
     http.put(
-      'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=20&SCHUL_NM=%ED%95%9C%EB%B9%9B%EC%B4%88',
+      'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=5&SCHUL_NM=%ED%95%9C%EB%B9%9B%EC%B4%88',
       emptyResult,
     );
 
@@ -44,7 +44,7 @@ describe('학교 검색', () => {
 
   it('통신이 실패하면 그대로 던진다', async () => {
     http.fail(
-      'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=20&SCHUL_NM=%ED%95%9C%EB%B9%9B%EC%B4%88',
+      'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=5&SCHUL_NM=%ED%95%9C%EB%B9%9B%EC%B4%88',
       '인터넷 연결 없음',
     );
 
@@ -87,7 +87,7 @@ describe('급식 조회', () => {
 
 describe('NEIS가 오류를 200에 실어 보낼 때', () => {
   const searchUrl =
-    'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=20' +
+    'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=5' +
     '&SCHUL_NM=%ED%95%9C%EB%B9%9B%EC%B4%88';
   const mealUrl =
     'https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json&pIndex=1&pSize=10' +
@@ -126,7 +126,7 @@ describe('NEIS가 오류를 200에 실어 보낼 때', () => {
 describe('검색 결과가 잘렸을 때', () => {
   it('모두 몇 곳인지 함께 돌려준다', async () => {
     http.put(
-      'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=20&SCHUL_NM=%EC%A4%91%EC%95%99%EC%B4%88',
+      'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=5&SCHUL_NM=%EC%A4%91%EC%95%99%EC%B4%88',
       {
         schoolInfo: [
           { head: [{ list_total_count: 34 }, { RESULT: { CODE: 'INFO-000' } }] },

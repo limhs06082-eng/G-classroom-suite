@@ -18,7 +18,7 @@ const hit: SchoolHit = {
 };
 
 const searchUrl =
-  'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=20' +
+  'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=5' +
   '&SCHUL_NM=%ED%95%9C%EB%B9%9B%EC%B4%88';
 
 function withHit() {
