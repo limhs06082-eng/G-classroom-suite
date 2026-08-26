@@ -17,11 +17,12 @@ import { formatBytes, measureDataSize } from '../../shared/storage/dataSize';
 import type { BackupSummary } from '../../shared/storage/StorageAdapter';
 import { AccountPanel } from '../../shared/account/AccountPanel';
 import { Badge, Button, Card, ConfirmDialog, cx, EmptyState, Tabs, useToast } from '../../shared/ui';
+import { TimetableTab } from '../timetable/TimetableTab';
 import { ClassTermTab } from './ClassTermTab';
 import { LockTab } from './LockTab';
 import { SchoolSearch } from './SchoolSearch';
 
-type SettingsTab = 'school' | 'classes' | 'lock' | 'sync' | 'backup' | 'legacy';
+type SettingsTab = 'school' | 'classes' | 'timetable' | 'lock' | 'sync' | 'backup' | 'legacy';
 
 /**
  * 설정.
@@ -40,6 +41,8 @@ export default function SettingsPage() {
         items={[
           { id: 'school', label: '학교 정보' },
           { id: 'classes', label: '학급·학기' },
+          // 시간표는 학급에 매인다. 학급을 만든 바로 다음에 할 일이라 옆에 둔다.
+          { id: 'timetable', label: '시간표' },
           { id: 'lock', label: '교사 잠금' },
           /*
            * '계정·동기화'는 Firebase 로그인 화면이다. 설치형에는 Firebase도,
@@ -64,6 +67,8 @@ export default function SettingsPage() {
       >
         {tab === 'school' ? <SchoolTab /> : null}
         {tab === 'classes' ? <ClassTermTab /> : null}
+        {/* isDesktop() 분기가 없다. 시간표는 바깥 통신이 없어 웹에서도 그대로 돈다. */}
+        {tab === 'timetable' ? <TimetableTab /> : null}
         {tab === 'lock' ? <LockTab /> : null}
         {/* 탭 목록에서 빼는 것만으로는 안 된다 — tab 상태가 무슨 값이든 설치형에서는 이 패널이 렌더되면 안 된다. */}
         {tab === 'sync' && !isDesktop() ? <AccountPanel /> : null}
