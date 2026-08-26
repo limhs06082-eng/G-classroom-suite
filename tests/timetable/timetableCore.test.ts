@@ -4,6 +4,7 @@ import type { TimetableEntry } from '../../src/shared/domain/types';
 import {
   cellSubject,
   paintCell,
+  clearTimetable,
   subjectButtons,
   todayPeriods,
   weekdayOf,
@@ -79,7 +80,7 @@ describe('칸 읽기', () => {
 
 describe('과목 단추', () => {
   it('기본 목록으로 시작한다', () => {
-    const buttons = subjectButtons([], CLASS);
+    const buttons = subjectButtons([], CLASS, undefined);
 
     expect(buttons).toContain('국어');
     expect(buttons).toContain('창체');
@@ -90,20 +91,20 @@ describe('과목 단추', () => {
      * 기본 목록은 고학년에 맞춰져 있다. 저학년은 '즐거운생활'을 쓰는데,
      * 한 벌로 두 쪽을 다 덮을 수 없다. 한 번 치면 그 뒤로는 단추다.
      */
-    const buttons = subjectButtons([at(1, 1, '즐거운생활')], CLASS);
+    const buttons = subjectButtons([at(1, 1, '즐거운생활')], CLASS, undefined);
 
     expect(buttons).toContain('즐거운생활');
   });
 
   it('기본에 있는 과목을 써도 두 번 나오지 않는다', () => {
-    const buttons = subjectButtons([at(1, 1, '국어')], CLASS);
+    const buttons = subjectButtons([at(1, 1, '국어')], CLASS, undefined);
 
     expect(buttons.filter((s) => s === '국어')).toHaveLength(1);
   });
 
   it('같은 과목을 여러 칸에 써도 단추는 하나다', () => {
     // 국어를 여섯 칸에 찍는 것이 보통이다. 그때마다 단추가 늘면 못 쓴다.
-    const buttons = subjectButtons([at(1, 1, '즐거운생활'), at(2, 1, '즐거운생활')], CLASS);
+    const buttons = subjectButtons([at(1, 1, '즐거운생활'), at(2, 1, '즐거운생활')], CLASS, undefined);
 
     expect(buttons.filter((s) => s === '즐거운생활')).toHaveLength(1);
   });
@@ -111,7 +112,7 @@ describe('과목 단추', () => {
   it('다른 학급이 쓴 과목은 안 가져온다', () => {
     const other: TimetableEntry = { classId: 'class-2', weekday: 1, period: 1, subject: '중국어' };
 
-    expect(subjectButtons([other], CLASS)).not.toContain('중국어');
+    expect(subjectButtons([other], CLASS, undefined)).not.toContain('중국어');
   });
 });
 
@@ -168,5 +169,67 @@ describe('요일 재기', () => {
     // Date의 getDay()는 일요일이 0이라 그대로 쓰면 일요일이 월요일이 된다.
     expect(weekdayOf(new Date(2026, 7, 29))).toBe(0);
     expect(weekdayOf(new Date(2026, 7, 30))).toBe(0);
+  });
+});
+
+describe('학년에 맞는 과목이 나온다', () => {
+  it('1~2학년은 통합교과를 준다', () => {
+    const buttons = subjectButtons([], CLASS, 1);
+
+    /*
+     * 저학년 담임에게 사회·실과 단추를 내미는 것은 도움이 아니라 잡음이다.
+     * 정작 쓰는 즐거운생활은 없어서 매번 직접 쳐야 했다.
+     */
+    expect(buttons).toContain('즐거운생활');
+    expect(buttons).toContain('바른생활');
+    expect(buttons).not.toContain('사회');
+    expect(buttons).not.toContain('실과');
+  });
+
+  it('3~4학년은 실과가 없다', () => {
+    const buttons = subjectButtons([], CLASS, 3);
+
+    // 실과는 5학년부터다.
+    expect(buttons).toContain('사회');
+    expect(buttons).not.toContain('실과');
+    expect(buttons).not.toContain('즐거운생활');
+  });
+
+  it('5~6학년은 실과가 있다', () => {
+    expect(subjectButtons([], CLASS, 6)).toContain('실과');
+  });
+
+  it('학년을 안 적었으면 고학년 목록을 준다', () => {
+    // 이 기능이 생기기 전 모든 학급이 보던 목록이다. 바뀌는 것이 없어야 안전하다.
+    expect(subjectButtons([], CLASS, undefined)).toEqual(subjectButtons([], CLASS, 6));
+  });
+
+  it('학년 목록에 없는 과목도 찍어 두면 단추가 된다', () => {
+    // 학교마다 다른 과목(스포츠클럽, 원어민 영어)이 있다. 가두면 안 된다.
+    expect(subjectButtons([at(1, 1, '스포츠클럽')], CLASS, 3)).toContain('스포츠클럽');
+  });
+});
+
+describe('전체 지우기', () => {
+  it('이 학급 칸을 통째로 없앤다', () => {
+    const entries = [at(1, 1, '국어'), at(2, 3, '수학')];
+
+    expect(clearTimetable(entries, CLASS)).toEqual([]);
+  });
+
+  it('옆 반 시간표는 건드리지 않는다', () => {
+    const mine = at(1, 1, '국어');
+    const theirs = { classId: 'class-2', weekday: 1, period: 1, subject: '영어' };
+
+    // 한 반을 새로 짜는 일과 옆 반 것을 잃는 일은 하늘과 땅 차이다.
+    expect(clearTimetable([mine, theirs], CLASS)).toEqual([theirs]);
+  });
+
+  it('원래 배열을 흔들지 않는다', () => {
+    const entries = [at(1, 1, '국어')];
+
+    clearTimetable(entries, CLASS);
+
+    expect(entries).toHaveLength(1);
   });
 });

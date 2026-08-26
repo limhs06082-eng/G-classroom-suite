@@ -38,6 +38,8 @@ function seeded(): SuiteData {
     classRooms: [
       createClassRoom({ id: 'class-1', termId: 'term-1', name: '3학년 2반' }, T0),
       createClassRoom({ id: 'class-2', termId: 'term-1', name: '3학년 5반' }, T0),
+      // 학년이 붙은 반. 학년에 맞는 과목이 나오는지는 이것으로만 볼 수 있다.
+      { ...createClassRoom({ id: 'class-3', termId: 'term-1', name: '1학년 1반' }, T0), grade: 1 },
     ],
     activeTermId: 'term-1',
     activeClassId: 'class-1',
@@ -293,5 +295,100 @@ describe('고른 과목은 단추에서 사라지지 않는다', () => {
      * tap()이 막는 '아무 일도 안 일어남'의 반대편이라 더 나쁘다.
      */
     expect(screen.getByRole('button', { name: '즐거운생활' })).toBeInTheDocument();
+  });
+});
+
+describe('학년에 맞는 과목 단추', () => {
+  it('1학년 반에서는 통합교과가 나오고 사회는 안 나온다', async () => {
+    const data = seeded();
+    data.activeClassId = 'class-3';
+    show(data);
+
+    // 저학년 담임에게 사회·실과를 내미는 것은 도움이 아니라 잡음이다.
+    expect(await screen.findByRole('button', { name: '즐거운생활' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '사회' })).not.toBeInTheDocument();
+  });
+
+  it('학년을 안 적은 반에서는 지금까지 보던 목록 그대로다', async () => {
+    show();
+
+    expect(await screen.findByRole('button', { name: '사회' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '즐거운생활' })).not.toBeInTheDocument();
+  });
+});
+
+describe('과목 색', () => {
+  it('찍은 칸에 그 과목의 색이 붙는다', async () => {
+    const user = userEvent.setup();
+    show();
+
+    await user.click(await screen.findByRole('button', { name: '국어' }));
+    const cell = screen.getByRole('button', { name: '월요일 1교시' });
+    await user.click(cell);
+
+    /*
+     * 클래스 이름을 지어 쓰면(`bg-subject-${n}`) Tailwind가 소스에서 못 찾아
+     * CSS를 한 줄도 안 내보낸다. 화면에서는 색만 조용히 안 먹고 빌드도
+     * 시험도 아무 말을 안 한다. 그래서 붙는 이름을 여기서 못 박는다.
+     */
+    expect(cell.className).toMatch(/bg-subject-[0-9]+/);
+  });
+
+  it('같은 과목 칸끼리는 같은 색, 다른 과목과는 다른 색이다', async () => {
+    const user = userEvent.setup();
+    show();
+
+    await user.click(await screen.findByRole('button', { name: '국어' }));
+    await user.click(screen.getByRole('button', { name: '월요일 1교시' }));
+    await user.click(screen.getByRole('button', { name: '화요일 1교시' }));
+    await user.click(screen.getByRole('button', { name: '수학' }));
+    await user.click(screen.getByRole('button', { name: '월요일 2교시' }));
+
+    const tint = (name: string): string =>
+      /bg-subject-[0-9]+/.exec(screen.getByRole('button', { name }).className)?.[0] ?? '';
+
+    // 색으로 찾는다는 것이 성립하려면 이 두 줄이 다 참이어야 한다.
+    expect(tint('월요일 1교시')).toBe(tint('화요일 1교시'));
+    expect(tint('월요일 1교시')).not.toBe(tint('월요일 2교시'));
+  });
+});
+
+describe('전체 지우기', () => {
+  it('빈 시간표에는 단추가 없다', async () => {
+    show();
+
+    await screen.findByRole('button', { name: '월요일 1교시' });
+    // 눌렀는데 아무 일도 안 일어나면 선생님은 앱이 고장 났다고 여긴다.
+    expect(screen.queryByRole('button', { name: '전체 지우기' })).not.toBeInTheDocument();
+  });
+
+  it('확인하면 이 반 칸이 통째로 사라진다', async () => {
+    const user = userEvent.setup();
+    const data = seeded();
+    data.timetableEntries = [
+      { classId: 'class-1', weekday: 1, period: 1, subject: '국어' },
+      { classId: 'class-1', weekday: 2, period: 3, subject: '수학' },
+      { classId: 'class-2', weekday: 1, period: 1, subject: '영어' },
+    ];
+    show(data);
+
+    await user.click(await screen.findByRole('button', { name: '전체 지우기' }));
+    await user.click(screen.getByRole('button', { name: '전부 지우기' }));
+
+    // 옆 반 것까지 날리면 한 반을 새로 짜는 일이 두 반을 새로 짜는 일이 된다.
+    const saved: unknown = JSON.parse(screen.getByTestId('saved').textContent ?? '[]');
+    expect(saved).toEqual([{ classId: 'class-2', weekday: 1, period: 1, subject: '영어' }]);
+  });
+
+  it('취소하면 그대로 있다', async () => {
+    const user = userEvent.setup();
+    const data = seeded();
+    data.timetableEntries = [{ classId: 'class-1', weekday: 1, period: 1, subject: '국어' }];
+    show(data);
+
+    await user.click(await screen.findByRole('button', { name: '전체 지우기' }));
+    await user.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(screen.getByRole('button', { name: '월요일 1교시' })).toHaveTextContent('국어');
   });
 });

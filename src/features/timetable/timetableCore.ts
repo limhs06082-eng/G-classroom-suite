@@ -1,5 +1,5 @@
 import type { TimetableEntry } from '../../shared/domain/types';
-import { COMMON_SUBJECTS } from '../../shared/subjects';
+import { subjectsForGrade } from '../../shared/subjects';
 
 /**
  * 시간표 판단.
@@ -12,18 +12,13 @@ import { COMMON_SUBJECTS } from '../../shared/subjects';
 /** 표의 가로줄. 초등 시간표에 주말은 없다. */
 export const WEEKDAY_NAMES = ['월', '화', '수', '목', '금'] as const;
 
-/**
- * 처음에 보여 줄 과목.
+/*
+ * 처음에 보여 줄 과목은 `subjectsForGrade`가 정한다.
  *
- * `COMMON_SUBJECTS`를 그대로 쓴다. 같은 초등 교과 목록을 여기 한 벌 더 적어
- * 두면 둘이 갈라지는 날이 온다 — 수업 흐름에서 고르는 과목과 시간표에 찍는
- * 과목이 학교 안에서 다른 것일 리 없다.
- *
- * 이 목록은 고학년에 맞춰져 있다. 저학년의 `즐거운생활`·`바른생활`·
- * `슬기로운생활`은 여기 없는데, 한 벌로 두 쪽을 다 덮으면 단추가 열다섯 개가
- * 되어 고르기가 더 어려워진다. 대신 직접 입력한 과목이 단추가 된다.
+ * 교과 목록을 여기 한 벌 더 적어 두면 둘이 갈라지는 날이 온다 — 수업 흐름에서
+ * 고르는 과목과 시간표에 찍는 과목이 한 학교 안에서 다를 리 없다. 그래서
+ * shared/subjects.ts 한 곳에 둔다.
  */
-export const DEFAULT_SUBJECTS: readonly string[] = COMMON_SUBJECTS;
 
 /** 이 학급 것만 고른다. 시간표는 학급마다 한 벌이다. */
 function mine(entries: TimetableEntry[], classId: string): TimetableEntry[] {
@@ -33,12 +28,17 @@ function mine(entries: TimetableEntry[], classId: string): TimetableEntry[] {
 /**
  * 고를 수 있는 과목.
  *
- * 기본 목록에 **이 시간표에 이미 쓰인 과목**을 더한다. 저학년 담임이
- * `즐거운생활`을 한 번 치면 그 뒤로는 단추다. 기본 목록이 자기 학년에
- * 안 맞는 문제가 한 번의 타이핑으로 끝나고, 그 뒤로는 안 겪는다.
+ * 학년에 맞는 목록에 **이 시간표에 이미 쓰인 과목**을 더한다. 학년별 목록이
+ * 교육과정을 덮으니 보통은 더할 것이 없지만, 학교마다 다른 과목(방과후,
+ * 스포츠클럽, 원어민 영어)은 한 번 치면 그 뒤로는 단추다.
  */
-export function subjectButtons(entries: TimetableEntry[], classId: string): string[] {
-  const seen = new Set<string>(DEFAULT_SUBJECTS);
+export function subjectButtons(
+  entries: TimetableEntry[],
+  classId: string,
+  grade: number | undefined,
+): string[] {
+  const base = subjectsForGrade(grade);
+  const seen = new Set<string>(base);
   const extra: string[] = [];
 
   for (const entry of mine(entries, classId)) {
@@ -49,7 +49,18 @@ export function subjectButtons(entries: TimetableEntry[], classId: string): stri
     extra.push(entry.subject);
   }
 
-  return [...DEFAULT_SUBJECTS, ...extra];
+  return [...base, ...extra];
+}
+
+/**
+ * 이 학급 시간표를 통째로 비운다.
+ *
+ * 옆 반 것은 건드리지 않는다. 한 줄만 잘못 짠 것이면 그 칸을 다시 찍으면
+ * 되지만, 학년이 바뀌어 처음부터 다시 짤 때 서른다섯 칸을 한 칸씩 지우는
+ * 것은 시간표를 짜는 것만큼 오래 걸린다.
+ */
+export function clearTimetable(entries: TimetableEntry[], classId: string): TimetableEntry[] {
+  return entries.filter((entry) => entry.classId !== classId);
 }
 
 /** 그 칸의 과목. 빈 칸은 빈 글자다 — 그날 그 교시가 없다는 뜻이다. */

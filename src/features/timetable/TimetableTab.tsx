@@ -3,11 +3,44 @@ import { useId, useState } from 'react';
 
 import { MAX_PERIOD, type ClassRoom } from '../../shared/domain/types';
 import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
-import { normalizeSubject } from '../../shared/subjects';
-import { Button, Card, cx, EmptyState } from '../../shared/ui';
-import { WEEKDAY_NAMES, cellSubject, paintCell, subjectButtons } from './timetableCore';
+import { normalizeSubject, subjectTint } from '../../shared/subjects';
+import { Button, Card, ConfirmDialog, cx, EmptyState } from '../../shared/ui';
+import {
+  WEEKDAY_NAMES,
+  cellSubject,
+  clearTimetable,
+  paintCell,
+  subjectButtons,
+} from './timetableCore';
 
 const PERIODS = Array.from({ length: MAX_PERIOD }, (_, index) => index + 1);
+
+/*
+ * 열두 줄을 그대로 적어 둔다.
+ *
+ * `bg-subject-${n}`처럼 지어 쓰면 Tailwind가 소스에서 그 글자를 못 찾아
+ * 해당 CSS를 **한 줄도 안 내보낸다.** 그러면 색만 조용히 안 먹는데,
+ * 빌드도 시험도 아무 말을 안 해서 화면을 눈으로 볼 때까지 모른다.
+ */
+const TINT_CLASS: readonly string[] = [
+  'bg-subject-1',
+  'bg-subject-2',
+  'bg-subject-3',
+  'bg-subject-4',
+  'bg-subject-5',
+  'bg-subject-6',
+  'bg-subject-7',
+  'bg-subject-8',
+  'bg-subject-9',
+  'bg-subject-10',
+  'bg-subject-11',
+  'bg-subject-12',
+];
+
+/** 그 과목을 칠할 배경 유틸리티. 모르는 값이면 안 칠한다. */
+function tintClass(subject: string): string {
+  return TINT_CLASS[subjectTint(subject) - 1] ?? 'bg-slate-50';
+}
 
 /**
  * 우리 반 시간표를 짠다.
@@ -48,6 +81,7 @@ function TimetableEditor({ room }: { room: ClassRoom }) {
   const [typed, setTyped] = useState('');
   const [added, setAdded] = useState<string[]>([]);
   const [note, setNote] = useState('');
+  const [clearing, setClearing] = useState(false);
   const baseId = useId();
 
   const classId = room.id;
@@ -62,7 +96,8 @@ function TimetableEditor({ room }: { room: ClassRoom }) {
    * 없어서다 — 칸 없는 과목을 남기려면 빈 글자 항목을 만들어야 하는데, 그건
    * '그 교시가 없다'와 '과목을 안 적었다'를 뒤섞는 짓이다. 찍으면 남는다.
    */
-  const fromData = subjectButtons(data.timetableEntries, classId);
+  const fromData = subjectButtons(data.timetableEntries, classId, room.grade);
+  const filled = data.timetableEntries.filter((entry) => entry.classId === classId).length;
   const buttons = [...fromData, ...added.filter((subject) => !fromData.includes(subject))];
 
   /*
@@ -127,11 +162,15 @@ function TimetableEditor({ room }: { room: ClassRoom }) {
               pick(subject);
               setNote('');
             }}
+            /*
+             * 단추와 칸이 같은 색이라야 색으로 찾는 것이 성립한다. 고른
+             * 단추만 진하게 둔다 — 지금 무엇을 찍고 있는지가 색보다 먼저다.
+             */
             className={cx(
               'rounded-control border px-3 py-1 text-sm',
               picked === subject
                 ? 'border-brand-600 bg-brand-600 font-medium text-white'
-                : 'border-slate-300 text-slate-700 hover:bg-slate-50',
+                : cx('border-slate-300 text-slate-700', tintClass(subject)),
             )}
           >
             {subject}
@@ -208,7 +247,7 @@ function TimetableEditor({ room }: { room: ClassRoom }) {
                         'h-9 w-full rounded-control border text-sm',
                         subject === ''
                           ? 'border-dashed border-slate-200 hover:bg-slate-50'
-                          : 'border-slate-300 bg-slate-50 text-slate-900',
+                          : cx('border-slate-300 text-slate-900', tintClass(subject)),
                       )}
                     >
                       {subject === '' ? null : <span id={subjectId}>{subject}</span>}
@@ -221,9 +260,36 @@ function TimetableEditor({ room }: { room: ClassRoom }) {
         </tbody>
       </table>
 
-      <p className="mt-2 text-xs text-slate-500">
-        빈 칸은 그날 그 교시가 없다는 뜻입니다. 찍은 칸을 다시 누르면 지웁니다.
-      </p>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <p className="text-xs text-slate-500">
+          빈 칸은 그날 그 교시가 없다는 뜻입니다. 찍은 칸을 다시 누르면 지웁니다.
+        </p>
+
+        {/* 한 칸도 없으면 지울 것이 없다. 누를 수 있는데 아무 일도 안 일어나면
+            선생님은 앱이 고장 났다고 여긴다. */}
+        {filled === 0 ? null : (
+          <Button variant="ghost" onClick={() => setClearing(true)}>
+            전체 지우기
+          </Button>
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={clearing}
+        title="시간표를 전부 지울까요?"
+        description={`${room.name} 시간표 ${filled}칸이 사라집니다. 옆 반 시간표는 그대로입니다.`}
+        destructive
+        confirmLabel="전부 지우기"
+        onCancel={() => setClearing(false)}
+        onConfirm={() => {
+          update((current) => ({
+            ...current,
+            timetableEntries: clearTimetable(current.timetableEntries, classId),
+          }));
+          setClearing(false);
+          setNote('');
+        }}
+      />
     </Card>
   );
 }
