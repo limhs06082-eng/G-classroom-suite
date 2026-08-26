@@ -37,6 +37,7 @@ export type RepairCode =
   | 'ORPHAN_SEATING_STATE'
   | 'INVALID_SEAT_POSITION'
   | 'ORPHAN_SAVED_LAYOUT'
+  | 'ORPHAN_TIMETABLE'
   | 'ORPHAN_DUTY_RECORD'
   | 'INVALID_DUTY_ASSIGNMENT'
   | 'ORPHAN_REWARD_RECORD'
@@ -475,6 +476,27 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
     return kept;
   })();
 
+  // ── 8-2c. 시간표가 실제 학급을 가리키는가 ────────────────────
+  //     자리표와 같은 이유다. classOps.deleteClassRoom이 지우지만,
+  //     빠뜨리면 교사가 못 보는 서른다섯 칸이 백업 파일에 영영 남는다.
+  const timetableEntries = (() => {
+    const classIds = new Set(classRooms.map((c) => c.id));
+    const kept = input.timetableEntries.filter((entry) => classIds.has(entry.classId));
+    const droppedCount = input.timetableEntries.length - kept.length;
+
+    if (droppedCount > 0) {
+      repairs.push({
+        code: 'ORPHAN_TIMETABLE',
+        severity: 'info',
+        // 칸에는 id가 없다. (학급, 요일, 교시)가 열쇠라 가리킬 id가 없다.
+        entityIds: [],
+        message: `없는 학급의 시간표 ${droppedCount}칸을 정리했습니다.`,
+      });
+    }
+
+    return kept;
+  })();
+
   // ── 8-3. 역할·당번이 실제 학급·학생·역할을 가리키는가 ─────────
   //     잘못된 배정을 두면 오늘의 당번에 빈칸이나 유령 이름이 뜬다.
   const duty = (() => {
@@ -706,6 +728,7 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       rewardProfiles,
       seatingStates,
       savedLayouts,
+      timetableEntries,
       dutyRoles: duty.dutyRoles,
       dutyRounds: duty.dutyRounds,
       dutyCompletions: duty.dutyCompletions,

@@ -1,9 +1,39 @@
 import { describe, expect, it } from 'vitest';
 
-import { createEmptySuiteData } from '../../src/shared/domain/factories';
+import {
+  createClassRoom,
+  createEmptySuiteData,
+  createTerm,
+} from '../../src/shared/domain/factories';
+import type { SuiteData } from '../../src/shared/domain/types';
 import { parseSuiteData, serializeSuiteData } from '../../src/shared/storage/schema';
 
 const NOW = '2026-08-26T09:00:00.000Z';
+
+/*
+ * 학급이 실제로 있어야 한다. 없는 학급을 가리키는 칸은 불변조건 검사가
+ * 고아로 보고 치운다(invariants.ts의 8-2c). 자리표와 같은 규칙이다.
+ * 학급을 안 두면 여기 시험이 '고아라서 비었다'를 '잘 담겼다'로 착각한다.
+ */
+function withClass(): SuiteData {
+  const term = createTerm(
+    {
+      id: 'term-1',
+      schoolYear: '2026',
+      semester: '2학기',
+      startDate: '2026-08-17',
+      endDate: '2027-01-05',
+    },
+    NOW,
+  );
+  return {
+    ...createEmptySuiteData(),
+    terms: [term],
+    classRooms: [createClassRoom({ id: 'class-1', termId: term.id, name: '3학년 2반' }, NOW)],
+    activeTermId: term.id,
+    activeClassId: 'class-1',
+  };
+}
 
 /*
  * 시간표는 학급 자료다. 백업 파일에 안 들어가면 컴퓨터를 바꾼 교사가
@@ -11,7 +41,7 @@ const NOW = '2026-08-26T09:00:00.000Z';
  */
 describe('시간표 저장·복원', () => {
   it('담은 칸이 그대로 돌아온다', () => {
-    const data = createEmptySuiteData();
+    const data = withClass();
     data.timetableEntries = [
       { classId: 'class-1', weekday: 1, period: 3, subject: '수학' },
       { classId: 'class-1', weekday: 5, period: 1, subject: '즐거운생활' },
@@ -25,7 +55,7 @@ describe('시간표 저장·복원', () => {
 
   it('시간표 칸이 없는 옛 자료도 열린다', () => {
     // 2-가까지 쓰던 백업 파일에는 이 칸이 아예 없다.
-    const old = JSON.parse(serializeSuiteData(createEmptySuiteData())) as Record<string, unknown>;
+    const old = JSON.parse(serializeSuiteData(withClass())) as Record<string, unknown>;
     delete old['timetableEntries'];
 
     const back = parseSuiteData(old, NOW);
@@ -34,7 +64,7 @@ describe('시간표 저장·복원', () => {
   });
 
   it('망가진 칸은 버리고 나머지를 살린다', () => {
-    const raw = JSON.parse(serializeSuiteData(createEmptySuiteData())) as Record<string, unknown>;
+    const raw = JSON.parse(serializeSuiteData(withClass())) as Record<string, unknown>;
     raw['timetableEntries'] = [
       { classId: 'class-1', weekday: 1, period: 1, subject: '국어' },
       { weekday: 2, period: 1, subject: '학급이 없다' },
@@ -52,7 +82,7 @@ describe('시간표 저장·복원', () => {
   });
 
   it('범위를 벗어난 교시·요일은 버린다', () => {
-    const raw = JSON.parse(serializeSuiteData(createEmptySuiteData())) as Record<string, unknown>;
+    const raw = JSON.parse(serializeSuiteData(withClass())) as Record<string, unknown>;
     raw['timetableEntries'] = [
       { classId: 'class-1', weekday: 6, period: 1, subject: '토요일' },
       { classId: 'class-1', weekday: 1, period: 8, subject: '8교시' },

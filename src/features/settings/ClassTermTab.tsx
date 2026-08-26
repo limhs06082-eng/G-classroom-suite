@@ -38,6 +38,8 @@ function deleteSummary(count: ClassDataCount): string {
     count.scoreEntries > 0 ? `점수 기록 ${count.scoreEntries}건` : null,
     count.scoreGoals > 0 ? `목표 ${count.scoreGoals}개` : null,
     count.assignments > 0 ? `과제 ${count.assignments}개` : null,
+    // 서른다섯 칸을 손으로 채운 것이다. 말없이 사라지면 안 된다.
+    count.timetableEntries > 0 ? `시간표 ${count.timetableEntries}칸` : null,
   ].filter((part): part is string => part !== null);
 
   return parts.length === 0

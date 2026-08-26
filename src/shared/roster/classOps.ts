@@ -34,6 +34,7 @@ export interface ClassDataCount {
   behaviorPresets: number;
   scoreEntries: number;
   scoreGoals: number;
+  timetableEntries: number;
   assignments: number;
   submissions: number;
 }
@@ -73,6 +74,7 @@ export function countClassData(data: SuiteData, classId: string): ClassDataCount
     behaviorPresets: byClass(data.behaviorPresets),
     scoreEntries: byClass(data.scoreEntries),
     scoreGoals: byClass(data.scoreGoals),
+    timetableEntries: byClass(data.timetableEntries),
     assignments: assignmentIds.size,
     submissions: data.submissions.filter((row) => assignmentIds.has(row.assignmentId)).length,
   };
@@ -175,6 +177,7 @@ export function deleteClassRoom(data: SuiteData, classId: string): SuiteData {
     behaviorPresets: keepClass(data.behaviorPresets),
     scoreEntries: keepClass(data.scoreEntries),
     scoreGoals: keepClass(data.scoreGoals),
+    timetableEntries: keepClass(data.timetableEntries),
     assignments: data.assignments.filter((item) => item.classId !== classId),
     submissions: data.submissions.filter((row) => !assignmentIds.has(row.assignmentId)),
     activeClassId: nextActive,

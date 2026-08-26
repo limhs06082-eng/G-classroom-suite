@@ -81,6 +81,7 @@ function seeded(): { data: SuiteData; mineId: string; otherId: string; studentId
       { id: 'as-mine', classId: mine.id, title: '과제', description: '', dueDate: '2026-08-20', status: 'active', createdAt: NOW, updatedAt: NOW },
     ],
     submissions: [{ assignmentId: 'as-mine', studentId: a.id, status: 'submitted', note: '', updatedAt: NOW }],
+    timetableEntries: [{ classId: mine.id, weekday: 1, period: 1, subject: '국어' }],
     activeTermId: term.id,
     activeClassId: mine.id,
   };
@@ -108,6 +109,7 @@ describe('countClassData', () => {
       scoreGoals: 1,
       assignments: 1,
       submissions: 1,
+      timetableEntries: 1,
     });
   });
 
@@ -122,7 +124,7 @@ describe('countClassData', () => {
 });
 
 describe('deleteClassRoom', () => {
-  it('15개 배열에서 그 학급 것이 함께 사라진다', () => {
+  it('16개 배열에서 그 학급 것이 함께 사라진다', () => {
     const { data, mineId } = seeded();
 
     const next = deleteClassRoom(data, mineId);
@@ -143,6 +145,7 @@ describe('deleteClassRoom', () => {
       scoreGoals: 0,
       assignments: 0,
       submissions: 0,
+      timetableEntries: 0,
     });
     expect(next.classRooms.some((room) => room.id === mineId)).toBe(false);
   });
@@ -283,5 +286,60 @@ describe('학기', () => {
 
     expect(term?.name).toBe('고친 이름');
     expect(term?.endDate).toBe('2026-08-31');
+  });
+});
+
+describe('학급을 지울 때 시간표', () => {
+  function withTimetable() {
+    const { data, mineId, otherId, studentId } = seeded();
+    return {
+      mineId,
+      otherId,
+      studentId,
+      data: {
+        ...data,
+        timetableEntries: [
+          { classId: mineId, weekday: 1, period: 1, subject: '국어' },
+          { classId: mineId, weekday: 1, period: 2, subject: '수학' },
+          { classId: otherId, weekday: 1, period: 1, subject: '영어' },
+        ],
+      },
+    };
+  }
+
+  it('세는 항목에 들어간다', () => {
+    const { data, mineId } = withTimetable();
+
+    /*
+     * classOps 머리말이 못 박아 둔 규칙이다 — 세는 항목과 지우는 항목은
+     * 반드시 같아야 한다. 어긋나면 교사가 못 본 자료가 사라진다.
+     */
+    expect(countClassData(data, mineId).timetableEntries).toBe(2);
+  });
+
+  it('학급을 지우면 그 학급 시간표만 사라진다', () => {
+    const { data, mineId, otherId } = withTimetable();
+
+    const after = deleteClassRoom(data, mineId);
+
+    expect(after.timetableEntries).toEqual([
+      { classId: otherId, weekday: 1, period: 1, subject: '영어' },
+    ]);
+  });
+
+  it('연쇄에서 빠져도 불변식이 그물이 된다', () => {
+    const { data, mineId, otherId } = withTimetable();
+    // 학급만 지우고 시간표를 안 지운 상태를 손으로 만든다.
+    const broken: SuiteData = {
+      ...data,
+      classRooms: data.classRooms.filter((room) => room.id !== mineId),
+      activeClassId: otherId,
+    };
+
+    const result = validateAndRepair(broken, NOW);
+
+    // 서른다섯 칸이 백업 파일에 영영 남는 것을 막는 마지막 그물이다.
+    expect(result.data.timetableEntries).toHaveLength(1);
+    expect(result.repairs.some((r) => r.code === 'ORPHAN_TIMETABLE')).toBe(true);
   });
 });
