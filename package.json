@@ -1,7 +1,7 @@
 {
   "name": "classroom-suite",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "우리 반 — 학급 운영 통합 앱",
   "scripts": {
@@ -21,6 +21,7 @@
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-fs": "^2.5.1",
+    "@tauri-apps/plugin-http": "^2.5.9",
     "@testing-library/user-event": "^14.6.5",
     "@types/qrcode": "^1.5.6",
     "firebase": "^12.18.0",

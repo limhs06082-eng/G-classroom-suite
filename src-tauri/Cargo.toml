@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Tauri App"
 authors = ["you"]
 license = ""
@@ -21,9 +21,12 @@ tauri-build = { version = "2.6.3", features = [] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.11.3", features = [] }
+# devtools는 2판 동안만 켠다. CSP 위반과 NEIS 응답 문제는 개발자 도구
+# 없이는 증상이 "빈 화면"뿐이라 원인을 짚을 수 없다. 3판에서 뺀다.
+tauri = { version = "2.11.3", features = ["devtools"] }
 tauri-plugin-log = "2"
 tauri-plugin-fs = "2"
+tauri-plugin-http = "2"
 
 # 단일 인스턴스 잠금은 모바일에 없는 개념이라 Tauri 문서가 데스크톱
 # 타깃에만 걸도록 안내한다. G-board는 데스크톱 전용이지만 그 관례를

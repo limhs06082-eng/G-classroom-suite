@@ -44,6 +44,7 @@ pub fn run() {
       Ok(())
     })
     .plugin(tauri_plugin_fs::init())
+    .plugin(tauri_plugin_http::init())
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

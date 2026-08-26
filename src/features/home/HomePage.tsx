@@ -22,15 +22,19 @@ import {
   useRoster,
   useSuite,
 } from '../../shared/roster/SuiteDataProvider';
+import { hasSchool } from '../../shared/domain/school';
 import { isDesktop } from '../../shared/platform/target';
+import { useToday } from '../../shared/state/useToday';
 import { Button, Card, EmptyState, useToast } from '../../shared/ui';
 import { AssignmentSummary } from '../assignment/AssignmentSummary';
 import { DutySummary } from '../duty/DutySummary';
 import { RewardSummary } from '../reward/RewardSummary';
 import { summarizeTasks } from '../task/taskCore';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
+import { MealCard, type MealState } from './MealCard';
 import { quoteOfDay } from './quotes';
 import { BigStat, PendingNote, SummaryCard } from './SummaryCard';
+import { loadTodayMeal } from './todayMeal';
 
 /**
  * 홈.
@@ -153,17 +157,23 @@ export default function HomePage() {
           <AssignmentSummary />
         </SummaryCard>
 
-        <SummaryCard
-          to="/settings"
-          label="급식 · 시간표"
-          icon={UtensilsCrossed}
-          accentClass="text-brand-600"
-          tintClass="bg-brand-50"
-          pending
-          cta="학교 정보 설정"
-        >
-          <PendingNote>학교를 등록하고 NEIS 키를 넣으면 오늘 급식과 시간표가 표시됩니다.</PendingNote>
-        </SummaryCard>
+        {isDesktop() ? (
+          <TodayMeal />
+        ) : (
+          <SummaryCard
+            to="/settings"
+            label="급식 · 시간표"
+            icon={UtensilsCrossed}
+            accentClass="text-brand-600"
+            tintClass="bg-brand-50"
+            pending
+            cta="학교 정보 설정"
+          >
+            <PendingNote>
+              급식과 시간표는 설치형 G-board에서 받아 옵니다.
+            </PendingNote>
+          </SummaryCard>
+        )}
 
         <SummaryCard
           to="/roster"
@@ -402,4 +412,63 @@ function BackupBanner({
       </div>
     </div>
   );
+}
+
+/**
+ * 오늘 급식을 받아 온다.
+ *
+ * 캐시를 먼저 보고, 없으면 NEIS에 묻는다. 학교 인터넷은 끊긴다 —
+ * 어제 받아 둔 것이 있으면 그날도 보인다.
+ *
+ * 설치형에서만 그린다. NEIS가 `Access-Control` 헤더를 안 줘서 브라우저는
+ * 직접 못 부르고, 그 제약은 우리가 어쩔 수 없다.
+ */
+export function TodayMeal() {
+  const { data } = useSuite();
+  const [state, setState] = useState<MealState>({ kind: 'loading' });
+
+  const officeCode = data.profile.officeCode ?? '';
+  const schoolCode = data.profile.schoolCode ?? '';
+
+  const date = useToday();
+
+  useEffect(() => {
+    // 학교가 없으면 여기서 끝낸다. 물을 데가 없는데 Tauri 조각을 들일 이유가 없다.
+    if (!hasSchool(officeCode, schoolCode)) {
+      setState({ kind: 'no-school' });
+      return;
+    }
+
+    let cancelled = false;
+    setState({ kind: 'loading' });
+
+    void (async () => {
+      const [{ NeisSource }, { TauriHttpClient }, { CacheStore }, { TauriFileStore }] =
+        await Promise.all([
+          import('../../shared/external/NeisSource'),
+          import('../../shared/external/TauriHttpClient'),
+          import('../../shared/storage/CacheStore'),
+          import('../../shared/storage/TauriFileStore'),
+        ]);
+
+      // 캐시에 임자를 달아 연다. 학교를 고치면 앞 학교 급식은 통째로 버려진다.
+      const cache = await CacheStore.open(new TauriFileStore(), `${officeCode}:${schoolCode}`);
+
+      const next = await loadTodayMeal(
+        cache,
+        new NeisSource(new TauriHttpClient()),
+        officeCode,
+        schoolCode,
+        date,
+      );
+
+      if (!cancelled) setState(next);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [officeCode, schoolCode, date]);
+
+  return <MealCard state={state} />;
 }
