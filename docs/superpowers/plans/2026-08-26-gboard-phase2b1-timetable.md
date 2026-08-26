@@ -1115,6 +1115,18 @@ import는 이름순 자리에 `import { TimetableCard } from './TimetableCard';`
           </SummaryCard>
 ```
 
+**3) 설정 화면의 같은 거짓 문구도 고친다.** 홈만이 아니다. `SettingsPage.tsx:180`
+(`SchoolTab`의 비-설치형 갈래)이 이렇게 말한다.
+
+```
+급식·시간표는 설치형 G-board에서만 받아 옵니다. NEIS가 브라우저의
+직접 요청을 막기 때문입니다.
+```
+
+바로 그 화면에 시간표 탭이 생겼으므로 **한 화면 안에서 앞뒤가 안 맞는다.**
+`급식은 설치형 G-board에서만 받아 옵니다.`로 고친다. 둘 중 하나만 고치면
+두 문구가 서로 다른 말을 하게 되니 반드시 함께 고친다.
+
 `tests/settings/desktopSettings.test.ts`처럼 웹 문구를 못 박은 시험이 있으면 함께 고친다.
 
 - [ ] **Step 5: 시험이 통과하는지 확인한다**
