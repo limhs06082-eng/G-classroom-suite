@@ -8,6 +8,7 @@ import { validateAndRepair, type RepairLog } from '../domain/invariants';
 import {
   CURRENT_SCHEMA_VERSION,
   ROLE_CATEGORIES,
+  MAX_PERIOD,
   MAX_SEAT_COLS,
   MAX_SEAT_ROWS,
   MIN_SEAT_COLS,
@@ -40,6 +41,7 @@ import {
   type SuiteData,
   type Term,
   type TermStatus,
+  type TimetableEntry,
   // 도구함에서 옮겨 온 것
   MESSAGE_CATEGORIES,
   TASK_AREAS,
@@ -507,6 +509,27 @@ function parseLock(root: Record<string, unknown>): { lockPin: string; isLocked: 
   return { lockPin, isLocked: lockPin !== '' && root['isLocked'] === true };
 }
 
+function parseTimetableEntry(raw: unknown): TimetableEntry | null {
+  if (!isRecord(raw)) return null;
+
+  const classId = requiredStr(raw['classId']);
+  const subject = requiredStr(raw['subject']);
+  if (classId === null || subject === null) return null;
+
+  const weekday = Math.round(num(raw['weekday'], 0));
+  const period = Math.round(num(raw['period'], 0));
+
+  /*
+   * 범위를 벗어난 칸은 버린다. 화면이 1~5요일 × 1~7교시만 그리므로 그런
+   * 칸은 어디에도 안 보이면서 파일만 키우고, 나중에 범위를 넓히면 유령처럼
+   * 되살아난다.
+   */
+  if (weekday < 1 || weekday > 5) return null;
+  if (period < 1 || period > MAX_PERIOD) return null;
+
+  return { classId, weekday, period, subject };
+}
+
 function parseSavedLayout(raw: unknown, now: string): SavedLayout | null {
   if (!isRecord(raw)) return null;
   const id = requiredStr(raw['id']);
@@ -821,6 +844,7 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     scoreGoals: parseList('scoreGoals', '공동 목표', (r) => parseScoreGoal(r, now)),
     assignments: parseList('assignments', '과제', (r) => parseAssignment(r, now)),
     submissions: parseList('submissions', '제출 현황', (r) => parseSubmission(r, now)),
+    timetableEntries: parseList('timetableEntries', '시간표', parseTimetableEntry),
     scoreCycle: parseScoreCycle(root['scoreCycle']),
     activeTermId: typeof root['activeTermId'] === 'string' ? root['activeTermId'] : null,
     activeClassId: typeof root['activeClassId'] === 'string' ? root['activeClassId'] : null,
