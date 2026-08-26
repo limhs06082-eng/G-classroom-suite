@@ -501,7 +501,7 @@ export function weekdayOf(date: Date): number {
 - [ ] **Step 4: 시험이 통과하는지 확인한다**
 
 Run: `npx vitest run tests/timetable/timetableCore.test.ts`
-Expected: PASS (17개)
+Expected: PASS (22개) — 계획에 적힌 19개에 구현자가 셋을 더했다
 
 - [ ] **Step 5: 시험에 이가 있는지 확인한다**
 
@@ -637,6 +637,18 @@ describe('시간표 짜기', () => {
     expect(screen.queryByRole('button', { name: '월요일 8교시' })).not.toBeInTheDocument();
   });
 
+  it('직접 입력한 과목이 너무 길면 자른다', async () => {
+    const user = userEvent.setup();
+    show();
+
+    await user.type(await screen.findByLabelText('직접 입력'), '아주아주긴과목이름을붙여넣었다');
+    await user.click(screen.getByRole('button', { name: '더하기' }));
+
+    // 길이를 안 자르면 단추 하나가 표를 통째로 찌그러뜨린다. 12자는
+    // 수업 흐름·문제 세트가 이미 쓰는 규칙(shared/subjects.ts)이다.
+    expect(screen.getByRole('button', { name: '아주아주긴과목이름을붙' })).toBeInTheDocument();
+  });
+
   it('학급이 없으면 학급부터 만들라고 한다', async () => {
     show(createEmptySuiteData());
 
@@ -663,6 +675,7 @@ import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider'
 import { CalendarDays } from 'lucide-react';
 
 import { Button, Card, EmptyState, cx } from '../../shared/ui';
+import { normalizeSubject } from '../../shared/subjects';
 import { WEEKDAY_NAMES, cellSubject, paintCell, subjectButtons } from './timetableCore';
 
 const PERIODS = Array.from({ length: MAX_PERIOD }, (_, index) => index + 1);
@@ -710,7 +723,12 @@ export function TimetableTab() {
   };
 
   const addTyped = (): void => {
-    const name = typed.trim();
+    /*
+     * normalizeSubject를 쓴다. trim만 하면 길이 제한이 없어, 어딘가에서
+     * 긴 글을 붙여 넣은 교사가 표를 찌그러뜨리는 단추 하나를 만들게 된다.
+     * 수업 흐름·문제 세트가 이미 이 규칙(12자)을 쓰고 있어 결도 맞는다.
+     */
+    const name = normalizeSubject(typed);
     if (name === '') return;
     setExtra((current) => (current.includes(name) ? current : [...current, name]));
     setPicked(name);
@@ -849,7 +867,7 @@ import { TimetableTab } from '../timetable/TimetableTab';
 - [ ] **Step 5: 시험이 통과하는지 확인한다**
 
 Run: `npx vitest run tests/timetable/TimetableTab.test.tsx`
-Expected: PASS (6개)
+Expected: PASS (7개)
 
 - [ ] **Step 6: 전체 검증**
 
