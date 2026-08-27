@@ -24,14 +24,19 @@ import {
 } from '../../shared/roster/SuiteDataProvider';
 import { hasSchool } from '../../shared/domain/school';
 import { isDesktop } from '../../shared/platform/target';
+import { useNow } from '../../shared/state/useNow';
 import { useToday } from '../../shared/state/useToday';
 import { Button, Card, EmptyState, useToast } from '../../shared/ui';
+import { openBoard } from '../../shared/window/openBoard';
 import { AssignmentSummary } from '../assignment/AssignmentSummary';
 import { DutySummary } from '../duty/DutySummary';
+import { nowState } from '../now/nowCore';
 import { RewardSummary } from '../reward/RewardSummary';
 import { summarizeTasks } from '../task/taskCore';
+import { todayPeriods, weekdayOf } from '../timetable/timetableCore';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
 import { MealCard, type MealState } from './MealCard';
+import { NowCard } from './NowCard';
 import { quoteOfDay } from './quotes';
 import { BigStat, PendingNote, SummaryCard } from './SummaryCard';
 import { TimetableCard } from './TimetableCard';
@@ -109,6 +114,14 @@ export default function HomePage() {
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {/*
+          맨 앞에 둔다. 설계 그림에서 '지금'은 첫눈에 닿는 자리고, 하루 종일
+          켜 둔 화면을 흘긋 볼 때 제일 먼저 찾는 것이 지금 몇 교시인가다.
+          자리는 고정이고 내용만 바뀐다 — 때마다 카드가 옮겨 다니면 흘긋
+          보는 것 자체가 안 된다.
+        */}
+        <TodayNow />
+
         <SummaryCard
           to="/duty"
           label="오늘의 당번"
@@ -421,6 +434,80 @@ function BackupBanner({
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * 지금이 몇 교시인가.
+ *
+ * 시계 둘(`useToday`·`useNow`)과 자료 둘(교시 시각·오늘 시간표)을 모아
+ * `nowState`에 넘기고, 그 답을 카드에 준다. **판단은 여기서 하지 않는다** —
+ * 이 자리에 조건을 하나라도 적으면 그때부터 시스템 시계를 돌리지 않고는
+ * 확인할 수 없는 갈래가 생긴다.
+ *
+ * 급식 카드와 달리 `isDesktop()` 분기가 없다. 교시 시각도 시간표도 바깥에
+ * 물을 데가 없어 웹에서도 그대로 돈다.
+ */
+export function TodayNow() {
+  const { data } = useSuite();
+  const activeClass = useActiveClass();
+
+  /*
+   * 날짜도 분도 갈고리로 받는다. 그릴 때 한 번만 재면 교실 컴퓨터에서는
+   * 그 값이 며칠씩 안 바뀐다 — 다음 교시가 와도 지난 교시가, 다음 날
+   * 아침에도 어제 시간표가 걸려 있다. 하루 종일 켜 두는 것이 이 앱의 전제다.
+   */
+  const date = useToday();
+  const minutes = useNow();
+
+  /*
+   * 날짜 조각을 갈라 이 지역의 Date를 짓는다. `new Date('2026-08-24')`처럼
+   * 날짜만 넘기면 UTC 자정으로 읽혀 시계가 UTC보다 뒤인 곳에서 하루가 밀린다.
+   * 시간표 카드가 같은 이유로 같은 방식을 쓴다.
+   */
+  const [year = 0, month = 0, day = 0] = date.split('-').map(Number);
+  const weekday = weekdayOf(new Date(year, month - 1, day));
+
+  /*
+   * 우리 반이 없으면 볼 시간표가 없다. 홈이 이 경우를 먼저 막지만 그 사정이
+   * 이 카드의 안전장치일 수는 없다. `no-timetable`로 돌리지 않는 까닭은
+   * NowCard에 '학급 먼저' 갈래가 없어서다 — 시간표 짜기로 보내 놓고 거기서
+   * 다시 학급부터 만들라는 말을 듣게 하느니 아무 말도 안 하는 편이 낫다.
+   */
+  if (activeClass === null) return null;
+
+  /*
+   * 주말에는 이 카드를 아예 그리지 않는다.
+   *
+   * `nowState`는 요일을 모른다. 주말에 오늘 줄(빈 목록)을 넘기면
+   * `no-timetable`이 되어 "시간표를 짜면 알려 드립니다"가 뜨는데, 그건 이미
+   * 짜 둔 선생님에게 거짓말이다. 그렇다고 `after`로 돌리면 토요일 아침
+   * 여덟 시에 시작한 적도 없는 수업이 끝났다고 말한다.
+   *
+   * 남는 말은 '오늘은 수업이 없습니다' 하나인데 **그건 시간표 카드가 이미
+   * 하고 있다**(TimetableCard의 `weekday === 0` 갈래). 같은 화면에서 같은
+   * 말을 두 번 하면 도움이 아니라 잡음이다 — 계획서가 등교 전·하교 후를 한
+   * 줄로 줄인 것과 같은 이유다. 말할 것이 없는 쪽이 비켜 준다.
+   *
+   * 한 칸도 안 짠 주말도 마찬가지다. 짜러 가는 길은 시간표 카드가 주말에도
+   * 먼저 내주므로(그쪽 `hasAny` 갈래) 여기서 한 번 더 내밀 필요가 없다.
+   */
+  if (weekday === 0) return null;
+
+  const today = todayPeriods(data.timetableEntries, activeClass.id, weekday);
+
+  return (
+    <NowCard
+      state={nowState(data.periodTimes, today, minutes)}
+      /*
+       * 수업 중에 띄우는 칠판이라 수업 진행 화면으로 보낸다. 여는 법은 웹
+       * (새 탭)과 설치형(새 앱 창)이 달라서 `openBoard`가 가리고 있고,
+       * 카드는 넘겨받은 것을 부르기만 한다.
+       */
+      onOpenBoard={() => {
+        openBoard('/board/lesson');
+      }}
+    />
   );
 }
 
