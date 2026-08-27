@@ -50,6 +50,7 @@ const LUNCH_MIN_GAP = 25;
 export function lunchGap(times: PeriodTime[]): { start: number; end: number } | null {
   const sorted = sortable(times);
   let best: { start: number; end: number } | null = null;
+  let tied = false;
 
   for (let index = 0; index + 1 < sorted.length; index += 1) {
     const gapStart = sorted[index]?.endMin;
@@ -58,12 +59,23 @@ export function lunchGap(times: PeriodTime[]): { start: number; end: number } | 
 
     const length = gapEnd - gapStart;
     if (length < LUNCH_MIN_GAP) continue;
-    if (best !== null && length <= best.end - best.start) continue;
 
-    best = { start: gapStart, end: gapEnd };
+    if (best === null || length > best.end - best.start) {
+      best = { start: gapStart, end: gapEnd };
+      tied = false;
+      continue;
+    }
+
+    if (length === best.end - best.start) tied = true;
   }
 
-  return best;
+  /*
+   * 가장 긴 틈이 둘이면 어느 쪽이 점심인지 자료가 말해 주지 않는다.
+   * 앞엣것을 고르면 아침 아홉 시 오십오 분에 "점심"이라고 말하는 화면이
+   * 된다 — 못 읽는 줄 하나가 버려지면서 그 자리에 진짜 점심과 같은 길이의
+   * 구멍이 생기는 일이 실제로 있었다. 우기지 않는 편이 낫다.
+   */
+  return tied ? null : best;
 }
 
 interface Row {

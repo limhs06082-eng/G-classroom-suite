@@ -150,3 +150,33 @@ describe('nowState', () => {
     expect(nowState(broken, TODAY, at('10:00')).kind).toBe('no-timetable');
   });
 });
+
+describe('점심이 둘로 보이면 우기지 않는다', () => {
+  it('가장 긴 틈이 둘이면 점심이 없다고 본다', () => {
+    /*
+     * 못 읽는 줄이 하나 버려지면 그 자리에 앞뒤 교시를 잇는 긴 틈이 생기고,
+     * 그것이 진짜 점심과 길이가 같아진다. 앞엣것을 고르면 09:55에 "점심"이
+     * 뜬다. 실제로 그렇게 되는 것을 확인하고 이 갈래를 넣었다.
+     */
+    const twoGaps: PeriodTime[] = [
+      { period: 1, start: '09:00', end: '09:40' },
+      { period: 2, start: '10:40', end: '11:20' },
+      { period: 3, start: '11:30', end: '12:10' },
+      { period: 4, start: '13:10', end: '13:50' },
+    ];
+
+    // 09:40~10:40과 12:10~13:10이 똑같이 60분이다.
+    expect(lunchGap(twoGaps)).toBeNull();
+  });
+
+  it('한쪽이 더 길면 그쪽이 점심이다', () => {
+    const uneven: PeriodTime[] = [
+      { period: 1, start: '09:00', end: '09:40' },
+      { period: 2, start: '10:10', end: '10:50' },
+      { period: 3, start: '12:00', end: '12:40' },
+    ];
+
+    // 09:40~10:10은 30분, 10:50~12:00은 70분이다.
+    expect(lunchGap(uneven)).toEqual({ start: 650, end: 720 });
+  });
+});

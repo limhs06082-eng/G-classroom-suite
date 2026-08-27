@@ -319,3 +319,59 @@ describe('validateAndRepair', () => {
     expect(repairs).toEqual([]);
   });
 });
+
+describe('8-2d — 교시 시각이 온전한가', () => {
+  it('시각을 못 읽는 줄이 있으면 기본 일과로 되돌린다', () => {
+    const data = baseData();
+    data.periodTimes = data.periodTimes.map((time) =>
+      time.period === 2 ? { ...time, start: '깨짐' } : time,
+    );
+
+    const result = validateAndRepair(data, NOW);
+
+    /*
+     * 그냥 두면 '지금' 카드가 그 줄을 버리고, 버린 자리에 60분짜리 구멍이
+     * 생겨 진짜 점심과 길이가 같아진다. 아침 09:55에 "점심"이라고 말하는
+     * 화면이 된다 — 실제로 그렇게 되는 것을 확인하고 이 그물을 놓았다.
+     */
+    expect(result.data.periodTimes[1]?.start).toBe('09:50');
+    expect(result.repairs.map((repair) => repair.code)).toContain('INVALID_PERIOD_TIME');
+  });
+
+  it('끝이 시작보다 이른 줄도 거른다', () => {
+    const data = baseData();
+    data.periodTimes = data.periodTimes.map((time) =>
+      time.period === 3 ? { ...time, start: '11:00', end: '10:00' } : time,
+    );
+
+    const result = validateAndRepair(data, NOW);
+
+    expect(result.data.periodTimes[2]?.start).toBe('10:40');
+  });
+
+  it('교시 번호가 눈금 밖이면 거른다', () => {
+    const data = baseData();
+    data.periodTimes = data.periodTimes.map((time) =>
+      time.period === 7 ? { ...time, period: 9 } : time,
+    );
+
+    const result = validateAndRepair(data, NOW);
+
+    // 9교시는 없다. 있는 척하면 카드가 하교 시각을 틀리게 말한다.
+    expect(result.data.periodTimes).toHaveLength(7);
+    expect(result.data.periodTimes.every((time) => time.period <= 7)).toBe(true);
+  });
+
+  it('온전하면 그대로 둔다', () => {
+    const data = baseData();
+    data.periodTimes = data.periodTimes.map((time) =>
+      time.period === 1 ? { ...time, start: '08:40', end: '09:20' } : time,
+    );
+
+    const result = validateAndRepair(data, NOW);
+
+    // 교사가 고쳐 둔 일과를 까닭 없이 되돌리면 안 된다.
+    expect(result.data.periodTimes[0]?.start).toBe('08:40');
+    expect(result.repairs.map((repair) => repair.code)).not.toContain('INVALID_PERIOD_TIME');
+  });
+});
