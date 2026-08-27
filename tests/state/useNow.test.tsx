@@ -2,6 +2,17 @@ import { act, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useNow } from '../../src/shared/state/useNow';
+import { useToday } from '../../src/shared/state/useToday';
+
+/** 두 갈고리를 나란히 내걸어 같은 시각을 보는지 확인한다. */
+function Both() {
+  return (
+    <>
+      <span data-testid="now">{useNow()}</span>
+      <span data-testid="today">{useToday()}</span>
+    </>
+  );
+}
 
 /*
  * 이 갈고리가 없으면 그릴 때 시각을 한 번 재고 만다. G-board는 교실
@@ -92,5 +103,25 @@ describe('useNow', () => {
 
     // 잰 값에 1분을 더했으면 571이 된다. 맞는 값은 지금 시계에만 있다.
     expect(shown()).toBe('691');
+  });
+});
+
+describe('useToday와 같은 시각을 본다', () => {
+  it('자정을 넘긴 직후 둘이 어긋나지 않는다', () => {
+    /*
+     * 여유가 서로 달랐던 때가 있다 — 이쪽 1초, useToday 1분. 그러면 자정 뒤
+     * 59초 동안 이쪽은 새 날이라 하고 저쪽은 어제라고 한다. '지금' 카드가
+     * 요일로 시간표를 고르고 분으로 교시를 고르므로, 그 틈이 곧 어긋남이 된다.
+     */
+    vi.setSystemTime(new Date(2026, 7, 26, 23, 59, 0));
+    render(<Both />);
+
+    act(() => {
+      vi.advanceTimersByTime(70 * 1000);
+    });
+
+    // 자정 뒤 10초. 둘 다 새 날을 가리켜야 한다.
+    expect(document.querySelector('[data-testid="now"]')?.textContent).toBe('0');
+    expect(document.querySelector('[data-testid="today"]')?.textContent).toBe('2026-08-27');
   });
 });
