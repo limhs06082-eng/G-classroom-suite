@@ -57,6 +57,22 @@ export function PeriodTimeTab() {
   const shown = (time: PeriodTime, edge: Edge): string =>
     drafts[draftKey(time.period, edge)] ?? time[edge];
 
+  /**
+   * 이웃 교시의 시각. 없거나 못 읽으면 null.
+   *
+   * 초안이 있으면 초안을 본다. 두 줄을 잇달아 고치는 중이면 화면에 보이는
+   * 값끼리 견줘야 하고, 저장된 옛 값과 견주면 방금 고친 것이 안 보인다.
+   */
+  const neighbour = (period: number): { startMin: number; endMin: number } | null => {
+    const found = data.periodTimes.find((time) => time.period === period);
+    if (found === undefined) return null;
+
+    const startMin = minutesOf(shown(found, 'start'));
+    const endMin = minutesOf(shown(found, 'end'));
+    // 이웃이 아직 고치는 중이면 견줄 것이 없다. 그 줄 차례에 걸린다.
+    return startMin === null || endMin === null ? null : { startMin, endMin };
+  };
+
   const edit = (time: PeriodTime, edge: Edge, value: string): void => {
     /*
      * 짝이 되는 칸도 초안에서 읽는다. 시작을 지운 채 끝을 고치면 저장된
@@ -79,6 +95,25 @@ export function PeriodTimeTab() {
         // 길이가 0인 교시도 '지금' 카드는 못 읽는 줄로 보고 버린다.
         return `${String(time.period)}교시는 끝이 시작보다 이릅니다. 고치기 전까지 저장하지 않습니다.`;
       }
+
+      /*
+       * 이웃과도 견준다. 한 줄만 보면 2교시 끝을 10:30 대신 13:30으로 잘못
+       * 쳐도 통과한다 — 그 줄 하나만 놓고 보면 끝이 시작보다 늦으니 멀쩡하다.
+       * 그런데 '지금' 카드는 지금 시각을 품은 **첫 줄**을 답으로 내므로,
+       * 09:50부터 13:30까지 내내 "2교시 수학 · 150분 남음"이라고 말한다.
+       * 3교시도 4교시도 통째로 삼켜지는데 화면 어디에도 표시가 없다.
+       * 한눈에 믿으라고 두는 카드라 조용히 틀리면 없느니만 못하다.
+       */
+      const before = neighbour(time.period - 1);
+      if (before !== null && startMin < before.endMin) {
+        return `${String(time.period)}교시가 ${String(time.period - 1)}교시와 겹칩니다. 고치기 전까지 저장하지 않습니다.`;
+      }
+
+      const after = neighbour(time.period + 1);
+      if (after !== null && endMin > after.startMin) {
+        return `${String(time.period)}교시가 ${String(time.period + 1)}교시와 겹칩니다. 고치기 전까지 저장하지 않습니다.`;
+      }
+
       return '';
     })();
 
@@ -208,7 +243,7 @@ export function PeriodTimeTab() {
        */}
       <p className="mt-3 text-xs text-slate-500">
         {lunch === null
-          ? '점심 시간을 정하지 못했습니다. 교시 사이에 25분 넘게 비는 틈이 하나 있어야 점심으로 봅니다.'
+          ? '점심 시간을 정하지 못했습니다. 25분 넘게 비는 틈이 없거나, 가장 긴 틈이 둘이라 어느 쪽인지 가릴 수 없습니다.'
           : `점심 ${hmOf(lunch.start)} ~ ${hmOf(lunch.end)} · 교시 사이에서 가장 긴 틈을 점심으로 봅니다.`}
       </p>
 

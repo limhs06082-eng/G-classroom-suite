@@ -209,3 +209,49 @@ describe('설정 화면 시간표 탭에 함께 있다', () => {
     expect(screen.queryByRole('tab', { name: '교시 시각' })).not.toBeInTheDocument();
   });
 });
+
+describe('이웃 교시와 겹치는 것도 막는다', () => {
+  it('끝을 잘못 쳐 다음 교시를 삼키면 저장하지 않는다', async () => {
+    const user = userEvent.setup();
+    show();
+
+    const input = await screen.findByLabelText('2교시 끝');
+    await user.clear(input);
+    await user.type(input, '13:30');
+
+    /*
+     * 그 줄 하나만 놓고 보면 멀쩡하다 — 끝(13:30)이 시작(09:50)보다 늦다.
+     * 그런데 '지금' 카드는 지금 시각을 품은 첫 줄을 답으로 내므로, 09:50부터
+     * 13:30까지 내내 "2교시 · 150분 남음"이라고 말한다. 3·4교시가 통째로
+     * 삼켜지는데 화면 어디에도 표시가 없다. 한눈에 믿으라는 카드가
+     * 조용히 틀리면 없느니만 못하다.
+     */
+    expect(await screen.findByRole('status')).toHaveTextContent('3교시와 겹칩니다');
+    expect(saved()[1]?.end).toBe('10:30');
+  });
+
+  it('시작을 앞 교시 안으로 당겨도 저장하지 않는다', async () => {
+    const user = userEvent.setup();
+    show();
+
+    const input = await screen.findByLabelText('3교시 시작');
+    await user.clear(input);
+    await user.type(input, '10:00');
+
+    // 2교시가 10:30에 끝난다. 10:00에 3교시가 시작하면 30분이 겹친다.
+    expect(await screen.findByRole('status')).toHaveTextContent('2교시와 겹칩니다');
+    expect(saved()[2]?.start).toBe('10:40');
+  });
+
+  it('겹치지 않으면 그대로 저장한다', async () => {
+    const user = userEvent.setup();
+    show();
+
+    const input = await screen.findByLabelText('2교시 끝');
+    await user.clear(input);
+    await user.type(input, '10:25');
+
+    // 3교시는 10:40 시작이다. 10:25는 안 겹친다.
+    expect(saved()[1]?.end).toBe('10:25');
+  });
+})

@@ -100,7 +100,9 @@ function NowBody({
               달라져 글자가 좌우로 흔들린다.
             */}
             <p data-numeric className="mt-0.5 text-sm text-slate-500">
-              {`${state.minutesLeft}분 남음`}
+              {/* 여기만 untilText를 안 거치면 두 시간짜리 블록 수업에서
+                  '150분 남음'이 홈에서 가장 큰 글씨 아래에 붙는다. */}
+              {`${leftText(state.minutesLeft)} 남음`}
             </p>
           </div>
           <LessonTools onOpenBoard={onOpenBoard} />
@@ -175,10 +177,15 @@ function LessonTools({ onOpenBoard }: { onOpenBoard: () => void }) {
       <Button icon={Monitor} onClick={onOpenBoard}>
         전자칠판
       </Button>
-      <Button icon={Timer} onClick={() => open('timer')}>
+      {/*
+        아래 툴바에도 같은 이름의 단추가 있다. 눈으로 보면 자리가 달라
+        헷갈리지 않지만, 낭독기로 단추를 훑으면 같은 이름이 두 번 들린다.
+        어느 쪽인지 이름에 담아 준다.
+      */}
+      <Button icon={Timer} aria-label="타이머 (지금)" onClick={() => open('timer')}>
         타이머
       </Button>
-      <Button icon={EyeOff} onClick={() => open('curtain')}>
+      <Button icon={EyeOff} aria-label="화면 가리기 (지금)" onClick={() => open('curtain')}>
         화면 가리기
       </Button>
     </div>
@@ -209,6 +216,14 @@ function OneLine({ main, aside }: { main: string; aside: string }) {
  * `280분 뒤`는 아무도 못 읽는다. 오후에만 수업이 있는 반이면 등교 전에 실제로
  * 그런 값이 나온다.
  */
+function leftText(minutes: number): string {
+  if (minutes < 60) return `${minutes}분`;
+
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours}시간` : `${hours}시간 ${rest}분`;
+}
+
 function untilText(minutes: number): string {
   if (minutes < 60) return `${minutes}분 뒤`;
 

@@ -347,3 +347,25 @@ describe('홈에 붙였는가', () => {
     expect(now.compareDocumentPosition(duty) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
+
+describe('점심때 없는 카드를 가리키지 않는다', () => {
+  it('웹에서는 급식 카드를 가리키지 않는다', async () => {
+    /*
+     * 이 시험이 도는 환경은 늘 웹이다(VITE_TARGET이 안 켜져 있다). 그래서
+     * HomePage가 넘기는 hasMealCard는 여기서 늘 거짓이고, 이 시험은 바로
+     * 그 갈래를 잰다.
+     *
+     * NowCard 층의 시험은 hasMealCard를 손으로 넘기므로 배선이 끊겨도
+     * 초록불이다. 실제로 HomePage에서 hasMealCard={true}로 바꿔도 1030개가
+     * 전부 통과한다 — 그러면 웹 선생님이 점심때 제목이 '급식'이고 내용이
+     * "설치형에서만 받아 옵니다"인 카드를 '오늘 급식'이라 여기고 찾아 헤맨다.
+     */
+    vi.setSystemTime(new Date(2026, 7, 24, 12, 30, 0));
+
+    showNow();
+    await screen.findByText('다 읽음');
+
+    expect(screen.getByText('점심시간입니다')).toBeInTheDocument();
+    expect(screen.queryByText(/오늘 급식/)).not.toBeInTheDocument();
+  });
+});

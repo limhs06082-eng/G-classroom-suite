@@ -67,8 +67,8 @@ describe('지금 카드', () => {
   it('수업 중에만 도구가 손에 닿는다', () => {
     show({ kind: 'lesson', period: 3, subject: '수학', minutesLeft: 12 });
 
-    expect(screen.getByRole('button', { name: '타이머' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '화면 가리기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '타이머 (지금)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '화면 가리기 (지금)' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '전자칠판' })).toBeInTheDocument();
   });
 
@@ -77,7 +77,7 @@ describe('지금 카드', () => {
 
     // 쉬는 시간에 타이머를 내밀면 자리만 차지한다. 다음 교시가 궁금할 때다.
     expect(screen.getByText(/다음 4교시 사회/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '타이머' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '타이머 (지금)' })).not.toBeInTheDocument();
   });
 
   it('점심때는 급식을 보라고 한다', () => {
@@ -96,7 +96,7 @@ describe('지금 카드', () => {
     const user = userEvent.setup();
     show({ kind: 'lesson', period: 3, subject: '수학', minutesLeft: 12 });
 
-    await user.click(screen.getByRole('button', { name: '타이머' }));
+    await user.click(screen.getByRole('button', { name: '타이머 (지금)' }));
 
     // 그리기만 하고 안 이어져 있으면 선생님은 앱이 고장 났다고 여긴다.
     expect(openedTool()).toBe('timer');
@@ -106,7 +106,7 @@ describe('지금 카드', () => {
     const user = userEvent.setup();
     show({ kind: 'lesson', period: 3, subject: '수학', minutesLeft: 12 });
 
-    await user.click(screen.getByRole('button', { name: '화면 가리기' }));
+    await user.click(screen.getByRole('button', { name: '화면 가리기 (지금)' }));
 
     /*
      * 단추가 있는지, 무언가 열리는지만 보면 **둘째 단추가 첫째 것을 베낀
@@ -189,3 +189,27 @@ describe('없는 카드를 가리키지 않는다', () => {
     expect(screen.queryByText(/오늘 급식/)).not.toBeInTheDocument();
   });
 });
+
+describe('아래 툴바와 이름이 겹치지 않는다', () => {
+  it('도구 단추 이름에 어느 쪽인지 담는다', () => {
+    /*
+     * 화면 아래 전역 툴바에도 [타이머]·[화면 가리기]가 있다. 눈으로 보면
+     * 자리가 달라 헷갈리지 않지만, 낭독기로 단추를 훑으면 같은 이름이 두 번
+     * 들리고 어느 쪽인지 알 길이 없다. 보이는 글자는 그대로 두고 이름에만
+     * 담는다 — 보이는 글자가 이름에 들어 있어야 음성 조작도 그대로 된다.
+     */
+    show({ kind: 'lesson', period: 3, subject: '수학', minutesLeft: 12 });
+
+    expect(screen.getByRole('button', { name: '타이머 (지금)' })).toHaveTextContent('타이머');
+    expect(screen.getByRole('button', { name: '화면 가리기 (지금)' })).toHaveTextContent(
+      '화면 가리기',
+    );
+  });
+
+  it('두 시간짜리 수업도 사람이 읽는 말로 남은 시간을 낸다', () => {
+    show({ kind: 'lesson', period: 3, subject: '수학', minutesLeft: 150 });
+
+    // '150분 남음'이 홈에서 가장 큰 글씨 아래에 붙으면 아무도 못 읽는다.
+    expect(screen.getByText('2시간 30분 남음')).toBeInTheDocument();
+  });
+})
