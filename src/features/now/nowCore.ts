@@ -146,7 +146,7 @@ export function nowState(times: PeriodTime[], today: TodayPeriod[], now: number)
   };
 }
 
-/** 540 → `"09:00"`. */
-function hmOf(minutes: number): string {
+/** 540 → `"09:00"`. 설정 화면이 점심 틈을 적을 때도 같은 것을 쓴다. */
+export function hmOf(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 }
