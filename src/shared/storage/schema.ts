@@ -866,8 +866,18 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     .map(parsePeriodTime)
     .filter((t): t is PeriodTime => t !== null);
 
-  let periodTimes = readTimes;
-  if (readTimes.length !== MAX_PERIOD) {
+  /*
+   * 교시는 **1부터 이어져야** 한다. 학교 일과가 그런 모양이고, 그래서
+   * 이어지지 않는다는 것은 중간이 빠졌다는 뜻이다 — 교사가 지운 것과
+   * 자료가 상한 것을 이 규칙 하나로 가른다. 뒤에서 지우는 것(6·7교시를
+   * 안 쓰는 저학년)은 이어짐을 안 깨므로 그대로 남는다.
+   */
+  const ordered = [...readTimes].sort((a, b) => a.period - b.period);
+  const contiguous =
+    ordered.length > 0 && ordered.every((time, index) => time.period === index + 1);
+
+  let periodTimes = ordered;
+  if (!contiguous) {
     periodTimes = createDefaultPeriodTimes();
     if (rawTimes !== undefined) {
       repairs.push({

@@ -392,3 +392,19 @@ describe('전체 지우기', () => {
     expect(screen.getByRole('button', { name: '월요일 1교시' })).toHaveTextContent('국어');
   });
 });
+
+describe('표가 학교 일과를 따른다', () => {
+  it('6·7교시를 지운 학교에는 다섯 줄만 그린다', async () => {
+    const data = seeded();
+    data.periodTimes = data.periodTimes.filter((time) => time.period <= 5);
+    show(data);
+
+    /*
+     * 일곱 줄로 고정해 두면, 6교시를 안 쓰기로 한 담임이 그 자리에 과목을
+     * 칠할 수 있게 된다. 그 칸은 시각이 없어 '지금' 카드가 통째로 무시하는데
+     * 화면 어디에도 그 까닭이 없다 — 칠했는데 아무 데도 안 나오는 칸이 된다.
+     */
+    expect(await screen.findByRole('button', { name: '월요일 5교시' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '월요일 6교시' })).not.toBeInTheDocument();
+  });
+})

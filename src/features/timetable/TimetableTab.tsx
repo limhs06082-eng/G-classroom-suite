@@ -1,7 +1,7 @@
 import { CalendarDays } from 'lucide-react';
 import { useId, useState } from 'react';
 
-import { MAX_PERIOD, type ClassRoom } from '../../shared/domain/types';
+import { type ClassRoom } from '../../shared/domain/types';
 import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { normalizeSubject, subjectTint } from '../../shared/subjects';
 import { Button, Card, ConfirmDialog, cx, EmptyState } from '../../shared/ui';
@@ -13,7 +13,7 @@ import {
   subjectButtons,
 } from './timetableCore';
 
-const PERIODS = Array.from({ length: MAX_PERIOD }, (_, index) => index + 1);
+
 
 /*
  * 열두 줄을 그대로 적어 둔다.
@@ -98,6 +98,14 @@ function TimetableEditor({ room }: { room: ClassRoom }) {
    */
   const fromData = subjectButtons(data.timetableEntries, classId, room.grade);
   const filled = data.timetableEntries.filter((entry) => entry.classId === classId).length;
+
+  /*
+   * 표의 줄은 **학교가 실제로 쓰는 교시**를 따른다. 일곱 줄로 고정해 두면,
+   * 6·7교시를 지운 저학년 담임이 그 자리에 과목을 칠할 수 있게 되는데
+   * 그 칸은 시각이 없어 '지금' 카드가 통째로 무시한다. 칠했는데 아무 데도
+   * 안 나오는 칸이 생기고, 화면 어디에도 그 까닭이 없다.
+   */
+  const periods = [...data.periodTimes].sort((a, b) => a.period - b.period).map((t) => t.period);
   const buttons = [...fromData, ...added.filter((subject) => !fromData.includes(subject))];
 
   /*
@@ -221,7 +229,7 @@ function TimetableEditor({ room }: { room: ClassRoom }) {
           </tr>
         </thead>
         <tbody>
-          {PERIODS.map((period) => (
+          {periods.map((period) => (
             <tr key={period}>
               <th scope="row" className="text-sm font-normal text-slate-500">
                 {period}

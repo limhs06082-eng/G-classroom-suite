@@ -2,7 +2,7 @@ import { Clock } from 'lucide-react';
 import { useState } from 'react';
 
 import { createDefaultPeriodTimes } from '../../shared/domain/factories';
-import type { PeriodTime } from '../../shared/domain/types';
+import { MAX_PERIOD, type PeriodTime } from '../../shared/domain/types';
 import { useSuite } from '../../shared/roster/SuiteDataProvider';
 import { Button, Card, ConfirmDialog } from '../../shared/ui';
 import { hmOf, lunchGap, minutesOf } from '../now/nowCore';
@@ -52,6 +52,7 @@ export function PeriodTimeTab() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [note, setNote] = useState('');
   const [reverting, setReverting] = useState(false);
+  const [dropping, setDropping] = useState(false);
 
   /** 칸에 보일 값. 초안이 있으면 초안이 임자다. */
   const shown = (time: PeriodTime, edge: Edge): string =>
@@ -142,6 +143,59 @@ export function PeriodTimeTab() {
     }));
   };
 
+  /** 마지막 교시. 지우기는 여기서만 된다. */
+  const last = data.periodTimes.reduce((max, time) => Math.max(max, time.period), 0);
+
+  /** 그 교시에 칠해 둔 시간표 칸이 몇이나 되나. 확인창이 이 수를 말한다. */
+  const paintedAt = (period: number): number =>
+    data.timetableEntries.filter((entry) => entry.period === period).length;
+
+  /**
+   * 마지막 교시를 지운다.
+   *
+   * **시간표 칸도 함께 지운다.** 안 지우면 그 칸은 시각이 없어 '지금' 카드가
+   * 통째로 무시하는데 화면에는 아무 표시가 없다. 칠해 둔 것이 어디에도
+   * 안 나오는 상태가 조용히 남는다.
+   *
+   * 모든 학급의 그 교시를 지운다. 일과는 학교 것이라 6교시를 안 쓰기로
+   * 하면 어느 반에도 6교시가 없다.
+   */
+  const dropLast = (): void => {
+    update((current) => ({
+      ...current,
+      periodTimes: current.periodTimes.filter((time) => time.period !== last),
+      timetableEntries: current.timetableEntries.filter((entry) => entry.period !== last),
+    }));
+    setDrafts({});
+    setNote('');
+    setDropping(false);
+  };
+
+  /**
+   * 교시를 하나 더한다.
+   *
+   * 마지막 교시가 끝난 뒤 10분 쉬고 40분. 기본 일과의 규칙 그대로다.
+   * 확인을 안 받는다 — 지우는 것과 달리 잃는 것이 없다.
+   */
+  const addPeriod = (): void => {
+    const tail = data.periodTimes.find((time) => time.period === last);
+    const tailEnd = tail === undefined ? null : minutesOf(tail.end);
+    if (tailEnd === null) {
+      setNote('마지막 교시 시각을 먼저 채워 주세요.');
+      return;
+    }
+
+    const start = tailEnd + 10;
+    update((current) => ({
+      ...current,
+      periodTimes: [
+        ...current.periodTimes,
+        { period: last + 1, start: hmOf(start), end: hmOf(start + 40) },
+      ],
+    }));
+    setNote('');
+  };
+
   const revert = (): void => {
     update((current) => ({ ...current, periodTimes: createDefaultPeriodTimes() }));
     /*
@@ -230,10 +284,38 @@ export function PeriodTimeTab() {
                   />
                 </td>
               ))}
+
+              <td className="w-10 p-0.5 text-right">
+                {/*
+                  지우기는 **마지막 줄에만** 둔다. 학교 일과는 1교시부터
+                  이어지므로 중간을 빼면 그 뒤가 전부 어긋난다. 안 쓰는 교시는
+                  늘 뒤쪽이라 이걸로 충분하다 — 5교시까지 쓰는 저학년이면
+                  두 번 누르면 된다.
+                */}
+                {time.period === last && last > 1 ? (
+                  <button
+                    type="button"
+                    aria-label={`${String(time.period)}교시 지우기`}
+                    onClick={() => setDropping(true)}
+                    className="rounded-control px-2 py-1 text-sm text-slate-400 hover:bg-slate-100 hover:text-danger-700"
+                  >
+                    ✕
+                  </button>
+                ) : null}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      <div className="mt-2 flex items-center gap-2">
+        {last < MAX_PERIOD ? (
+          <Button onClick={addPeriod}>교시 추가</Button>
+        ) : null}
+        <p className="text-xs text-slate-500">
+          {`${String(last)}교시까지 씁니다. 안 쓰는 교시는 ✕로 지우세요.`}
+        </p>
+      </div>
 
       {/*
        * 점심을 따로 묻지 않는다 — 일곱 줄 사이에서 가장 긴 틈이 점심이다
@@ -246,6 +328,20 @@ export function PeriodTimeTab() {
           ? '점심 시간을 정하지 못했습니다. 25분 넘게 비는 틈이 없거나, 가장 긴 틈이 둘이라 어느 쪽인지 가릴 수 없습니다.'
           : `점심 ${hmOf(lunch.start)} ~ ${hmOf(lunch.end)} · 교시 사이에서 가장 긴 틈을 점심으로 봅니다.`}
       </p>
+
+      <ConfirmDialog
+        open={dropping}
+        title={`${String(last)}교시를 지울까요?`}
+        description={
+          paintedAt(last) === 0
+            ? '일과에서 빠집니다. 다시 필요하면 [교시 추가]로 되돌릴 수 있습니다.'
+            : `일과에서 빠지고, 시간표에 채워 둔 ${String(paintedAt(last))}칸도 함께 지워집니다. 시각이 없는 교시는 '지금' 카드가 통째로 무시하기 때문입니다.`
+        }
+        destructive
+        confirmLabel="지우기"
+        onCancel={() => setDropping(false)}
+        onConfirm={dropLast}
+      />
 
       <ConfirmDialog
         open={reverting}

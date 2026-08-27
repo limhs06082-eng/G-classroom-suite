@@ -551,7 +551,12 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       kept.push(time);
     }
 
-    if (kept.length !== MAX_PERIOD) {
+    /*
+     * 1부터 이어져야 한다. 6·7교시를 안 쓰는 저학년 담임이 뒤에서 지운
+     * 것은 이어짐을 안 깨지만, 중간이 빠진 것은 자료가 상했다는 뜻이다.
+     */
+    const ordered = [...kept].sort((a, b) => a.period - b.period);
+    if (ordered.length === 0 || ordered.some((time, index) => time.period !== index + 1)) {
       // 반쪽짜리 일과는 '지금' 카드를 어느 교시에서 갑자기 말 못 하게 만든다.
       repairs.push({
         code: 'INVALID_PERIOD_TIME',
@@ -563,17 +568,17 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       return createDefaultPeriodTimes();
     }
 
-    if (kept.length !== input.periodTimes.length) {
+    if (ordered.length !== input.periodTimes.length) {
       repairs.push({
         code: 'INVALID_PERIOD_TIME',
         severity: 'info',
         entityIds: [],
-        message: '교시 시각에서 겹친 줄을 정리했습니다.',
+        message: '교시 시각에서 알아볼 수 없는 줄을 덜어 냈습니다. 설정 → 시간표에서 확인해 주세요.',
       });
     }
 
     // 카드가 앞에서부터 훑으므로 교시 순서를 여기서 고정해 둔다.
-    return kept.sort((a, b) => a.period - b.period);
+    return ordered;
   })();
 
   // ── 8-3. 역할·당번이 실제 학급·학생·역할을 가리키는가 ─────────
