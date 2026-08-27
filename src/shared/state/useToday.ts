@@ -13,11 +13,21 @@ function stamp(now: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-/** 다음 자정까지 남은 밀리초. 1분을 더해 경계에 아슬아슬하게 걸치지 않게 한다. */
+/**
+ * 다음 자정까지 남은 밀리초. 1초를 더해 경계에 아슬아슬하게 걸치지 않게 한다.
+ *
+ * **`useNow`와 같은 여유를 쓴다.** 여기가 1분이고 저기가 1초이던 때가 있었는데,
+ * 그러면 자정 뒤 59초 동안 `useNow`는 새 날이라 하고 이쪽은 어제라고 한다.
+ * 두 갈고리를 함께 보는 화면(오늘 요일로 시간표를 고르고 지금 분으로 교시를
+ * 고르는 '지금' 카드)에서 그 틈이 곧 어긋남이 된다.
+ *
+ * 1초면 넉넉하다. setTimeout은 늦게 올지언정 일찍 오지 않으므로, 1초를 더하면
+ * 깨어났을 때 자정이 확실히 지나 있다.
+ */
 function untilTomorrow(now: Date): number {
   const next = new Date(now);
   next.setHours(24, 0, 0, 0);
-  return next.getTime() - now.getTime() + 60_000;
+  return next.getTime() - now.getTime() + 1000;
 }
 
 /**

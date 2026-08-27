@@ -25,6 +25,7 @@ import {
   type LessonStage,
   type LessonTemplate,
   type MessageTemplate,
+  type PeriodTime,
   type QuizQuestion,
   type QuizSet,
   type TaskItem,
@@ -442,6 +443,34 @@ export function createMessageTemplate(
   };
 }
 
+// ── 교시 시각 ──────────────────────────────────────────────────
+
+/**
+ * 초등 일반 일과 일곱 줄.
+ *
+ * **빈 채로 두지 않는다.** 비워 두고 채우라고 하면 '지금' 카드가 처음부터
+ * 안 뜨고, 그러면 이 기능이 있다는 것조차 모르고 지나간다. 틀린 학교는
+ * 고치면 되고, 고칠 곳이 어디인지는 카드가 알려 준다.
+ *
+ * 09:00 시작, 40분 수업, 10분 쉬는 시간, 점심 12:10~13:10.
+ */
+export function createDefaultPeriodTimes(): PeriodTime[] {
+  const starts = ['09:00', '09:50', '10:40', '11:30', '13:10', '14:00', '14:50'];
+
+  return starts.map((start, index) => ({
+    period: index + 1,
+    start,
+    end: addMinutes(start, 40),
+  }));
+}
+
+/** `"09:00"` + 40 → `"09:40"`. 자정을 넘길 일이 없어 되감지 않는다. */
+function addMinutes(hm: string, minutes: number): string {
+  const [h = '0', m = '0'] = hm.split(':');
+  const total = Number(h) * 60 + Number(m) + minutes;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
 /** 최초 실행 시의 빈 데이터. 설정 마법사를 거치기 전 상태다. */
 export function createEmptySuiteData(): SuiteData {
   return {
@@ -465,6 +494,7 @@ export function createEmptySuiteData(): SuiteData {
     assignments: [],
     submissions: [],
     timetableEntries: [],
+    periodTimes: createDefaultPeriodTimes(),
     scoreCycle: { ...DEFAULT_SCORE_CYCLE },
     activeTermId: null,
     activeClassId: null,

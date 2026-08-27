@@ -1,5 +1,38 @@
-import { createClassRoom, createTerm } from './factories';
-import type { ClassRoom, Group, Student, SuiteData, Term } from './types';
+import { createClassRoom, createDefaultPeriodTimes, createTerm } from './factories';
+import {
+  MAX_PERIOD,
+  type ClassRoom,
+  type Group,
+  type PeriodTime,
+  type Student,
+  type SuiteData,
+  type Term,
+} from './types';
+
+/** `"09:00"` 꼴을 분으로. 못 읽으면 null. */
+function hmToMinutes(value: string): number | null {
+  const match = /^([0-9]{1,2}):([0-9]{2})$/.exec(value.trim());
+  if (match === null) return null;
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+
+  return hour * 60 + minute;
+}
+
+/**
+ * 이 줄을 시각으로 쓸 수 있는가.
+ *
+ * 끝이 시작보다 이르거나 같은 줄은 '지금' 카드가 통째로 건너뛴다.
+ * 건너뛴 자리가 앞뒤 교시를 잇는 긴 틈이 되어 점심으로 오인되므로,
+ * 조용히 넘기지 않고 여기서 거른다.
+ */
+function isSaneSpan(time: PeriodTime): boolean {
+  const start = hmToMinutes(time.start);
+  const end = hmToMinutes(time.end);
+  return start !== null && end !== null && end > start;
+}
 
 /**
  * 도메인 불변조건 검사 및 자동 복구.
@@ -38,6 +71,7 @@ export type RepairCode =
   | 'INVALID_SEAT_POSITION'
   | 'ORPHAN_SAVED_LAYOUT'
   | 'ORPHAN_TIMETABLE'
+  | 'INVALID_PERIOD_TIME'
   | 'ORPHAN_DUTY_RECORD'
   | 'INVALID_DUTY_ASSIGNMENT'
   | 'ORPHAN_REWARD_RECORD'
@@ -497,6 +531,51 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
     return kept;
   })();
 
+  // ── 8-2d. 교시 시각이 온전한가 ───────────────────────────────
+  //     스키마가 이미 채워 주지만, 백업 복원이 아닌 길(가져오기, 수리)로도
+  //     자료가 들어온다. 중복된 교시가 있으면 '지금' 카드가 어느 쪽을 믿을지
+  //     모른다 — 앞엣것을 남기고 나머지를 버린다.
+  //
+  //     시각 글자도 여기서 본다. 안 보면 못 읽는 줄이 '지금' 카드까지 가고,
+  //     카드는 그 줄을 버린다. 그러면 그 자리에 60분짜리 구멍이 생겨
+  //     **진짜 점심과 길이가 같아진다** — 09:55에 "점심"이라고 말하는 화면이
+  //     된다. 실제로 그렇게 되는 것을 확인하고 여기에 그물을 놓았다.
+  const periodTimes = (() => {
+    const seen = new Set<number>();
+    const kept: PeriodTime[] = [];
+    for (const time of input.periodTimes) {
+      if (seen.has(time.period)) continue;
+      if (!Number.isInteger(time.period) || time.period < 1 || time.period > MAX_PERIOD) continue;
+      if (!isSaneSpan(time)) continue;
+      seen.add(time.period);
+      kept.push(time);
+    }
+
+    if (kept.length !== MAX_PERIOD) {
+      // 반쪽짜리 일과는 '지금' 카드를 어느 교시에서 갑자기 말 못 하게 만든다.
+      repairs.push({
+        code: 'INVALID_PERIOD_TIME',
+        severity: 'warning',
+        // 교시 시각에는 id가 없다. 교시 번호가 열쇠라 가리킬 id가 없다.
+        entityIds: [],
+        message: '교시 시각이 온전하지 않아 기본 일과로 되돌렸습니다.',
+      });
+      return createDefaultPeriodTimes();
+    }
+
+    if (kept.length !== input.periodTimes.length) {
+      repairs.push({
+        code: 'INVALID_PERIOD_TIME',
+        severity: 'info',
+        entityIds: [],
+        message: '교시 시각에서 겹친 줄을 정리했습니다.',
+      });
+    }
+
+    // 카드가 앞에서부터 훑으므로 교시 순서를 여기서 고정해 둔다.
+    return kept.sort((a, b) => a.period - b.period);
+  })();
+
   // ── 8-3. 역할·당번이 실제 학급·학생·역할을 가리키는가 ─────────
   //     잘못된 배정을 두면 오늘의 당번에 빈칸이나 유령 이름이 뜬다.
   const duty = (() => {
@@ -729,6 +808,7 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       seatingStates,
       savedLayouts,
       timetableEntries,
+      periodTimes,
       dutyRoles: duty.dutyRoles,
       dutyRounds: duty.dutyRounds,
       dutyCompletions: duty.dutyCompletions,

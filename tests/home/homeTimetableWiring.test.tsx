@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import HomePage from '../../src/features/home/HomePage';
+import { ToolsProvider } from '../../src/features/tools/ToolsContext';
 import {
   createClassRoom,
   createEmptySuiteData,
@@ -60,7 +61,15 @@ function show(): void {
         <SuiteDataProvider
           adapter={stubAdapter({ load: async () => ({ data: seeded(), repairs: [], isFirstRun: false }) })}
         >
-          <HomePage />
+          {/*
+            '지금' 카드가 홈에 붙으면서 필요해졌다. 그 카드는 수업 중에
+            useTools()로 타이머·화면 가리개를 여는데, 실제 앱에서는 AppShell이
+            provider를 씌워 준다. 여기서 안 씌우면 이 시계(월요일 9시,
+            1교시 수업 중)에서 홈이 통째로 죽는다.
+          */}
+          <ToolsProvider>
+            <HomePage />
+          </ToolsProvider>
         </SuiteDataProvider>
       </ToastProvider>
     </MemoryRouter>,

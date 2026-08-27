@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { Button, cx, Modal } from '../../shared/ui';
+import { useTools } from './ToolsContext';
 import { formatDuration, useTimer } from './useTimer';
 
 /**
@@ -10,24 +11,28 @@ import { formatDuration, useTimer } from './useTimer';
  *
  * 원본 dashboard의 타이머·스톱워치·화면커튼·집중화면·빠른알림을 옮겼다.
  * 홈 전용이 아니라 전역이다. 어느 화면에서 수업하든 손이 닿아야 한다.
+ *
+ * 여는 상태는 여기 없다. `ToolsContext`가 들고 있다 — 홈의 '지금' 카드처럼
+ * 툴바 밖에 있는 자리도 같은 도구를 열어야 하기 때문이다. 툴바는 그 상태를
+ * 읽어 그리는 쪽이 되었고, 제 단추도 남들과 똑같이 `open()`을 부른다.
  */
 
 const PRESET_MINUTES = [1, 3, 5, 10, 15];
 
 export function ToolsBar() {
-  const [open, setOpen] = useState<null | 'timer' | 'curtain' | 'notice'>(null);
+  const { openTool, open, close } = useTools();
 
   return (
     <>
       <div className="no-print sticky bottom-0 z-20 border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-2">
-          <Button size="sm" icon={TimerIcon} onClick={() => setOpen('timer')}>
+          <Button size="sm" icon={TimerIcon} onClick={() => open('timer')}>
             타이머
           </Button>
-          <Button size="sm" icon={EyeOff} onClick={() => setOpen('curtain')}>
+          <Button size="sm" icon={EyeOff} onClick={() => open('curtain')}>
             화면 가리기
           </Button>
-          <Button size="sm" icon={Bell} onClick={() => setOpen('notice')}>
+          <Button size="sm" icon={Bell} onClick={() => open('notice')}>
             알림 띄우기
           </Button>
           <span className="ml-auto hidden text-xs text-slate-400 sm:inline">
@@ -36,9 +41,9 @@ export function ToolsBar() {
         </div>
       </div>
 
-      <TimerModal open={open === 'timer'} onClose={() => setOpen(null)} />
-      {open === 'curtain' ? <ScreenCurtain onClose={() => setOpen(null)} /> : null}
-      <NoticeModal open={open === 'notice'} onClose={() => setOpen(null)} />
+      <TimerModal open={openTool === 'timer'} onClose={close} />
+      {openTool === 'curtain' ? <ScreenCurtain onClose={close} /> : null}
+      <NoticeModal open={openTool === 'notice'} onClose={close} />
     </>
   );
 }

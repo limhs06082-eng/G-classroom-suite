@@ -18,6 +18,7 @@ import { formatBytes, measureDataSize } from '../../shared/storage/dataSize';
 import type { BackupSummary } from '../../shared/storage/StorageAdapter';
 import { AccountPanel } from '../../shared/account/AccountPanel';
 import { Badge, Button, Card, ConfirmDialog, cx, EmptyState, Tabs, useToast } from '../../shared/ui';
+import { PeriodTimeTab } from '../timetable/PeriodTimeTab';
 import { TimetableTab } from '../timetable/TimetableTab';
 import { ClassTermTab } from './ClassTermTab';
 import { LockTab } from './LockTab';
@@ -93,7 +94,18 @@ export default function SettingsPage() {
         {tab === 'school' ? <SchoolTab /> : null}
         {tab === 'classes' ? <ClassTermTab /> : null}
         {/* isDesktop() 분기가 없다. 시간표는 바깥 통신이 없어 웹에서도 그대로 돈다. */}
-        {tab === 'timetable' ? <TimetableTab /> : null}
+        {tab === 'timetable' ? (
+          /*
+           * 일과를 탭으로 가르지 않고 시간표 아래에 이어 붙인다. 시간표를
+           * 짜러 온 김에 일과도 맞추는 것이 자연스럽고, 탭이 여덟 개가 되면
+           * 고르는 일 자체가 일이 된다. 시간표는 학급마다 한 벌이고 일과는
+           * 학교 하나라 층이 다르지만, 교사가 하는 일은 한 가지다.
+           */
+          <div className="flex flex-col gap-4">
+            <TimetableTab />
+            <PeriodTimeTab />
+          </div>
+        ) : null}
         {tab === 'lock' ? <LockTab /> : null}
         {/* 탭 목록에서 빼는 것만으로는 안 된다 — tab 상태가 무슨 값이든 설치형에서는 이 패널이 렌더되면 안 된다. */}
         {tab === 'sync' && !isDesktop() ? <AccountPanel /> : null}
