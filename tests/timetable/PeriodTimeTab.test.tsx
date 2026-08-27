@@ -5,7 +5,11 @@ import { describe, expect, it } from 'vitest';
 
 import { PeriodTimeTab } from '../../src/features/timetable/PeriodTimeTab';
 import SettingsPage from '../../src/features/settings/SettingsPage';
-import { createEmptySuiteData } from '../../src/shared/domain/factories';
+import {
+  createClassRoom,
+  createEmptySuiteData,
+  createTerm,
+} from '../../src/shared/domain/factories';
 import type { PeriodTime, SuiteData } from '../../src/shared/domain/types';
 import { SuiteDataProvider, useSuite } from '../../src/shared/roster/SuiteDataProvider';
 import { ToastProvider } from '../../src/shared/ui';
@@ -20,7 +24,49 @@ import { stubAdapter } from '../helpers/stubAdapter';
  */
 function Probe() {
   const { data } = useSuite();
-  return <span data-testid="saved">{JSON.stringify(data.periodTimes)}</span>;
+  return (
+    <>
+      <span data-testid="saved">{JSON.stringify(data.periodTimes)}</span>
+      {/* 교시를 지우면 그 교시 시간표 칸도 함께 지워지는지 봐야 한다. */}
+      <span data-testid="entries">{JSON.stringify(data.timetableEntries)}</span>
+    </>
+  );
+}
+
+const T0 = '2026-03-02T09:00:00.000Z';
+
+/**
+ * 시간표 칸이 붙은 자료.
+ *
+ * 학급을 진짜로 만들어 둬야 한다. `update()`가 불변조건을 거치는데,
+ * 없는 학급을 가리키는 칸은 고아 정리 규칙이 먼저 지워 버린다 — 그러면
+ * 이 화면이 지운 것인지 그쪽이 지운 것인지 구별할 수 없다.
+ */
+function withEntries(periods: number[]): SuiteData {
+  const term = createTerm(
+    {
+      schoolYear: '2026',
+      semester: '1학기',
+      startDate: '2026-03-02',
+      endDate: '2026-07-20',
+    },
+    T0,
+  );
+  const room = createClassRoom({ termId: term.id, name: '3학년 2반' }, T0);
+
+  return {
+    ...createEmptySuiteData(),
+    terms: [term],
+    classRooms: [room],
+    activeTermId: term.id,
+    activeClassId: room.id,
+    timetableEntries: periods.map((period, index) => ({
+      classId: room.id,
+      weekday: index + 1,
+      period,
+      subject: `과목${String(period)}`,
+    })),
+  };
 }
 
 function show(data: SuiteData = createEmptySuiteData()) {
@@ -253,5 +299,107 @@ describe('이웃 교시와 겹치는 것도 막는다', () => {
 
     // 3교시는 10:40 시작이다. 10:25는 안 겹친다.
     expect(saved()[1]?.end).toBe('10:25');
+  });
+})
+
+describe('안 쓰는 교시를 지운다', () => {
+  it('마지막 줄에만 지우기가 있다', async () => {
+    show();
+
+    // 중간을 빼면 그 뒤가 전부 어긋난다. 학교 일과는 1교시부터 이어진다.
+    expect(await screen.findByLabelText('7교시 지우기')).toBeInTheDocument();
+    expect(screen.queryByLabelText('3교시 지우기')).not.toBeInTheDocument();
+  });
+
+  it('지우면 줄이 하나 줄어든다', async () => {
+    const user = userEvent.setup();
+    show();
+
+    await user.click(await screen.findByLabelText('7교시 지우기'));
+    await user.click(screen.getByRole('button', { name: '지우기' }));
+
+    expect(saved()).toHaveLength(6);
+    expect(screen.queryByLabelText('7교시 시작')).not.toBeInTheDocument();
+  });
+
+  it('두 번 지우면 5교시까지 남는다', async () => {
+    // 1·2학년 담임이 최대 5교시만 쓰는 경우다.
+    const user = userEvent.setup();
+    show();
+
+    await user.click(await screen.findByLabelText('7교시 지우기'));
+    await user.click(screen.getByRole('button', { name: '지우기' }));
+    await user.click(await screen.findByLabelText('6교시 지우기'));
+    await user.click(screen.getByRole('button', { name: '지우기' }));
+
+    expect(saved().map((time) => time.period)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('시간표에 칠해 둔 칸이 몇인지 미리 말해 준다', async () => {
+    const user = userEvent.setup();
+    show(withEntries([7, 7, 2]));
+
+    await user.click(await screen.findByLabelText('7교시 지우기'));
+
+    /*
+     * 함께 지워지는 것을 안 알리면 교사는 시간표가 왜 비었는지 모른다.
+     * 안 지우고 두면 그 칸은 시각이 없어 '지금' 카드가 통째로 무시하는데
+     * 화면에는 아무 표시가 없다 — 조용히 사라지는 쪽이 더 나쁘다.
+     */
+    expect(screen.getByText(/2칸도 함께 지워집니다/)).toBeInTheDocument();
+  });
+
+  it('지우면 그 교시 시간표도 함께 사라진다', async () => {
+    const user = userEvent.setup();
+    show(withEntries([7, 2]));
+
+    await user.click(await screen.findByLabelText('7교시 지우기'));
+    await user.click(screen.getByRole('button', { name: '지우기' }));
+
+    const left = JSON.parse(screen.getByTestId('entries').textContent ?? '[]') as {
+      period: number;
+    }[];
+    expect(left.map((entry) => entry.period)).toEqual([2]);
+  });
+
+  it('취소하면 그대로 있다', async () => {
+    const user = userEvent.setup();
+    show();
+
+    await user.click(await screen.findByLabelText('7교시 지우기'));
+    await user.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(saved()).toHaveLength(7);
+  });
+
+  it('한 교시만 남으면 더 못 지운다', async () => {
+    const data = createEmptySuiteData();
+    data.periodTimes = [{ period: 1, start: '09:00', end: '09:40' }];
+    show(data);
+
+    // 전부 지우면 '지금' 카드가 영영 안 뜬다.
+    await screen.findByLabelText('1교시 시작');
+    expect(screen.queryByLabelText('1교시 지우기')).not.toBeInTheDocument();
+  });
+});
+
+describe('교시를 다시 더한다', () => {
+  it('마지막 교시 뒤에 10분 쉬고 40분으로 붙는다', async () => {
+    const user = userEvent.setup();
+    const data = createEmptySuiteData();
+    data.periodTimes = data.periodTimes.filter((time) => time.period <= 5);
+    show(data);
+
+    await user.click(await screen.findByRole('button', { name: '교시 추가' }));
+
+    // 5교시가 13:50에 끝난다. 10분 쉬면 14:00 시작, 40분이면 14:40.
+    expect(saved()[5]).toEqual({ period: 6, start: '14:00', end: '14:40' });
+  });
+
+  it('일곱 교시를 다 쓰면 더하기가 없다', async () => {
+    show();
+
+    await screen.findByLabelText('1교시 시작');
+    expect(screen.queryByRole('button', { name: '교시 추가' })).not.toBeInTheDocument();
   });
 })

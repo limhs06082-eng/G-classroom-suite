@@ -357,9 +357,35 @@ describe('8-2d — 교시 시각이 온전한가', () => {
 
     const result = validateAndRepair(data, NOW);
 
-    // 9교시는 없다. 있는 척하면 카드가 하교 시각을 틀리게 말한다.
+    /*
+     * 9교시는 없다. 있는 척하면 카드가 하교 시각을 틀리게 말한다.
+     * 버리고 남은 1~6은 1부터 이어지므로 '여섯 교시 학교'로 성립한다 —
+     * 뒤에서 지우는 것이 이제 정상이라 그렇다. 대신 덜어 냈다고 알린다.
+     */
+    expect(result.data.periodTimes.map((time) => time.period)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(result.repairs.map((repair) => repair.code)).toContain('INVALID_PERIOD_TIME');
+  });
+
+  it('중간이 빠지면 자료가 상한 것으로 보고 되돌린다', () => {
+    const data = baseData();
+    // 3교시만 없앤다. 교사가 지운 것은 늘 뒤쪽이라 중간이 빈 것은 사고다.
+    data.periodTimes = data.periodTimes.filter((time) => time.period !== 3);
+
+    const result = validateAndRepair(data, NOW);
+
     expect(result.data.periodTimes).toHaveLength(7);
-    expect(result.data.periodTimes.every((time) => time.period <= 7)).toBe(true);
+    expect(result.repairs.map((repair) => repair.code)).toContain('INVALID_PERIOD_TIME');
+  });
+
+  it('뒤에서 지운 것은 그대로 둔다', () => {
+    const data = baseData();
+    // 저학년 담임이 6·7교시를 지웠다. 이건 정상이다.
+    data.periodTimes = data.periodTimes.filter((time) => time.period <= 5);
+
+    const result = validateAndRepair(data, NOW);
+
+    expect(result.data.periodTimes).toHaveLength(5);
+    expect(result.repairs.map((repair) => repair.code)).not.toContain('INVALID_PERIOD_TIME');
   });
 
   it('온전하면 그대로 둔다', () => {
