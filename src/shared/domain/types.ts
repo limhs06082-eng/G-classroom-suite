@@ -632,6 +632,22 @@ export interface MessageTemplate {
 export const MAX_PERIOD = 7;
 
 /**
+ * 한 교시의 시각.
+ *
+ * **`classId`가 없다.** 3학년 2반과 5학년 1반의 2교시 시작 시각이 다를 리
+ * 없다. 시간표는 학급마다 한 벌이지만 일과는 학교 하나다.
+ *
+ * 시각은 `"09:00"` 꼴의 24시간 글자다. 분으로 저장하지 않는 까닭은
+ * 백업 파일을 사람이 열어 봤을 때 읽히기 때문이다.
+ */
+export interface PeriodTime {
+  /** 1 ~ MAX_PERIOD */
+  period: number;
+  start: string;
+  end: string;
+}
+
+/**
  * 시간표 한 칸.
  *
  * id를 두지 않는다. `(classId, weekday, period)`가 자연키이고, 한 칸에 두
@@ -690,6 +706,9 @@ export interface SuiteData {
 
   /** 학급마다 한 벌. 학기가 바뀌어 학급을 새로 만들면 시간표도 새로 시작한다. */
   timetableEntries: TimetableEntry[];
+
+  /** 학교의 일과. 늘 MAX_PERIOD줄이고, 비어 있는 일이 없다. */
+  periodTimes: PeriodTime[];
 
   scoreCycle: ScoreCycle;
 

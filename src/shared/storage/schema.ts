@@ -1,4 +1,5 @@
 import {
+  createDefaultPeriodTimes,
   createEmptySuiteData,
   DEFAULT_SCORE_CYCLE,
   DEFAULT_SEAT_COLS,
@@ -28,6 +29,7 @@ import {
   type DutyRoundStatus,
   type Gender,
   type Group,
+  type PeriodTime,
   type RewardProfile,
   type SavedLayout,
   type ScoreCycle,
@@ -530,6 +532,33 @@ function parseTimetableEntry(raw: unknown): TimetableEntry | null {
   return { classId, weekday, period, subject };
 }
 
+/** `"09:00"` 꼴인가. 아니면 null. */
+function parseHm(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (match === null) return null;
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+
+  // `"9:05"`처럼 한 자리로 적어 둔 파일도 받아들이고 두 자리로 고쳐 돌려준다.
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function parsePeriodTime(raw: unknown): PeriodTime | null {
+  if (!isRecord(raw)) return null;
+
+  const period = num(raw['period'], NaN);
+  if (!Number.isInteger(period) || period < 1 || period > MAX_PERIOD) return null;
+
+  const start = parseHm(raw['start']);
+  const end = parseHm(raw['end']);
+  if (start === null || end === null) return null;
+
+  return { period, start, end };
+}
+
 function parseSavedLayout(raw: unknown, now: string): SavedLayout | null {
   if (!isRecord(raw)) return null;
   const id = requiredStr(raw['id']);
@@ -816,6 +845,19 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
   );
   const quizSets = parseList('quizSets', '문제 세트', (r) => parseQuizSet(r, now));
 
+  /*
+   * 한 줄이라도 못 읽으면 일곱 줄을 통째로 기본값으로 되돌린다.
+   *
+   * 반쪽짜리 일과는 '지금' 카드가 4교시에서 갑자기 말을 못 하게 만든다.
+   * 그건 조용히 틀리는 쪽이라 차라리 전부 기본값이 낫다 — 틀렸다는 것이
+   * 눈에 보이고 고칠 데도 분명하다. 이 판 이전 백업에는 아예 없는 칸이라
+   * 그때도 이 길로 온다.
+   */
+  const readTimes = asArray(root['periodTimes'])
+    .map(parsePeriodTime)
+    .filter((t): t is PeriodTime => t !== null);
+  const periodTimes = readTimes.length === MAX_PERIOD ? readTimes : createDefaultPeriodTimes();
+
   const shaped: SuiteData = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     profile: {
@@ -845,6 +887,7 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     assignments: parseList('assignments', '과제', (r) => parseAssignment(r, now)),
     submissions: parseList('submissions', '제출 현황', (r) => parseSubmission(r, now)),
     timetableEntries: parseList('timetableEntries', '시간표', parseTimetableEntry),
+    periodTimes,
     scoreCycle: parseScoreCycle(root['scoreCycle']),
     activeTermId: typeof root['activeTermId'] === 'string' ? root['activeTermId'] : null,
     activeClassId: typeof root['activeClassId'] === 'string' ? root['activeClassId'] : null,
