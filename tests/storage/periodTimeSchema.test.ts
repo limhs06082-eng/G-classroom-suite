@@ -62,3 +62,32 @@ describe('교시 시각 — 저장과 복원', () => {
     expect(back.data.periodTimes[2]?.start).toBe('10:40');
   });
 });
+
+describe('교시 시각 — 되돌렸으면 말해 준다', () => {
+  it('있는데 못 읽었으면 알린다', () => {
+    const raw = JSON.parse(serializeSuiteData(createEmptySuiteData())) as Record<string, unknown>;
+    (raw.periodTimes as unknown[])[2] = { period: 3, start: '뭐라고?', end: '10:40' };
+
+    const back = parseSuiteData(raw, NOW);
+
+    /*
+     * 08:40으로 고쳐 둔 일과가 통째로 09:00으로 되돌아가는데 아무도 안
+     * 알려 주면, 선생님은 '지금' 카드가 하루 종일 틀린 말을 하는 까닭을
+     * 알 길이 없다. 카드를 볼 때에나 이상함을 느끼지, 복원하는 그 자리에서는
+     * 아무 표시가 없다.
+     */
+    expect(back.repairs.map((repair) => repair.code)).toContain('INVALID_PERIOD_TIME');
+  });
+
+  it('아예 없었으면 조용히 채운다', () => {
+    const raw = JSON.parse(serializeSuiteData(createEmptySuiteData())) as Record<string, unknown>;
+    delete raw.periodTimes;
+
+    const back = parseSuiteData(raw, NOW);
+
+    // 이 판 이전 백업에는 이 칸이 없다. 알리면 기존 사용자 전원이
+    // 앱을 열 때마다 경고를 한 번씩 본다. 그건 소음이다.
+    expect(back.repairs.map((repair) => repair.code)).not.toContain('INVALID_PERIOD_TIME');
+    expect(back.data.periodTimes).toHaveLength(MAX_PERIOD);
+  });
+});

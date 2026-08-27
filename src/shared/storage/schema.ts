@@ -850,13 +850,34 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
    *
    * 반쪽짜리 일과는 '지금' 카드가 4교시에서 갑자기 말을 못 하게 만든다.
    * 그건 조용히 틀리는 쪽이라 차라리 전부 기본값이 낫다 — 틀렸다는 것이
-   * 눈에 보이고 고칠 데도 분명하다. 이 판 이전 백업에는 아예 없는 칸이라
-   * 그때도 이 길로 온다.
+   * 눈에 보이고 고칠 데도 분명하다.
+   *
+   * **없을 때와 있는데 못 읽을 때를 가른다.** 이 판 이전 백업에는 이 칸이
+   * 아예 없으므로 그때는 조용히 채운다 — 안 그러면 기존 사용자 전원이
+   * 앱을 열 때마다 경고를 한 번씩 본다.
+   *
+   * 있는데 못 읽은 것은 다르다. 08:40으로 고쳐 둔 일과가 통째로 09:00으로
+   * 되돌아가는데 아무도 안 알려 주면, 선생님은 '지금' 카드가 하루 종일
+   * 틀린 말을 하는 까닭을 알 길이 없다. 이 저장소의 복구 원칙이
+   * "조용히 고치지 않는다"인 것이 이 때문이다.
    */
-  const readTimes = asArray(root['periodTimes'])
+  const rawTimes = root['periodTimes'];
+  const readTimes = asArray(rawTimes)
     .map(parsePeriodTime)
     .filter((t): t is PeriodTime => t !== null);
-  const periodTimes = readTimes.length === MAX_PERIOD ? readTimes : createDefaultPeriodTimes();
+
+  let periodTimes = readTimes;
+  if (readTimes.length !== MAX_PERIOD) {
+    periodTimes = createDefaultPeriodTimes();
+    if (rawTimes !== undefined) {
+      repairs.push({
+        code: 'INVALID_PERIOD_TIME',
+        severity: 'warning',
+        entityIds: [],
+        message: '교시 시각을 알아볼 수 없어 기본 일과로 되돌렸습니다. 설정 → 시간표에서 확인해 주세요.',
+      });
+    }
+  }
 
   const shaped: SuiteData = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
