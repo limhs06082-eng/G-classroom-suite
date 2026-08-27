@@ -28,11 +28,11 @@ function OpenToolProbe() {
   return <span data-testid="open-tool">{openTool ?? '없음'}</span>;
 }
 
-function show(state: NowState, onOpenBoard = vi.fn()) {
+function show(state: NowState, onOpenBoard = vi.fn(), hasMealCard = true) {
   return render(
     <MemoryRouter>
       <ToolsProvider>
-        <NowCard state={state} onOpenBoard={onOpenBoard} />
+        <NowCard state={state} onOpenBoard={onOpenBoard} hasMealCard={hasMealCard} />
         <OpenToolProbe />
       </ToolsProvider>
     </MemoryRouter>,
@@ -166,5 +166,26 @@ describe('지금 카드', () => {
 
     expect(screen.getByText(/알 수 없습니다/)).toBeInTheDocument();
     expect(screen.getByText(/holiday/)).toBeInTheDocument();
+  });
+});
+
+describe('없는 카드를 가리키지 않는다', () => {
+  it('급식 카드가 있으면 그리로 안내한다', () => {
+    show({ kind: 'lunch' }, vi.fn(), true);
+
+    expect(screen.getByText(/오늘 급식/)).toBeInTheDocument();
+  });
+
+  it('급식 카드가 없으면 점심이라고만 한다', () => {
+    /*
+     * 급식은 설치형에서만 된다 — NEIS가 브라우저의 직접 요청을 막는다.
+     * 웹의 그 자리에는 이름이 '급식'인 다른 카드가 있고 내용은 "설치형에서만
+     * 받아 옵니다"다. 거기에 대고 "'오늘 급식' 카드에 있습니다"라고 하면
+     * 없는 것을 찾아 헤매게 만든다.
+     */
+    show({ kind: 'lunch' }, vi.fn(), false);
+
+    expect(screen.getByText('점심시간입니다')).toBeInTheDocument();
+    expect(screen.queryByText(/오늘 급식/)).not.toBeInTheDocument();
   });
 });

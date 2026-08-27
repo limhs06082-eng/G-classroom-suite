@@ -500,6 +500,12 @@ export function TodayNow() {
     <NowCard
       state={nowState(data.periodTimes, today, minutes)}
       /*
+       * 홈이 급식 카드를 실제로 그리는지 그대로 넘긴다. 웹에서는 안 그리므로
+       * 점심때 없는 카드를 가리키게 두면 안 된다. 이 화면 안에서만 아는
+       * 사실이라 카드에게 물어보게 하지 않는다.
+       */
+      hasMealCard={isDesktop()}
+      /*
        * 수업 중에 띄우는 칠판이라 수업 진행 화면으로 보낸다. 여는 법은 웹
        * (새 탭)과 설치형(새 앱 창)이 달라서 `openBoard`가 가리고 있고,
        * 카드는 넘겨받은 것을 부르기만 한다.

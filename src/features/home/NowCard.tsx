@@ -18,13 +18,26 @@ import { useTools } from '../tools/ToolsContext';
 export function NowCard({
   state,
   onOpenBoard,
+  hasMealCard,
 }: {
   state: NowState;
   onOpenBoard: () => void;
+  /**
+   * 홈에 '오늘 급식' 카드가 실제로 있는가.
+   *
+   * 급식은 설치형에서만 된다(NEIS가 브라우저의 직접 요청을 막는다). 웹의
+   * 그 자리에는 이름이 '급식'인 다른 카드가 있고 내용은 "설치형에서만
+   * 받아 옵니다"다. 그런 화면에서 "'오늘 급식' 카드에 있습니다"라고 하면
+   * 없는 것을 찾아 헤매게 만든다.
+   *
+   * 여기서 `isDesktop()`을 부르지 않는다. 이 카드는 그리기만 하는 자리라
+   * 빌드 대상을 알면 안 되고, 어차피 **홈이 이미 아는 사실**이다.
+   */
+  hasMealCard: boolean;
 }) {
   return (
     <Card title="지금" icon={Clock}>
-      <NowBody state={state} onOpenBoard={onOpenBoard} />
+      <NowBody state={state} onOpenBoard={onOpenBoard} hasMealCard={hasMealCard} />
     </Card>
   );
 }
@@ -36,7 +49,15 @@ export function NowCard({
  * 빈 카드**가 되는데, 빈 카드는 아무도 신고하지 않는다. `switch`의 마지막
  * 갈래에서 `never`로 받으면 그 순간 컴파일이 깨진다.
  */
-function NowBody({ state, onOpenBoard }: { state: NowState; onOpenBoard: () => void }) {
+function NowBody({
+  state,
+  onOpenBoard,
+  hasMealCard,
+}: {
+  state: NowState;
+  onOpenBoard: () => void;
+  hasMealCard: boolean;
+}) {
   switch (state.kind) {
     case 'no-timetable':
       return (
@@ -106,10 +127,14 @@ function NowBody({ state, onOpenBoard }: { state: NowState; onOpenBoard: () => v
             '아래 카드'라고 쓰지 않는다. 홈에서 이 카드가 어디 놓이는지는
             홈이 정하고, 화면 폭에 따라 옆이 되기도 아래가 되기도 한다.
             자리 대신 이름으로 가리킨다.
+
+            없는 카드를 가리키지도 않는다. 웹에는 '오늘 급식' 카드가 없다.
           */}
-          <p className="mt-1 text-sm text-slate-500">
-            오늘 급식은 &lsquo;오늘 급식&rsquo; 카드에 있습니다.
-          </p>
+          {hasMealCard ? (
+            <p className="mt-1 text-sm text-slate-500">
+              오늘 급식은 &lsquo;오늘 급식&rsquo; 카드에 있습니다.
+            </p>
+          ) : null}
         </div>
       );
 
