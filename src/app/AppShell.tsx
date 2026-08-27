@@ -3,6 +3,7 @@ import { Suspense, useCallback } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 
 import { ToolsBar } from '../features/tools/ToolsBar';
+import { ToolsProvider } from '../features/tools/ToolsContext';
 import { LockScreen } from '../shared/lock/LockScreen';
 import { engageLock, tryUnlock } from '../shared/lock/lockOps';
 import { isDesktop } from '../shared/platform/target';
@@ -47,101 +48,111 @@ export function AppShell() {
     [data, update],
   );
 
+  /*
+   * ToolsProvider가 <Outlet/>까지 함께 감싼다.
+   *
+   * 툴바만 감싸면 컴파일도 되고 툴바도 멀쩡히 도는데, 라우트 화면(홈의 '지금'
+   * 카드)이 useTools()를 부르는 순간 provider를 못 찾아 죽는다. 도구를 여는
+   * 쪽이 툴바 밖에 있다는 것이 이 context를 만든 이유이므로, 여는 쪽과 그리는
+   * 쪽이 한 provider 아래 있어야 한다.
+   */
   return (
-    <div className="flex min-h-full flex-col">
-      {/* 반투명 헤더는 스크롤할 때 본문 한글이 비쳐 읽기 어려워진다. 불투명으로 둔다. */}
-      <header className="no-print sticky top-0 z-20 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
-          <Link to="/" className="shrink-0 text-base font-bold tracking-tight text-slate-900">
-            우리 반
-          </Link>
+    <ToolsProvider>
+      <div className="flex min-h-full flex-col">
+        {/* 반투명 헤더는 스크롤할 때 본문 한글이 비쳐 읽기 어려워진다. 불투명으로 둔다. */}
+        <header className="no-print sticky top-0 z-20 border-b border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
+            <Link to="/" className="shrink-0 text-base font-bold tracking-tight text-slate-900">
+              우리 반
+            </Link>
 
-          <ClassSwitcher />
+            <ClassSwitcher />
 
-          <nav className="ml-auto flex items-center gap-1">
-            {FEATURE_NAV.filter(
-              ({ id }) => !(isDesktop() && HIDDEN_NAV_IDS_ON_DESKTOP.includes(id)),
-            ).map(({ id, path, label, icon: Icon }) => (
+            <nav className="ml-auto flex items-center gap-1">
+              {FEATURE_NAV.filter(
+                ({ id }) => !(isDesktop() && HIDDEN_NAV_IDS_ON_DESKTOP.includes(id)),
+              ).map(({ id, path, label, icon: Icon }) => (
+                <NavLink
+                  key={id}
+                  to={path}
+                  end={path === '/'}
+                  // 좁은 화면에서는 라벨이 숨겨져 아이콘만 남으므로 이름을 따로 준다
+                  aria-label={label}
+                  className={({ isActive }) =>
+                    [
+                      'inline-flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-brand-50 text-brand-700'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                    ].join(' ')
+                  }
+                >
+                  <Icon className="size-4" aria-hidden />
+                  <span className="hidden md:inline">{label}</span>
+                </NavLink>
+              ))}
+
               <NavLink
-                key={id}
-                to={path}
-                end={path === '/'}
-                // 좁은 화면에서는 라벨이 숨겨져 아이콘만 남으므로 이름을 따로 준다
-                aria-label={label}
+                to="/roster"
+                aria-label="학생 명단"
                 className={({ isActive }) =>
                   [
-                    'inline-flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-sm font-medium transition-colors',
+                    'ml-1 rounded-control p-1.5 transition-colors',
                     isActive
                       ? 'bg-brand-50 text-brand-700'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
                   ].join(' ')
                 }
               >
-                <Icon className="size-4" aria-hidden />
-                <span className="hidden md:inline">{label}</span>
+                <Users className="size-4" aria-hidden />
               </NavLink>
-            ))}
-
-            <NavLink
-              to="/roster"
-              aria-label="학생 명단"
-              className={({ isActive }) =>
-                [
-                  'ml-1 rounded-control p-1.5 transition-colors',
-                  isActive
-                    ? 'bg-brand-50 text-brand-700'
-                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
-                ].join(' ')
-              }
-            >
-              <Users className="size-4" aria-hidden />
-            </NavLink>
 
 
-            {/* PIN을 만든 교사에게만 보인다. 누를 수 없는 버튼을 보일 이유가 없다. */}
-            {data.lockPin === '' ? null : (
-              <button
-                type="button"
-                onClick={() => update(engageLock)}
-                aria-label="화면 잠그기"
-                title="화면 잠그기"
-                className="ml-1 rounded-control p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              {/* PIN을 만든 교사에게만 보인다. 누를 수 없는 버튼을 보일 이유가 없다. */}
+              {data.lockPin === '' ? null : (
+                <button
+                  type="button"
+                  onClick={() => update(engageLock)}
+                  aria-label="화면 잠그기"
+                  title="화면 잠그기"
+                  className="ml-1 rounded-control p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                >
+                  <Lock className="size-4" aria-hidden />
+                </button>
+              )}
+
+              <NavLink
+                to="/settings"
+                aria-label="설정"
+                className={({ isActive }) =>
+                  [
+                    'ml-1 rounded-control p-1.5 transition-colors',
+                    isActive
+                      ? 'bg-brand-50 text-brand-700'
+                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+                  ].join(' ')
+                }
               >
-                <Lock className="size-4" aria-hidden />
-              </button>
-            )}
+                <Settings className="size-4" aria-hidden />
+              </NavLink>
+            </nav>
+          </div>
+        </header>
 
-            <NavLink
-              to="/settings"
-              aria-label="설정"
-              className={({ isActive }) =>
-                [
-                  'ml-1 rounded-control p-1.5 transition-colors',
-                  isActive
-                    ? 'bg-brand-50 text-brand-700'
-                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
-                ].join(' ')
-              }
-            >
-              <Settings className="size-4" aria-hidden />
-            </NavLink>
-          </nav>
-        </div>
-      </header>
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
+          {/* 라우트 단위 격리: 한 기능이 죽어도 헤더와 다른 기능은 살아 있다 */}
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
+        </main>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
-        {/* 라우트 단위 격리: 한 기능이 죽어도 헤더와 다른 기능은 살아 있다 */}
-        <ErrorBoundary>
-          <Suspense fallback={<PageLoader />}>
-            <Outlet />
-          </Suspense>
-        </ErrorBoundary>
-      </main>
+        <ToolsBar />
 
-      <ToolsBar />
-
-      {/* 전자칠판(/board/*)은 이 껍데기를 쓰지 않는다. 보여 주려고 띄운 화면이라 덮지 않는다. */}
-      {data.isLocked ? <LockScreen onSubmit={handleUnlock} /> : null}
-    </div>
+        {/* 전자칠판(/board/*)은 이 껍데기를 쓰지 않는다. 보여 주려고 띄운 화면이라 덮지 않는다. */}
+        {data.isLocked ? <LockScreen onSubmit={handleUnlock} /> : null}
+      </div>
+    </ToolsProvider>
   );
 }
