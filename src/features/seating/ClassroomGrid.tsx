@@ -57,7 +57,7 @@ export function ClassroomGrid({
       {/* 방향을 알려 주지 않으면 앞뒤가 뒤집힌 배치표가 나온다 */}
       <div
         className={cx(
-          'w-full rounded-control bg-slate-800 text-center font-semibold text-white',
+          'ink w-full rounded-control bg-slate-800 text-center font-semibold text-white',
           isBoard ? 'py-3 text-board-sm' : 'py-1.5 text-sm',
         )}
       >

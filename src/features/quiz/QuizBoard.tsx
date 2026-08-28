@@ -42,7 +42,7 @@ export function QuizBoard() {
   return (
     <div className="flex h-full flex-col gap-5">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="rounded-control bg-slate-900 px-4 py-1.5 text-board-sm font-bold text-white">
+        <span className="ink rounded-control bg-slate-900 px-4 py-1.5 text-board-sm font-bold text-white">
           {QUESTION_TYPE_LABELS[question.type]}
         </span>
         <span className="text-board-sm text-slate-500">

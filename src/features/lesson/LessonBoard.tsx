@@ -47,7 +47,7 @@ export function LessonBoard() {
   return (
     <div className="flex h-full flex-col gap-6">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="rounded-control bg-slate-900 px-4 py-1.5 text-board-sm font-bold text-white">
+        <span className="ink rounded-control bg-slate-900 px-4 py-1.5 text-board-sm font-bold text-white">
           {PHASE_LABELS[current.phase]}
         </span>
         <span className="text-board-sm text-slate-500">

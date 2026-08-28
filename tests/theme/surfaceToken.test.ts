@@ -1,7 +1,8 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
+
+import { slashed, sourceFiles } from './sourceFiles';
 
 /*
  * 이 시험은 화면이 아니라 **소스 글자**를 본다.
@@ -9,30 +10,10 @@ import { describe, expect, it } from 'vitest';
  * 새로 짜는 사람이 무심코 `bg-white`를 쓰면 그 카드만 어두운 테마에서
  * 하얗게 남는다. 화면 시험으로는 못 잡는다 — 색이 CSS 변수라 jsdom에서는
  * 계산된 값이 안 나오고, 눈으로 보기 전에는 아무도 모른다.
- */
-
-/*
- * `.tsx`만 보지 않고 `.ts`도 본다.
  *
- * 이 저장소는 Tailwind 클래스 글자를 `.ts`에도 둔다(예: navigation.ts의
- * accentClass). 화면 파일만 훑으면 그런 상수에 박힌 `bg-white`는 그대로
- * 지나간다 — 시험은 초록인데 카드 하나만 하얀, 가장 찾기 힘든 꼴이다.
- *
- * `.css`는 뺐다. `index.css`의 `@media print` 안에는 `bg-white`가 일부러
- * 남아 있다. 종이는 어느 테마에서나 희다.
+ * 훑을 파일 목록(`sourceFiles`)은 `./sourceFiles`로 옮겼다. 어두운 섬
+ * 시험(`inkScope.test.ts`)이 같은 목록을 봐야 해서다.
  */
-function sourceFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((name) => {
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) return sourceFiles(full);
-    return /\.tsx?$/.test(name) ? [full] : [];
-  });
-}
-
-/** 윈도우에서도 같은 글자로 견주려고 구분자를 `/`로 맞춘다. */
-function slashed(file: string): string {
-  return file.split('\\').join('/');
-}
 
 describe('표면색', () => {
   it('bg-white는 잠금화면의 PIN 점 하나뿐이다', () => {

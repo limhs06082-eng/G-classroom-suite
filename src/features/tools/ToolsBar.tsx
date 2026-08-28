@@ -166,7 +166,7 @@ function ScreenCurtain({ onClose }: { onClose: () => void }) {
     <div
       role="dialog"
       aria-label="화면 가리기"
-      className="no-print fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-slate-900"
+      className="ink no-print fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-slate-900"
     >
       <p className="text-board-lg font-black text-white">잠시 화면을 가립니다</p>
       <Button size="lg" icon={X} onClick={onClose}>

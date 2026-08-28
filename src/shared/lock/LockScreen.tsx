@@ -59,7 +59,7 @@ export function LockScreen({ onSubmit }: { onSubmit: (pin: string) => boolean })
       role="dialog"
       aria-modal="true"
       aria-label="교사 잠금"
-      className="no-print fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-slate-900 p-6"
+      className="ink no-print fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-slate-900 p-6"
     >
       <div className="flex flex-col items-center gap-3">
         <Lock className="size-10 text-slate-500" aria-hidden />
