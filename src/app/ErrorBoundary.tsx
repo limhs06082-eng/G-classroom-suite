@@ -48,7 +48,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <div role="alert" className="flex min-h-64 items-center justify-center p-6">
-        <div className="w-full max-w-lg rounded-card border border-danger-500/30 bg-white p-6 shadow-card">
+        <div className="w-full max-w-lg rounded-card border border-danger-500/30 bg-surface p-6 shadow-card">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 size-5 shrink-0 text-danger-500" aria-hidden />
             <div className="min-w-0">

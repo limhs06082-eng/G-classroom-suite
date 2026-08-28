@@ -429,7 +429,7 @@ function ScoreTab({
                 <button
                   type="button"
                   onClick={() => onAward(student.id, student.name)}
-                  className="flex w-full items-center gap-1.5 rounded-card border border-slate-200 bg-white p-2.5 text-left hover:bg-slate-50"
+                  className="flex w-full items-center gap-1.5 rounded-card border border-slate-200 bg-surface p-2.5 text-left hover:bg-slate-50"
                 >
                   <span className="font-mono text-xs text-slate-400">{student.number}</span>
                   <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{student.name}</span>
@@ -557,7 +557,7 @@ function GoalsTab({
             key={goal.id}
             className={cx(
               'rounded-card border p-3',
-              isAchieved ? 'border-success-200 bg-success-50' : 'border-slate-200 bg-white',
+              isAchieved ? 'border-success-200 bg-success-50' : 'border-slate-200 bg-surface',
             )}
           >
             <div className="flex flex-wrap items-center gap-2">
@@ -637,7 +637,7 @@ function LogTab({
               key={entry.id}
               className={cx(
                 'flex items-center gap-2 rounded-control border px-2.5 py-1.5 text-sm',
-                revoked ? 'border-slate-100 bg-slate-50 text-slate-400' : 'border-slate-200 bg-white',
+                revoked ? 'border-slate-100 bg-slate-50 text-slate-400' : 'border-slate-200 bg-surface',
               )}
             >
               <span className="w-28 shrink-0 truncate text-slate-500">

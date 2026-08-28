@@ -41,7 +41,7 @@ export function GoalCelebration({
       role="dialog"
       aria-modal="true"
       aria-label="공동 목표 달성"
-      className="animate-rise-in fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-white/95 p-8 backdrop-blur-sm"
+      className="animate-rise-in fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-surface/95 p-8 backdrop-blur-sm"
     >
       <PartyPopper className="size-20 text-reward-500" aria-hidden />
 

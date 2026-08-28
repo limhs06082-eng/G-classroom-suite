@@ -39,7 +39,7 @@ export function SummaryCard({
     <Link
       to={to}
       className={cx(
-        'group flex flex-col rounded-card border border-slate-200 bg-white p-4 transition-colors',
+        'group flex flex-col rounded-card border border-slate-200 bg-surface p-4 transition-colors',
         'hover:border-slate-300 hover:bg-slate-50',
       )}
     >

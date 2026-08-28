@@ -96,7 +96,7 @@ export function ClassroomGrid({
                 isSelected
                   ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500'
                   : student
-                    ? 'border-slate-200 bg-white'
+                    ? 'border-slate-200 bg-surface'
                     : 'border-slate-200 bg-slate-50',
               )}
               label={

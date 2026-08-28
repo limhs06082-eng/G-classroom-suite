@@ -16,7 +16,7 @@ interface Props {
  */
 export function StagePlaceholder({ title, stage, source }: Props) {
   return (
-    <section className="rounded-card border border-dashed border-slate-300 bg-white p-8">
+    <section className="rounded-card border border-dashed border-slate-300 bg-surface p-8">
       <div className="flex items-start gap-3">
         <Construction className="mt-0.5 size-5 shrink-0 text-slate-400" aria-hidden />
         <div>

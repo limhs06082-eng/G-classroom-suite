@@ -146,7 +146,7 @@ function QuestionCard(props: {
   const [draft, setDraft] = useState('');
 
   return (
-    <section className="rounded-card border border-slate-200 bg-white p-4">
+    <section className="rounded-card border border-slate-200 bg-surface p-4">
       <p className="text-base font-medium text-slate-900">{question.text}</p>
 
       {question.type === 'ox' ? (

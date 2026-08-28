@@ -28,7 +28,7 @@ export function DutyBoard() {
           key={role.id}
           className={cx(
             'rounded-card border-4 p-4',
-            isDone ? 'border-success-500 bg-success-50' : 'border-slate-300 bg-white',
+            isDone ? 'border-success-500 bg-success-50' : 'border-slate-300 bg-surface',
           )}
         >
           <h2 className="flex items-center gap-2 text-board-sm font-bold text-slate-900">

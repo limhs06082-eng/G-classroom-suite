@@ -401,7 +401,7 @@ function BackupTab() {
               지금 백업하기
             </Button>
 
-            <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-control border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-control border border-slate-300 bg-surface px-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
               <Upload className="size-4" aria-hidden />
               백업 파일 가져오기
               <input

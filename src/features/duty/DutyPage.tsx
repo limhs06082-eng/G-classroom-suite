@@ -249,7 +249,7 @@ function TodayTab({
             key={role.id}
             className={cx(
               'rounded-card border p-3',
-              isDone ? 'border-success-200 bg-success-50' : 'border-slate-200 bg-white',
+              isDone ? 'border-success-200 bg-success-50' : 'border-slate-200 bg-surface',
             )}
           >
             <header className="flex items-center gap-2">
@@ -486,7 +486,7 @@ function RolesTab({
         {duty.roles.map((role) => (
           <li
             key={role.id}
-            className="flex flex-wrap items-center gap-2 rounded-card border border-slate-200 bg-white p-3"
+            className="flex flex-wrap items-center gap-2 rounded-card border border-slate-200 bg-surface p-3"
           >
             <input
               defaultValue={role.name}

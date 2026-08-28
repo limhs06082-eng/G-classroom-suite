@@ -307,7 +307,7 @@ export default function MessagePage() {
                   ) : (
                     <Link
                       to="/settings"
-                      className="inline-flex h-10 items-center gap-2 rounded-control border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-500 hover:bg-slate-50"
+                      className="inline-flex h-10 items-center gap-2 rounded-control border border-slate-300 bg-surface px-3.5 text-sm font-medium text-slate-500 hover:bg-slate-50"
                     >
                       <Sparkles className="size-4" aria-hidden />
                       AI 다듬기 켜기

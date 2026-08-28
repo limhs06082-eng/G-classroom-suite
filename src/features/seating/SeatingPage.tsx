@@ -298,7 +298,7 @@ export default function SeatingPage() {
                       'inline-flex items-baseline gap-1.5 rounded-control border px-2.5 py-1.5 text-sm',
                       selected
                         ? 'border-brand-500 bg-brand-50 text-brand-700'
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                        : 'border-slate-200 bg-surface text-slate-700 hover:bg-slate-50',
                     )}
                   >
                     <span className="font-mono text-xs text-slate-400">{student.number}</span>

@@ -118,7 +118,7 @@ export function Modal({
         aria-describedby={description === undefined ? undefined : descriptionId}
         tabIndex={-1}
         className={cx(
-          'relative flex max-h-[90vh] w-full flex-col rounded-card bg-white shadow-raised',
+          'relative flex max-h-[90vh] w-full flex-col rounded-card bg-surface shadow-raised',
           'animate-rise-in',
           SIZES[size],
         )}

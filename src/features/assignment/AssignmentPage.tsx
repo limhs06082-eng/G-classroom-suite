@@ -22,7 +22,7 @@ import { StudentAssignments } from './StudentAssignments';
 import { useAssignment } from './useAssignment';
 
 const STATUS_TONE: Record<SubmissionStatus, string> = {
-  unsubmitted: 'border-slate-200 bg-white text-slate-500',
+  unsubmitted: 'border-slate-200 bg-surface text-slate-500',
   submitted: 'border-success-200 bg-success-50 text-success-700',
   supplement: 'border-warning-200 bg-warning-50 text-warning-700',
   completed: 'border-brand-200 bg-brand-50 text-brand-700',
@@ -164,7 +164,7 @@ export default function AssignmentPage() {
                       'flex items-center gap-2 rounded-control border px-3 py-2 text-sm',
                       active
                         ? 'border-brand-500 bg-brand-50 font-medium text-brand-700'
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                        : 'border-slate-200 bg-surface text-slate-700 hover:bg-slate-50',
                     )}
                   >
                     {item.title}
@@ -336,7 +336,7 @@ export default function AssignmentPage() {
 
         {/* 보관한 과제가 없으면 이 줄 자체가 안 나온다. */}
         {assignment.archived.length > 0 ? (
-          <div className="rounded-card border border-slate-200 bg-white">
+          <div className="rounded-card border border-slate-200 bg-surface">
             <button
               type="button"
               onClick={() => setArchiveOpen((value) => !value)}

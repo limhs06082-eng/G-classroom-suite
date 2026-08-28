@@ -197,7 +197,7 @@ export function GroupingPanel() {
                 <button
                   type="button"
                   onClick={() => setMovingStudentId(student.id)}
-                  className="inline-flex items-baseline gap-1.5 rounded-control border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                  className="inline-flex items-baseline gap-1.5 rounded-control border border-slate-200 bg-surface px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
                 >
                   <span className="font-mono text-xs text-slate-400">{student.number}</span>
                   {student.name}
@@ -263,7 +263,7 @@ function GroupCard({
           aria-label={`${group.name} 이름`}
           className={cx(
             'min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold',
-            'hover:border-slate-300 focus:border-slate-400 focus:bg-white',
+            'hover:border-slate-300 focus:border-slate-400 focus:bg-surface',
             style.text,
           )}
         />
@@ -287,7 +287,7 @@ function GroupCard({
             return (
               <li
                 key={student.id}
-                className="flex items-center gap-1 rounded bg-white/70 px-1.5 py-1 text-sm"
+                className="flex items-center gap-1 rounded bg-surface/70 px-1.5 py-1 text-sm"
               >
                 <span className="font-mono text-xs text-slate-400">{student.number}</span>
                 <button

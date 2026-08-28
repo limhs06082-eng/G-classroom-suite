@@ -430,7 +430,7 @@ function QuestionRow({
     <li
       className={cx(
         'rounded-card border p-3',
-        issues.length > 0 ? 'border-warning-200 bg-warning-50' : 'border-slate-200 bg-white',
+        issues.length > 0 ? 'border-warning-200 bg-warning-50' : 'border-slate-200 bg-surface',
       )}
     >
       <div className="flex flex-wrap items-center gap-2">

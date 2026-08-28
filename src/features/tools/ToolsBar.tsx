@@ -24,7 +24,7 @@ export function ToolsBar() {
 
   return (
     <>
-      <div className="no-print sticky bottom-0 z-20 border-t border-slate-200 bg-white">
+      <div className="no-print sticky bottom-0 z-20 border-t border-slate-200 bg-surface">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-2">
           <Button size="sm" icon={TimerIcon} onClick={() => open('timer')}>
             타이머
@@ -222,7 +222,7 @@ function NoticeModal({ open, onClose }: { open: boolean; onClose: () => void }) 
             <div
               role="dialog"
               aria-label="알림"
-              className="no-print fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-white p-8"
+              className="no-print fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-surface p-8"
             >
               <p className="text-center text-board-xl font-black text-slate-900">{text}</p>
               <Button

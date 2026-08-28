@@ -71,7 +71,7 @@ export function QuizBoard() {
                 key={index}
                 className={cx(
                   'flex items-center gap-3 rounded-card border-4 p-4 text-board-base',
-                  isAnswer ? 'border-success-500 bg-success-50' : 'border-slate-200 bg-white',
+                  isAnswer ? 'border-success-500 bg-success-50' : 'border-slate-200 bg-surface',
                 )}
               >
                 <span className="font-black text-slate-400">{index + 1}</span>
