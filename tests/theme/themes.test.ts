@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { asThemeId, DEFAULT_THEME, THEMES } from '../../src/shared/theme/themes';
+import { ROOT_DEFAULT_THEME } from '../../src/shared/theme/useTheme';
 
 /*
  * 이 시험도 화면이 아니라 **소스 글자**를 본다. 색이 CSS 변수라 jsdom에서는
@@ -164,3 +165,24 @@ describe('테마의 색', () => {
     expect(uneven).toEqual([]);
   });
 });
+
+describe('표를 안 붙이는 테마와 CSS가 어긋나지 않는다', () => {
+  it('CSS 블록이 없는 테마는 정확히 하나이고, 그것이 ROOT_DEFAULT_THEME이다', () => {
+    const css = readFileSync('src/index.css', 'utf8');
+    const blockless = THEMES.filter((theme) => !css.includes(`[data-theme='${theme.id}']`));
+
+    /*
+     * 두 방향으로 어긋날 수 있고 둘 다 조용하다.
+     *
+     * 누가 `[data-theme='light']` 블록을 만들면 — 같은 색을 두 벌 적게 되고,
+     * 한 벌만 고쳐 놓고 왜 안 바뀌나 하게 된다. 그 블록은 표가 안 붙으니
+     * 애초에 걸리지도 않는다.
+     *
+     * 반대로 누가 `warm` 블록을 지우면 포근하게가 표만 붙은 채 아무 색도
+     * 안 걸려 밝게로 뜬다. 고를 수는 있는데 아무 일도 안 일어난다.
+     *
+     * 어느 쪽이든 화면을 눈으로 보기 전에는 모른다. 여기서 센다.
+     */
+    expect(blockless.map((theme) => theme.id)).toEqual([ROOT_DEFAULT_THEME]);
+  });
+})
