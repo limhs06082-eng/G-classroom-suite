@@ -345,7 +345,7 @@ export default function AssignmentPage() {
             >
               <Archive className="size-4 shrink-0 text-slate-400" aria-hidden />
               보관한 과제 {assignment.archived.length}개
-              <span className="ml-auto text-brand-600">{archiveOpen ? '접기' : '보기'}</span>
+              <span className="ml-auto text-brand-700">{archiveOpen ? '접기' : '보기'}</span>
             </button>
 
             {archiveOpen ? (

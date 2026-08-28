@@ -278,7 +278,7 @@ function TodayTab({
                 onClick={() => duty.toggleRoleLock(role.id)}
                 aria-label={`${role.name} ${locked ? '고정 해제' : '고정'}`}
                 aria-pressed={locked}
-                className={cx('rounded p-0.5', locked ? 'text-brand-600' : 'text-slate-300 hover:text-slate-500')}
+                className={cx('rounded p-0.5', locked ? 'text-brand-700' : 'text-slate-300 hover:text-slate-500')}
               >
                 <Lock className="size-3.5" aria-hidden />
               </button>

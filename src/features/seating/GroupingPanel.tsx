@@ -319,7 +319,7 @@ function GroupCard({
                   aria-pressed={isLocked}
                   className={cx(
                     'rounded p-0.5',
-                    isLocked ? 'text-brand-600' : 'text-slate-300 hover:text-slate-500',
+                    isLocked ? 'text-brand-700' : 'text-slate-300 hover:text-slate-500',
                   )}
                 >
                   <Lock className="size-3.5" aria-hidden />

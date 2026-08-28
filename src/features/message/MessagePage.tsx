@@ -92,7 +92,7 @@ export default function MessagePage() {
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="text-xl font-bold text-slate-900">문구 템플릿</h1>
         {data.profile.schoolName === '' ? (
-          <Link to="/settings" className="text-sm font-medium text-brand-600 hover:text-brand-700">
+          <Link to="/settings" className="text-sm font-medium text-brand-700 hover:text-brand-700">
             학교 정보를 넣으면 자동으로 채워집니다
           </Link>
         ) : null}

@@ -477,7 +477,7 @@
   /* 브랜드 — 600은 밝은 테마와 같은 값이다. 같은 단추는 어느 테마에서나 같은 파랑이어야 한다 */
   --color-brand-50: oklch(0.315 0.034 235);
   --color-brand-200: oklch(0.43 0.077 235);
-  --color-brand-300: oklch(0.5 0.0959 235);
+  --color-brand-300: oklch(0.38 0.075 235);
   --color-brand-500: oklch(0.61 0.15 235);
   --color-brand-600: oklch(0.5 0.14 235);
   --color-brand-700: oklch(0.695 0.12 235);

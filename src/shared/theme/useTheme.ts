@@ -102,6 +102,27 @@ function applyTheme(id: ThemeId): void {
  */
 export function applyStoredTheme(): void {
   applyTheme(readStoredTheme());
+
+  /*
+   * 다른 창에서 테마를 바꾸면 여기도 따라간다.
+   *
+   * 이게 없으면 **'또렷하게'가 정작 프로젝터에 못 닿는다.** 전자칠판은
+   * 별도 창(설치형)이거나 새 탭(웹)이고, 열릴 때 제 색으로 뜬 뒤로는
+   * 계속 그 색이다. 1교시에 띄워 둔 칠판이 3교시에 씻겨 보여서 교사가
+   * 설정에서 '또렷하게'를 골라도 **교사 모니터만 바뀌고 칠판은 그대로다.**
+   * [전자칠판]을 다시 눌러도 이미 열린 창을 앞으로 가져올 뿐이라 안 바뀐다.
+   * 빠져나갈 길이 제목 줄도 없는 전체 화면의 X뿐이다.
+   *
+   * `storage` 이벤트는 **같은 값을 담은 창 말고 나머지에게만** 간다.
+   * 그래서 고른 창은 useTheme의 효과가, 나머지 창은 이 줄이 맡는다.
+   *
+   * 떼어 내지 않는다. 이 등록의 수명은 컴포넌트가 아니라 창이다.
+   */
+  window.addEventListener('storage', (event) => {
+    // 우리 열쇠만 본다. 학급 자료도 같은 저장소를 쓴다.
+    if (event.key !== null && event.key !== STORAGE_KEY) return;
+    applyTheme(readStoredTheme());
+  });
 }
 
 /**

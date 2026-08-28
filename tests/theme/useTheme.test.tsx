@@ -244,3 +244,38 @@ describe('표를 안 붙이는 테마와 CSS 블록이 없는 테마는 같은 �
     }
   });
 })
+
+describe('다른 창에서 바꾸면 따라간다', () => {
+  it('storage 이벤트가 오면 표를 다시 붙인다', () => {
+    applyStoredTheme();
+    expect(marked()).toBeNull();
+
+    // 다른 창이 담았다. storage 이벤트는 담은 창 말고 나머지에게만 온다.
+    window.localStorage.setItem(KEY, 'contrast');
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: 'contrast' }));
+    });
+
+    /*
+     * 이게 없으면 '또렷하게'가 정작 프로젝터에 못 닿는다. 칠판은 별도 창이고
+     * 열릴 때 색이 굳는다. 1교시에 띄운 칠판이 씻겨 보여 교사가 설정에서
+     * 또렷하게를 골라도 교사 모니터만 바뀐다. [전자칠판]을 다시 눌러도
+     * 이미 열린 창을 앞으로 가져올 뿐이다.
+     */
+    expect(marked()).toBe('contrast');
+  });
+
+  it('남의 열쇠가 바뀐 것은 흘려보낸다', () => {
+    window.localStorage.setItem(KEY, 'dark');
+    applyStoredTheme();
+    expect(marked()).toBe('dark');
+
+    window.localStorage.setItem(KEY, 'contrast');
+    act(() => {
+      // 학급 자료도 같은 저장소를 쓴다. 저장할 때마다 테마를 다시 붙일 일이 아니다.
+      window.dispatchEvent(new StorageEvent('storage', { key: 'teacher-toolkit:v1', newValue: '{}' }));
+    });
+
+    expect(marked()).toBe('dark');
+  });
+})

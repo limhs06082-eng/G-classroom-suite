@@ -53,7 +53,7 @@ export function GoalCelebration({
         {goals.map((goal) => (
           <li
             key={goal.id}
-            className="rounded-card border-4 border-reward-200 bg-reward-50 px-8 py-5 text-center"
+            className="rounded-card border-4 border-reward-500 bg-reward-50 px-8 py-5 text-center"
           >
             <p className="text-board-base font-bold text-slate-900">{goal.title}</p>
             <p className="mt-1 text-board-sm text-slate-600">

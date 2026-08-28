@@ -185,7 +185,7 @@ export default function HomePage() {
             to="/settings"
             label="급식"
             icon={UtensilsCrossed}
-            accentClass="text-brand-600"
+            accentClass="text-brand-700"
             tintClass="bg-brand-50"
             pending
             cta="학교 정보 설정"

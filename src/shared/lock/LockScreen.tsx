@@ -76,7 +76,7 @@ export function LockScreen({ onSubmit }: { onSubmit: (pin: string) => boolean })
               index < entered.length
                 ? 'border-white bg-white'
                 : wrong
-                  ? 'border-danger-400'
+                  ? 'border-danger-500'
                   : 'border-slate-600',
             )}
           />
@@ -91,7 +91,7 @@ export function LockScreen({ onSubmit }: { onSubmit: (pin: string) => boolean })
       */}
       <p
         aria-live="polite"
-        className={cx('h-5 text-sm', wrong ? 'text-danger-400' : 'text-transparent')}
+        className={cx('h-5 text-sm', wrong ? 'text-danger-500' : 'text-transparent')}
       >
         {wrong ? 'PIN이 맞지 않습니다' : ''}
       </p>

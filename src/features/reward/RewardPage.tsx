@@ -315,7 +315,7 @@ function ScoreTab({
                   className={cx(
                     'inline-flex items-center gap-1.5 rounded-control border px-3 py-2 text-sm',
                     tidying
-                      ? 'border-danger-300 bg-danger-50 text-danger-700 hover:border-danger-500'
+                      ? 'border-danger-200 bg-danger-50 text-danger-700 hover:border-danger-500'
                       : selected
                         ? 'border-brand-500 bg-brand-50 font-medium text-brand-700'
                         : style.card,

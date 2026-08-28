@@ -162,7 +162,7 @@ export function AccountPanel({ showHomeLink = false }: { showHomeLink?: boolean 
         </label>
 
         {error === '' ? null : (
-          <p role="alert" className="text-sm font-medium text-danger-600">
+          <p role="alert" className="text-sm font-medium text-danger-700">
             {error}
           </p>
         )}

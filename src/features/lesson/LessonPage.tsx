@@ -20,9 +20,9 @@ import { useLesson } from './useLesson';
 const PHASES: LessonPhase[] = ['intro', 'activity', 'wrapup'];
 
 const PHASE_TONE: Record<LessonPhase, string> = {
-  intro: 'border-sky-200 bg-sky-50',
-  activity: 'border-emerald-200 bg-emerald-50',
-  wrapup: 'border-amber-200 bg-amber-50',
+  intro: 'border-sky-300 bg-sky-50',
+  activity: 'border-emerald-300 bg-emerald-50',
+  wrapup: 'border-amber-300 bg-amber-50',
 };
 
 /**
