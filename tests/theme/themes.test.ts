@@ -123,7 +123,7 @@ describe('테마의 색', () => {
 
     const drifted: string[] = [];
     for (const id of CSS_THEMES) {
-      const block = colors(blockAfter(css, `:root[data-theme='${id}'] {`));
+      const block = colors(blockAfter(css, `[data-theme='${id}'] {`));
       expect(block.size, id).toBeGreaterThan(0);
 
       for (const [name, value] of block) {
@@ -147,7 +147,7 @@ describe('테마의 색', () => {
     const uneven: string[] = [];
 
     for (const id of CSS_THEMES) {
-      const block = colors(blockAfter(css, `:root[data-theme='${id}'] {`));
+      const block = colors(blockAfter(css, `[data-theme='${id}'] {`));
       const subjects = [...block].filter(([name]) => /^--color-subject-\d+$/.test(name));
 
       expect(subjects, id).toHaveLength(12);

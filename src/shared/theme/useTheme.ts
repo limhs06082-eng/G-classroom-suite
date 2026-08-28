@@ -36,8 +36,13 @@ const STORAGE_KEY = 'gboard:theme';
  * 골랐을 때 쓸 테마"고 이건 "CSS 블록이 없는 테마"다. 언젠가 기본을
  * 포근하게로 바꾸면 저것만 바뀌어야 한다 — 여기까지 따라 바뀌면 포근하게가
  * 속성 없이 그려져 그냥 밝게가 된다.
+ *
+ * 설정 '화면' 탭의 미리보기 조각도 이것을 본다(`ThemeTab.tsx`). 붙이는
+ * 자리가 `<html>`이든 미리보기 `<div>`든 규칙은 하나다 — **CSS 블록이 없는
+ * 테마에는 안 붙인다.** 그래서 상수를 두 벌로 두지 않고 여기서 내보낸다.
+ * 두 벌이면 블록을 만드는 날 한쪽만 고쳐진다.
  */
-const ROOT_DEFAULT_THEME: ThemeId = 'light';
+export const ROOT_DEFAULT_THEME: ThemeId = 'light';
 
 /**
  * 담아 둔 테마를 읽는다. 못 읽으면 기본 테마.

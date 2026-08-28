@@ -41,10 +41,16 @@ function withoutComments(css) {
   return css.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
-/** `:root[data-theme='...'] { ... }` 덩어리를 테마 id별로 모은다. */
+/**
+ * `[data-theme='...'] { ... }` 덩어리를 테마 id별로 모은다.
+ *
+ * `:root`가 붙어 있어도 읽는다. 지금 CSS는 뿌리에 안 매어 두었지만(설정의
+ * '화면' 탭이 미리보기 조각에 같은 속성을 붙여 쓴다), 이 검사는 어느 쪽이든
+ * 변수 집합과 눈금 방향을 봐야 한다. 못 읽으면 블록이 하나도 없다고 잘못 말한다.
+ */
 function themeBlocks(css) {
   const blocks = new Map();
-  const opener = /:root\[data-theme='([a-z-]+)'\]\s*\{/g;
+  const opener = /(?::root)?\[data-theme='([a-z-]+)'\]\s*\{/g;
   let found;
   while ((found = opener.exec(css)) !== null) {
     const closed = css.indexOf('}', found.index);
