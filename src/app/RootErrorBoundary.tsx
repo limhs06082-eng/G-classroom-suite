@@ -36,7 +36,7 @@ export function RootErrorBoundary() {
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="rounded-control bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                className="rounded-control bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-press"
               >
                 새로고침
               </button>

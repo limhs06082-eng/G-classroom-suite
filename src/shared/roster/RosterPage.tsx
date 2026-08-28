@@ -57,7 +57,7 @@ export default function RosterPage() {
           action={
             <Link
               to="/setup"
-              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-700"
+              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-press"
             >
               학급 설정하기
             </Link>

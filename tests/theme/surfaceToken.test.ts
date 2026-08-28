@@ -57,3 +57,41 @@ describe('표면색', () => {
     expect(theme.replace(/\/\*[\s\S]*?\*\//g, '')).toContain('--color-surface:');
   });
 });
+
+describe('눌림색', () => {
+  it('채워진 단추의 hover는 -700을 안 쓴다', () => {
+    const hits = sourceFiles('src').flatMap((file) =>
+      readFileSync(file, 'utf8')
+        .split('\n')
+        .filter((line) => /hover:bg-(brand|danger|success|warning|info)-700\b/.test(line))
+        .map((line) => `${slashed(file)}: ${line.trim()}`),
+    );
+
+    /*
+     * `-700`은 강조 글자(`text-brand-700` 등 여든 곳)가 함께 쓴다. 어두운
+     * 테마는 그 글자가 읽히도록 -700을 밝게 올리는데, 이쪽은 흰 글자가
+     * 얹히는 배경이라 밝아지면 라벨이 사라진다. 마우스를 올린 동안만
+     * 글자가 지워지는 단추는 눈으로도 잡기 어렵다.
+     */
+    expect(hits).toEqual([]);
+  });
+
+  it('눌림색이 네 테마에 다 있다', () => {
+    const css = readFileSync('src/index.css', 'utf8');
+
+    // 한 테마에서 빠지면 그 테마에서만 hover가 기본값으로 남는다.
+    expect((css.match(/--color-brand-press:/g) ?? []).length).toBe(4);
+    expect((css.match(/--color-danger-press:/g) ?? []).length).toBe(4);
+  });
+
+  it('어두운 테마의 눌림색은 강조 글자보다 어둡다', () => {
+    const css = readFileSync('src/index.css', 'utf8');
+    const dark = css.slice(css.indexOf("[data-theme='dark']"));
+
+    const text = /--color-brand-700:\s*oklch\(([\d.]+)/.exec(dark)?.[1];
+    const press = /--color-brand-press:\s*oklch\(([\d.]+)/.exec(dark)?.[1];
+
+    // 같아지면 이름을 가른 뜻이 사라진다.
+    expect(Number(press)).toBeLessThan(Number(text));
+  });
+})

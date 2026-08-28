@@ -40,6 +40,20 @@
   --color-brand-500: oklch(0.58 0.15 235);
   --color-brand-600: oklch(0.5 0.14 235);
   --color-brand-700: oklch(0.42 0.12 235);
+
+  /*
+   * 채워진 단추를 누를 때(hover) 가는 색.
+   *
+   * `-700`을 쓰면 안 된다. 그 눈금은 **강조 글자**(`text-brand-700` 26곳,
+   * `text-danger-700` 23곳 등 여든 곳)가 함께 쓰고 있어서, 어두운 테마에서
+   * 글자가 읽히도록 밝게 올려야 한다. 그런데 이쪽은 흰 글자가 얹히는
+   * **배경**이라 밝아지면 흰 글자가 사라진다 — 마우스를 올린 동안만
+   * 라벨이 지워지는 단추가 열아홉 개 생긴다.
+   *
+   * `--color-white`와 `--color-slate-900`에서 이미 두 번 겪은 것과 같은
+   * 꼴이다. 뜻이 둘인 이름은 변수를 덮어서 못 푼다. 이름을 가른다.
+   */
+  --color-brand-press: oklch(0.42 0.12 235);
   --color-brand-800: oklch(0.35 0.09 235);
   --color-brand-900: oklch(0.28 0.06 235);
 
@@ -116,6 +130,8 @@
   --color-danger-200: oklch(0.88 0.06 27);
   --color-danger-500: oklch(0.58 0.19 27);
   --color-danger-700: oklch(0.45 0.16 27);
+  /** 채워진 위험 단추의 눌림색. 위 `--color-brand-press`와 같은 까닭이다. */
+  --color-danger-press: oklch(0.45 0.16 27);
 
   --color-info-50: oklch(0.96 0.02 235);
   --color-info-200: oklch(0.88 0.06 235);
@@ -312,6 +328,7 @@
   --color-brand-500: oklch(0.58 0.15 235);
   --color-brand-600: oklch(0.49 0.14 235);
   --color-brand-700: oklch(0.405 0.12 235);
+  --color-brand-press: oklch(0.405 0.12 235);
 
   /* 기능 */
   --color-seating-50: oklch(0.94 0.02 265);
@@ -345,6 +362,7 @@
   --color-danger-200: oklch(0.87 0.06 27);
   --color-danger-500: oklch(0.58 0.19 27);
   --color-danger-700: oklch(0.435 0.16 27);
+  --color-danger-press: oklch(0.435 0.16 27);
   --color-info-50: oklch(0.94 0.02 235);
   --color-info-200: oklch(0.87 0.06 235);
   --color-info-500: oklch(0.6 0.13 235);
@@ -452,6 +470,8 @@
   --color-brand-500: oklch(0.61 0.15 235);
   --color-brand-600: oklch(0.5 0.14 235);
   --color-brand-700: oklch(0.695 0.12 235);
+  /* 글자는 밝게 올렸지만 눌림색은 내린다. 흰 글자가 얹히는 배경이라 그렇다. */
+  --color-brand-press: oklch(0.4 0.13 235);
 
   /* 기능 */
   --color-seating-50: oklch(0.315 0.034 265);
@@ -485,6 +505,7 @@
   --color-danger-200: oklch(0.43 0.066 27);
   --color-danger-500: oklch(0.61 0.19 27);
   --color-danger-700: oklch(0.695 0.16 27);
+  --color-danger-press: oklch(0.4 0.17 27);
   --color-info-50: oklch(0.315 0.034 235);
   --color-info-200: oklch(0.43 0.066 235);
   --color-info-500: oklch(0.63 0.13 235);
@@ -580,6 +601,7 @@
   --color-brand-500: oklch(0.54 0.115 235);
   --color-brand-600: oklch(0.44 0.094 235);
   --color-brand-700: oklch(0.33 0.0711 235);
+  --color-brand-press: oklch(0.33 0.0711 235);
 
   /* 기능 — `-50` 딱지는 그 명도에서 sRGB가 담을 수 있는 최대 채도다 */
   --color-seating-50: oklch(0.94 0.0257 265);
@@ -613,6 +635,7 @@
   --color-danger-200: oklch(0.82 0.078 27);
   --color-danger-500: oklch(0.54 0.2185 27);
   --color-danger-700: oklch(0.33 0.1361 27);
+  --color-danger-press: oklch(0.33 0.1361 27);
   --color-info-50: oklch(0.94 0.0305 235);
   --color-info-200: oklch(0.82 0.078 235);
   --color-info-500: oklch(0.56 0.1192 235);

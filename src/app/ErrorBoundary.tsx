@@ -71,7 +71,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <button
                   type="button"
                   onClick={this.handleReset}
-                  className="inline-flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                  className="inline-flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-press"
                 >
                   <RotateCcw className="size-4" aria-hidden />
                   다시 시도

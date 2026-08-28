@@ -60,7 +60,7 @@ export default function AssignmentPage() {
           action={
             <Link
               to="/setup"
-              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-700"
+              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-press"
             >
               처음 설정 시작하기
             </Link>
@@ -80,7 +80,7 @@ export default function AssignmentPage() {
           action={
             <Link
               to="/roster"
-              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-700"
+              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-press"
             >
               명단 등록하기
             </Link>
