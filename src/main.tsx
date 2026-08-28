@@ -9,8 +9,25 @@ import { LocalStorageAdapter } from './shared/storage/LocalStorageAdapter';
 import type { StorageAdapter } from './shared/storage/StorageAdapter';
 import { WriteErrorToast } from './shared/storage/WriteErrorToast';
 import { SuiteDataProvider } from './shared/roster/SuiteDataProvider';
+import { applyStoredTheme } from './shared/theme/useTheme';
 import { ToastProvider } from './shared/ui';
 import './index.css';
+
+/*
+ * 고른 테마를 그리기 전에 붙인다.
+ *
+ * `AppShell`이 아니라 여기다. 전자칠판(`/board/*`)은 셸 밖의 라우트라
+ * 셸에 붙이면 칠판 창만 밝게 남는데, '또렷하게'는 애초에 프로젝터·전자칠판
+ * 때문에 만든 테마다. 정작 그 화면에서 안 걸리면 있으나 마나다. 설치형의
+ * 칠판 창은 별도 앱 창이고 웹에서는 새 탭이라 어느 쪽이든 같은 `<html>`이
+ * 아니지만, 둘 다 이 진입점을 처음부터 다시 밟는다 — 그래서 여기서 붙이면
+ * 창이 몇 개든 각자 제 색으로 뜬다.
+ *
+ * 아래 `chooseAdapter()`를 기다리지 않고 지금 붙인다. 저장소를 정하는 데
+ * 걸리는 동안에도 빈 화면은 이미 그려져 있다. 그 사이가 흰 화면이면
+ * 불 꺼 둔 교실에서 화면이 한 번 번쩍인다.
+ */
+applyStoredTheme();
 
 const rootElement = document.getElementById('root');
 
