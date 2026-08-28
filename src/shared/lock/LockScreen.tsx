@@ -59,7 +59,7 @@ export function LockScreen({ onSubmit }: { onSubmit: (pin: string) => boolean })
       role="dialog"
       aria-modal="true"
       aria-label="교사 잠금"
-      className="no-print fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-slate-900 p-6"
+      className="ink no-print fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-slate-900 p-6"
     >
       <div className="flex flex-col items-center gap-3">
         <Lock className="size-10 text-slate-500" aria-hidden />
@@ -76,7 +76,7 @@ export function LockScreen({ onSubmit }: { onSubmit: (pin: string) => boolean })
               index < entered.length
                 ? 'border-white bg-white'
                 : wrong
-                  ? 'border-danger-400'
+                  ? 'border-danger-500'
                   : 'border-slate-600',
             )}
           />
@@ -91,7 +91,7 @@ export function LockScreen({ onSubmit }: { onSubmit: (pin: string) => boolean })
       */}
       <p
         aria-live="polite"
-        className={cx('h-5 text-sm', wrong ? 'text-danger-400' : 'text-transparent')}
+        className={cx('h-5 text-sm', wrong ? 'text-danger-500' : 'text-transparent')}
       >
         {wrong ? 'PIN이 맞지 않습니다' : ''}
       </p>

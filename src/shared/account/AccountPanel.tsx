@@ -68,7 +68,7 @@ export function AccountPanel({ showHomeLink = false }: { showHomeLink?: boolean 
           <div className="mt-4">
             <Link
               to="/"
-              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-700"
+              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-press"
             >
               돌아가기
             </Link>
@@ -114,7 +114,7 @@ export function AccountPanel({ showHomeLink = false }: { showHomeLink?: boolean 
           {showHomeLink ? (
             <Link
               to="/"
-              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-700"
+              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-press"
             >
               우리 반으로
             </Link>
@@ -162,7 +162,7 @@ export function AccountPanel({ showHomeLink = false }: { showHomeLink?: boolean 
         </label>
 
         {error === '' ? null : (
-          <p role="alert" className="text-sm font-medium text-danger-600">
+          <p role="alert" className="text-sm font-medium text-danger-700">
             {error}
           </p>
         )}

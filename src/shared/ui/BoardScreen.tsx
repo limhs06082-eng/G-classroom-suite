@@ -33,7 +33,7 @@ export function BoardScreen({ title, subtitle, actions, onExit, children }: Prop
   const { isFullscreen, isSupported, toggle } = useFullscreen(rootRef);
 
   return (
-    <div ref={rootRef} className="flex h-dvh w-full flex-col bg-white text-slate-900">
+    <div ref={rootRef} className="flex h-dvh w-full flex-col bg-surface text-slate-900">
       <header className="flex items-center gap-4 border-b-4 border-slate-900 px-8 py-5">
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-board-lg font-black tracking-tight">{title}</h1>

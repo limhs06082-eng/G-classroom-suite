@@ -17,6 +17,20 @@
    - 여기가 색·타이포·모양의 유일한 정의 지점이다.
    ============================================================ */
 @theme {
+  /*
+   * 표면색.
+   *
+   * `bg-white`가 아니라 이것을 쓴다. `--color-white`는 색깔 단추 위의
+   * 글자(`text-white`, 31곳)가 함께 쓰고 있어서, 어두운 테마에서 그
+   * 변수를 남색으로 덮으면 읽을 수 없는 단추가 서른한 개 생긴다.
+   * 표면과 글자는 어두운 테마에서 정반대로 가야 하므로 이름을 가른다.
+   *
+   * 이 줄은 반드시 `@theme` 안에 있어야 한다. Tailwind는 `@theme`의
+   * `--color-*`만 보고 `bg-surface` 유틸리티를 만든다. `:root`로 옮기면
+   * 변수는 살아 있지만 클래스가 사라져 카드 마흔한 곳이 조용히 투명해진다.
+   */
+  --color-surface: oklch(1 0 0);
+
   /* ── 브랜드 ─────────────────────────────────────────────── */
   --color-brand-50: oklch(0.97 0.02 235);
   --color-brand-100: oklch(0.93 0.04 235);
@@ -26,6 +40,20 @@
   --color-brand-500: oklch(0.58 0.15 235);
   --color-brand-600: oklch(0.5 0.14 235);
   --color-brand-700: oklch(0.42 0.12 235);
+
+  /*
+   * 채워진 단추를 누를 때(hover) 가는 색.
+   *
+   * `-700`을 쓰면 안 된다. 그 눈금은 **강조 글자**(`text-brand-700` 26곳,
+   * `text-danger-700` 23곳 등 여든 곳)가 함께 쓰고 있어서, 어두운 테마에서
+   * 글자가 읽히도록 밝게 올려야 한다. 그런데 이쪽은 흰 글자가 얹히는
+   * **배경**이라 밝아지면 흰 글자가 사라진다 — 마우스를 올린 동안만
+   * 라벨이 지워지는 단추가 열아홉 개 생긴다.
+   *
+   * `--color-white`와 `--color-slate-900`에서 이미 두 번 겪은 것과 같은
+   * 꼴이다. 뜻이 둘인 이름은 변수를 덮어서 못 푼다. 이름을 가른다.
+   */
+  --color-brand-press: oklch(0.42 0.12 235);
   --color-brand-800: oklch(0.35 0.09 235);
   --color-brand-900: oklch(0.28 0.06 235);
 
@@ -102,6 +130,8 @@
   --color-danger-200: oklch(0.88 0.06 27);
   --color-danger-500: oklch(0.58 0.19 27);
   --color-danger-700: oklch(0.45 0.16 27);
+  /** 채워진 위험 단추의 눌림색. 위 `--color-brand-press`와 같은 까닭이다. */
+  --color-danger-press: oklch(0.45 0.16 27);
 
   --color-info-50: oklch(0.96 0.02 235);
   --color-info-200: oklch(0.88 0.06 235);
@@ -170,6 +200,487 @@
   color-scheme: light;
   /* 키프레임에서 쓴다. @theme이 아니라 여기 둔다 (Tailwind 이름공간이 아니다). */
   --duration-fast: 120ms;
+}
+
+/* ============================================================
+   어두운 섬
+   ============================================================ */
+/*
+ * 어느 테마에서나 어두워야 하는 면.
+ *
+ * 전자칠판의 단계 딱지, 자리표의 칠판 막대, 화면 커튼, 잠금화면,
+ * 모달 뒤배경. 이것들은 '중립 눈금의 어두운 끝'이 아니라 **일부러
+ * 어두운 면**이다. 어두운 테마가 눈금을 뒤집으면 이 섬들이 하얘지는데,
+ * 교실 앞 대형 화면이 하얘지는 것은 테마를 고른 대가로 치를 일이 아니다.
+ *
+ * 안에 든 색을 하나씩 고치지 않는다. 뿌리에서 팔레트를 못 박으면
+ * `bg-slate-900`도 `text-slate-300`도 뜻 그대로 돈다.
+ *
+ * **뒤집는 게 아니라 얼리는 것이다.** 섬 안은 이미 '어두운 바탕에 밝은
+ * 글자'로 짜여 있다(`bg-slate-900` + `text-white` + `text-slate-300`).
+ * 여기에 뒤집힌 눈금을 넣으면 900이 밝아져 잠금화면이 하얘진다. 그래서
+ * 값은 지금 밝은 테마가 쓰는 값 그대로다 — Tailwind 기본 slate 열 단계와
+ * 흰 표면. 테마를 바꿔도 섬 안은 오늘 보이는 그대로 남는다.
+ *
+ * 열 단계를 다 적는 까닭: 하나라도 빠지면 그 단계만 테마를 따라가서
+ * PIN 자판(`bg-slate-800`)만 밝아지는 반쪽짜리 섬이 된다.
+ *
+ * `--color-surface`도 못 박는다. 화면 커튼의 '화면 다시 보기' 단추가
+ * secondary(`bg-surface text-slate-700`)라, 표면만 어두워지면 어두운 바탕에
+ * 어두운 글자가 된다. 섬 위의 흰 단추는 흰 단추로 남아야 한다.
+ *
+ * `--color-white`는 없다. 그건 색깔 단추 위 글자용이라 어느 테마에서나
+ * 흰색이다(2-다 Task 1).
+ *
+ * 이 덩어리는 `@theme` **밖**에 있어야 한다. `@theme` 안에 넣으면 앱 전체가
+ * 이 값에 묶여 테마 넷이 아무 일도 못 한다.
+ */
+.ink {
+  --color-surface: oklch(1 0 0);
+  --color-slate-50: oklch(98.4% 0.003 247.858);
+  --color-slate-100: oklch(96.8% 0.007 247.896);
+  --color-slate-200: oklch(92.9% 0.013 255.508);
+  --color-slate-300: oklch(86.9% 0.022 252.894);
+  --color-slate-400: oklch(70.4% 0.04 256.788);
+  --color-slate-500: oklch(55.4% 0.046 257.417);
+  --color-slate-600: oklch(44.6% 0.043 257.281);
+  --color-slate-700: oklch(37.2% 0.044 257.287);
+  --color-slate-800: oklch(27.9% 0.041 260.031);
+  --color-slate-900: oklch(20.8% 0.042 265.755);
+}
+
+/* ============================================================
+   테마 셋
+   ============================================================ */
+/*
+ * `밝게`는 블록이 없다. 위 `@theme`의 기본값이 곧 밝은 테마다. 따로 두면
+ * 같은 값이 두 벌이 되어 언젠가 한쪽만 고쳐진다.
+ *
+ * **색상각(hue)은 어느 테마에서도 안 움직인다.** 당번은 늘 초록, 자리·모둠은
+ * 늘 파랑, 보상은 늘 노랑이다. 색으로 기능을 익힌 선생님이 테마를 바꿨다고
+ * 그 익힘을 다시 해야 한다면 테마가 손해다. 움직이는 것은 명도와 채도뿐이라,
+ * 아래 값의 **세 번째 숫자는 위 `@theme`과 한 자리도 다르지 않다.**
+ *
+ * 세 블록은 **똑같은 변수 집합**을 덮는다. 하나만 빠뜨리면 그 테마에서 그
+ * 눈금만 기본값으로 남는데, 색 하나가 어긋나는 것이라 눈으로는 못 찾는다.
+ * `scripts/check-theme-tokens.mjs`가 그것과 눈금의 방향을 함께 본다.
+ *
+ * `@theme` 안에 넣으면 안 된다. `@theme`의 값은 테마가 아니라 팔레트 자체가
+ * 되어, 세 블록이 서로를 덮어쓰며 마지막 하나만 남는다.
+ *
+ * 값은 눈대중이 아니라 계산으로 골랐다. 모든 oklch를 sRGB로 옮겨 (1) 색역
+ * 밖으로 나가 잘리지 않는지, (2) 글자와 바탕의 명도 대비가 얼마인지를 재고
+ * 정했다. 재 본 값은 과제 보고서에 표로 적어 뒀다.
+ *
+ * 모둠 색(sky·teal·…)까지 덮는 것은 계획서에 없던 일이다. 자리표의 모둠
+ * 카드가 Tailwind 기본 팔레트를 직접 쓰고 있어서(`groupColors.ts`), 안 덮으면
+ * 어두운 테마에서 여덟 모둠 중 일곱이 어두운 바탕 위의 **흰 카드**로 남는다.
+ *
+ * 선택자에 `:root`를 안 붙인다. `[data-theme='warm']` 하나로 쓴다.
+ *
+ * 뿌리에 붙었을 때는 있으나 없으나 결과가 같다 — 이 블록들은 층(layer) 밖에
+ * 있어서 `@theme`이 만드는 `:root` 규칙을 그대로 이긴다. 차이는 **뿌리가
+ * 아닌 요소**에서 난다. 설정의 '화면' 탭은 테마 미리보기 조각에 이 속성을
+ * 직접 붙여, 고르기 전에 그 테마의 실제 색을 보여 준다. `:root`가 붙어
+ * 있으면 그 조각에는 한 줄도 안 걸려 미리보기 넷이 전부 지금 테마 색으로
+ * 똑같이 그려지는데, **속성은 붙어 있으니 시험은 통과한다** — 화면을 눈으로
+ * 볼 때까지 아무도 모르는 자리다. `tests/settings/ThemeTab.test.tsx`가
+ * 이 한 줄을 지킨다.
+ */
+
+/*
+ * 포근하게 — 종일 켜 두는 화면.
+ *
+ * 흰 바탕(명도 1.0)은 교실 형광등 아래에서 하루 여섯 시간을 보기에는 세다.
+ * 바탕을 크림빛으로 내리고(0.98) 중립의 색상각을 파랑 쪽 257에서 노랑 쪽
+ * 85로 옮겨, 화면 전체가 종이에 가깝게 보이게 한다.
+ *
+ * **눈금 방향은 안 뒤집는다.** 50이 가장 밝고 900이 가장 어둡다 — 밝은
+ * 테마와 같은 뜻이라 화면 코드가 그대로 돈다.
+ *
+ * 기능색은 `-50` 계열만 명도를 0.02 내렸다. 바탕이 1.0에서 0.98로 내려온
+ * 만큼 딱지도 같이 내려야 표면과 딱지 사이의 벌어짐이 밝은 테마와 같다.
+ * 중간·진한 단계는 밝은 테마 값을 그대로 이어받는다 — 바탕이 여전히 밝아서
+ * 바꿀 까닭이 없고, 바꾸면 같은 단추가 테마마다 다른 파랑이 된다.
+ */
+[data-theme='warm'] {
+  --color-surface: oklch(0.98 0.012 85);
+
+  /* 중립 — 색상각 85(따뜻한 쪽). 눈금 방향은 그대로 */
+  --color-slate-50: oklch(0.962 0.014 85);
+  --color-slate-100: oklch(0.938 0.016 85);
+  --color-slate-200: oklch(0.898 0.018 85);
+  --color-slate-300: oklch(0.842 0.02 85);
+  --color-slate-400: oklch(0.688 0.024 85);
+  --color-slate-500: oklch(0.535 0.026 85);
+  --color-slate-600: oklch(0.438 0.024 85);
+  --color-slate-700: oklch(0.362 0.022 85);
+  --color-slate-800: oklch(0.272 0.018 85);
+  --color-slate-900: oklch(0.206 0.014 85);
+
+  /* 과목 열둘 — 크림 위에서 보이도록 0.96에서 0.93으로. 채도는 열둘 모두 같다 */
+  --color-subject-1: oklch(0.93 0.032 20);
+  --color-subject-2: oklch(0.93 0.032 50);
+  --color-subject-3: oklch(0.93 0.032 80);
+  --color-subject-4: oklch(0.93 0.032 110);
+  --color-subject-5: oklch(0.93 0.032 140);
+  --color-subject-6: oklch(0.93 0.032 170);
+  --color-subject-7: oklch(0.93 0.032 200);
+  --color-subject-8: oklch(0.93 0.032 230);
+  --color-subject-9: oklch(0.93 0.032 260);
+  --color-subject-10: oklch(0.93 0.032 290);
+  --color-subject-11: oklch(0.93 0.032 320);
+  --color-subject-12: oklch(0.93 0.032 350);
+
+  /* 브랜드 */
+  --color-brand-50: oklch(0.95 0.02 235);
+  --color-brand-200: oklch(0.86 0.07 235);
+  --color-brand-300: oklch(0.77 0.1 235);
+  --color-brand-500: oklch(0.58 0.15 235);
+  --color-brand-600: oklch(0.49 0.14 235);
+  --color-brand-700: oklch(0.405 0.12 235);
+  --color-brand-press: oklch(0.405 0.12 235);
+
+  /* 기능 */
+  --color-seating-50: oklch(0.94 0.02 265);
+  --color-seating-500: oklch(0.62 0.15 265);
+  --color-duty-50: oklch(0.94 0.03 155);
+  --color-duty-500: oklch(0.6 0.13 155);
+  --color-reward-50: oklch(0.95 0.03 75);
+  --color-reward-500: oklch(0.68 0.14 75);
+  --color-reward-700: oklch(0.485 0.12 75);
+  --color-assignment-50: oklch(0.94 0.02 25);
+  --color-assignment-500: oklch(0.62 0.16 25);
+  --color-lesson-50: oklch(0.94 0.02 265);
+  --color-lesson-500: oklch(0.62 0.15 265);
+  --color-quiz-50: oklch(0.94 0.03 155);
+  --color-quiz-500: oklch(0.6 0.13 155);
+  --color-message-50: oklch(0.95 0.03 75);
+  --color-message-500: oklch(0.68 0.14 75);
+  --color-task-50: oklch(0.94 0.02 25);
+  --color-task-500: oklch(0.62 0.16 25);
+
+  /* 의미 */
+  --color-success-50: oklch(0.94 0.03 150);
+  --color-success-200: oklch(0.86 0.07 150);
+  --color-success-500: oklch(0.6 0.14 150);
+  --color-success-700: oklch(0.425 0.11 150);
+  --color-warning-50: oklch(0.95 0.04 80);
+  --color-warning-200: oklch(0.89 0.08 80);
+  --color-warning-500: oklch(0.7 0.14 80);
+  --color-warning-700: oklch(0.485 0.11 80);
+  --color-danger-50: oklch(0.94 0.02 27);
+  --color-danger-200: oklch(0.87 0.06 27);
+  --color-danger-500: oklch(0.58 0.19 27);
+  --color-danger-700: oklch(0.435 0.16 27);
+  --color-danger-press: oklch(0.435 0.16 27);
+  --color-info-50: oklch(0.94 0.02 235);
+  --color-info-200: oklch(0.87 0.06 235);
+  --color-info-500: oklch(0.6 0.13 235);
+  --color-info-700: oklch(0.435 0.11 235);
+
+  /* 모둠 — Tailwind 기본 팔레트를 덮는다 */
+  --color-sky-50: oklch(0.957 0.013 236.62);
+  --color-sky-300: oklch(0.818 0.1102 230.318);
+  --color-sky-500: oklch(0.685 0.169 237.323);
+  --color-sky-800: oklch(0.428 0.11 240.79);
+  --color-teal-50: oklch(0.964 0.014 180.72);
+  --color-teal-300: oklch(0.845 0.138 181.071);
+  --color-teal-500: oklch(0.704 0.14 182.503);
+  --color-teal-800: oklch(0.422 0.078 188.216);
+  --color-emerald-50: oklch(0.959 0.021 166.113);
+  --color-emerald-300: oklch(0.835 0.143 164.978);
+  --color-emerald-500: oklch(0.696 0.17 162.48);
+  --color-emerald-800: oklch(0.417 0.095 166.913);
+  --color-amber-50: oklch(0.967 0.022 95.277);
+  --color-amber-300: oklch(0.869 0.169 91.605);
+  --color-amber-500: oklch(0.769 0.188 70.08);
+  --color-amber-800: oklch(0.458 0.137 46.201);
+  --color-orange-50: oklch(0.96 0.016 73.684);
+  --color-orange-300: oklch(0.827 0.1257 66.29);
+  --color-orange-500: oklch(0.705 0.213 47.604);
+  --color-orange-800: oklch(0.455 0.157 37.304);
+  --color-purple-50: oklch(0.957 0.014 308.299);
+  --color-purple-300: oklch(0.817 0.1135 306.383);
+  --color-purple-500: oklch(0.627 0.265 303.9);
+  --color-purple-800: oklch(0.423 0.218 303.724);
+  --color-pink-50: oklch(0.951 0.014 343.198);
+  --color-pink-300: oklch(0.813 0.12 346.018);
+  --color-pink-500: oklch(0.656 0.241 354.308);
+  --color-pink-800: oklch(0.444 0.187 3.815);
+}
+
+/*
+ * 어둡게 — 불 끄고 영상 볼 때, 이른 아침.
+ *
+ * 중립 눈금을 **뒤집는다**: 50이 가장 어둡고(0.205) 900이 가장 밝다(0.968).
+ * 화면 코드를 한 줄도 안 고치고 어두운 화면을 얻는 방법이 이것뿐이다 —
+ * `body`가 `bg-slate-50 text-slate-900`이고 카드가 `bg-surface`이므로,
+ * 눈금이 뒤집히면 그 세 줄이 그대로 어두운 화면의 뜻이 된다.
+ *
+ * 뒤집혀도 `.ink` 섬은 안 따라온다. 섬은 뿌리에서 제 팔레트를 못 박고 있어서
+ * 전자칠판·잠금화면·화면 커튼은 어느 테마에서나 어둡다(위 `.ink` 참고).
+ *
+ * 표면(0.278)을 페이지(0.205)보다 밝게 둔다. 어두운 화면에서 카드가 들려
+ * 보이게 하는 것은 그림자가 아니라 이 명도 차이다 — 어두운 바탕 위의 그림자는
+ * 보이지 않는다.
+ *
+ * 기능색 `-50`은 명도를 0.315로 내린다. 그대로 두면 어두운 화면 한복판에
+ * 거의 흰 딱지가 박혀 눈이 부시다. 대신 채도는 1.7배로 올렸다 — 어두운 색은
+ * 채도가 낮으면 전부 같은 잿빛으로 뭉친다.
+ *
+ * `-700`은 반대로 0.695까지 **올린다.** `text-brand-700`·`text-danger-700`
+ * 같은 글자가 여든한 곳에서 이 값을 쓰는데, 어두운 표면 위에서 읽히려면
+ * 밝아야 한다.
+ *
+ * 여기에 남은 흠이 하나 있다. `-700`은 글자색이면서 동시에 **단추의 눌린
+ * 색**이다(`hover:bg-brand-700` 18곳, `hover:bg-danger-700` 1곳 — 모두
+ * `text-white`를 얹고 있다). 어두운 테마에서 `-700`이 밝아지면 그 단추들은
+ * 마우스를 올린 동안만 글자가 흐려진다. 글자 여든하나와 스침 열아홉을 견주어
+ * 글자를 골랐고, 대신 `-700`을 읽히는 선(딱지 위 4.7:1)에 딱 맞춰 두어
+ * 필요 이상으로 밝지 않게 했다. 제대로 된 고침은 `--color-white`와
+ * `--color-slate-900`이 그랬듯 이름을 가르는 것이고, 그건 화면 코드를
+ * 건드리는 일이라 이 과제 밖이다.
+ */
+[data-theme='dark'] {
+  --color-surface: oklch(0.278 0.021 258);
+
+  /* 브라우저가 스크롤바·기본 폼 컨트롤을 어둡게 그리게 한다 */
+  color-scheme: dark;
+
+  /* 중립 — 뒤집혔다. 50이 가장 어둡다 */
+  --color-slate-50: oklch(0.205 0.02 258);
+  --color-slate-100: oklch(0.245 0.021 258);
+  --color-slate-200: oklch(0.305 0.022 258);
+  --color-slate-300: oklch(0.398 0.025 258);
+  --color-slate-400: oklch(0.545 0.03 258);
+  --color-slate-500: oklch(0.715 0.031 258);
+  --color-slate-600: oklch(0.795 0.027 258);
+  --color-slate-700: oklch(0.868 0.022 258);
+  --color-slate-800: oklch(0.925 0.015 258);
+  --color-slate-900: oklch(0.968 0.009 258);
+
+  /* 과목 열둘 — 어두운 칸. 위에 얹히는 text-slate-700/900은 뒤집힌 눈금에서 밝다 */
+  --color-subject-1: oklch(0.33 0.0552 20);
+  --color-subject-2: oklch(0.33 0.0552 50);
+  --color-subject-3: oklch(0.33 0.0552 80);
+  --color-subject-4: oklch(0.33 0.0552 110);
+  --color-subject-5: oklch(0.33 0.0552 140);
+  --color-subject-6: oklch(0.33 0.0552 170);
+  --color-subject-7: oklch(0.33 0.0552 200);
+  --color-subject-8: oklch(0.33 0.0552 230);
+  --color-subject-9: oklch(0.33 0.0552 260);
+  --color-subject-10: oklch(0.33 0.0552 290);
+  --color-subject-11: oklch(0.33 0.0552 320);
+  --color-subject-12: oklch(0.33 0.0552 350);
+
+  /* 브랜드 — 600은 밝은 테마와 같은 값이다. 같은 단추는 어느 테마에서나 같은 파랑이어야 한다 */
+  --color-brand-50: oklch(0.315 0.034 235);
+  --color-brand-200: oklch(0.43 0.077 235);
+  --color-brand-300: oklch(0.38 0.075 235);
+  --color-brand-500: oklch(0.61 0.15 235);
+  --color-brand-600: oklch(0.5 0.14 235);
+  --color-brand-700: oklch(0.695 0.12 235);
+  /* 글자는 밝게 올렸지만 눌림색은 내린다. 흰 글자가 얹히는 배경이라 그렇다. */
+  --color-brand-press: oklch(0.4 0.13 235);
+
+  /* 기능 */
+  --color-seating-50: oklch(0.315 0.034 265);
+  --color-seating-500: oklch(0.65 0.15 265);
+  --color-duty-50: oklch(0.315 0.051 155);
+  --color-duty-500: oklch(0.63 0.13 155);
+  --color-reward-50: oklch(0.315 0.051 75);
+  --color-reward-500: oklch(0.71 0.14 75);
+  --color-reward-700: oklch(0.695 0.12 75);
+  --color-assignment-50: oklch(0.315 0.034 25);
+  --color-assignment-500: oklch(0.65 0.16 25);
+  --color-lesson-50: oklch(0.315 0.034 265);
+  --color-lesson-500: oklch(0.65 0.15 265);
+  --color-quiz-50: oklch(0.315 0.051 155);
+  --color-quiz-500: oklch(0.63 0.13 155);
+  --color-message-50: oklch(0.315 0.051 75);
+  --color-message-500: oklch(0.71 0.14 75);
+  --color-task-50: oklch(0.315 0.034 25);
+  --color-task-500: oklch(0.65 0.16 25);
+
+  /* 의미 */
+  --color-success-50: oklch(0.315 0.051 150);
+  --color-success-200: oklch(0.43 0.077 150);
+  --color-success-500: oklch(0.63 0.14 150);
+  --color-success-700: oklch(0.695 0.11 150);
+  --color-warning-50: oklch(0.315 0.0601 80);
+  --color-warning-200: oklch(0.43 0.0809 80);
+  --color-warning-500: oklch(0.73 0.14 80);
+  --color-warning-700: oklch(0.695 0.11 80);
+  --color-danger-50: oklch(0.315 0.034 27);
+  --color-danger-200: oklch(0.43 0.066 27);
+  --color-danger-500: oklch(0.61 0.19 27);
+  --color-danger-700: oklch(0.695 0.16 27);
+  --color-danger-press: oklch(0.4 0.17 27);
+  --color-info-50: oklch(0.315 0.034 235);
+  --color-info-200: oklch(0.43 0.066 235);
+  --color-info-500: oklch(0.63 0.13 235);
+  --color-info-700: oklch(0.695 0.11 235);
+
+  /* 모둠 — 안 덮으면 여덟 중 일곱이 어두운 바탕 위의 흰 카드가 된다 */
+  --color-sky-50: oklch(0.315 0.0221 236.62);
+  --color-sky-300: oklch(0.5 0.0904 230.318);
+  --color-sky-500: oklch(0.715 0.169 237.323);
+  --color-sky-800: oklch(0.83 0.0801 240.79);
+  --color-teal-50: oklch(0.315 0.0238 180.72);
+  --color-teal-300: oklch(0.5 0.0814 181.071);
+  --color-teal-500: oklch(0.734 0.14 182.503);
+  --color-teal-800: oklch(0.83 0.078 188.216);
+  --color-emerald-50: oklch(0.315 0.0357 166.113);
+  --color-emerald-300: oklch(0.5 0.095 164.978);
+  --color-emerald-500: oklch(0.726 0.17 162.48);
+  --color-emerald-800: oklch(0.83 0.095 166.913);
+  --color-amber-50: oklch(0.315 0.0374 95.277);
+  --color-amber-300: oklch(0.5 0.0925 91.605);
+  --color-amber-500: oklch(0.799 0.188 70.08);
+  --color-amber-800: oklch(0.83 0.0867 46.201);
+  --color-orange-50: oklch(0.315 0.0272 73.684);
+  --color-orange-300: oklch(0.5 0.1005 66.29);
+  --color-orange-500: oklch(0.735 0.213 47.604);
+  --color-orange-800: oklch(0.83 0.0825 37.304);
+  --color-purple-50: oklch(0.315 0.0238 308.299);
+  --color-purple-300: oklch(0.5 0.119 306.383);
+  --color-purple-500: oklch(0.657 0.265 303.9);
+  --color-purple-800: oklch(0.83 0.0887 303.724);
+  --color-pink-50: oklch(0.315 0.0238 343.198);
+  --color-pink-300: oklch(0.5 0.12 346.018);
+  --color-pink-500: oklch(0.686 0.241 354.308);
+  --color-pink-800: oklch(0.83 0.0851 3.815);
+}
+
+/*
+ * 또렷하게 — 프로젝터·전자칠판.
+ *
+ * 이 앱의 강점이 전자칠판이다. **교실 뒤에서도 읽히는가**가 여기서는 꾸미기가
+ * 아니라 되느냐 마느냐의 문제다. 프로젝터는 대비를 깎고 채도를 날린다.
+ *
+ * 중립에서 **색상각을 아예 뺐다**(채도 0). 파란 기 도는 회색은 종이에서는
+ * 우아하지만 프로젝터를 거치면 그 파랑만 남고 명도 차이가 뭉갠다.
+ *
+ * 중간 눈금을 크게 당겼다. `text-slate-500`은 137곳에서 쓰이는 설명 글자인데
+ * 기본값 0.554로는 프로젝터에서 흐려진다 — 0.36으로 내려 흰 바탕 대비를
+ * 4.8:1에서 10.9:1로 올렸다. 테두리(`border-slate-300`, 96곳)도 0.869에서
+ * 0.68로 내려 카드 경계가 뒷자리에서도 보이게 했다.
+ *
+ * 과목 색은 **채도를 올리되 명도를 함께 내렸다.** 계획서는 명도 0.96을 둔 채
+ * 채도만 0.035에서 0.06으로 올리라고 했는데, 그렇게는 안 된다: 명도 0.96에서
+ * sRGB가 담을 수 있는 채도는 열두 색상각 공통으로 0.019까지다. 0.06을 적으면
+ * 열둘 중 열이 색역 밖으로 나가 잘리고, 잘리는 정도가 색상각마다 달라서
+ * '열둘의 채도가 같다'는 규칙이 화면에서 깨진다. 명도를 0.86으로 내리면
+ * 채도 0.067까지 열둘이 모두 색역 안에 든다. 그래서 이웃한 과목 사이의 거리가
+ * 지금 화면의 0.0107~0.0187(고르지 않다)에서 **0.0347(열둘이 똑같이)**로
+ * 올라간다. 위에 얹히는 글자는 검정(`slate-900`)이라 대비는 13.7:1이다.
+ */
+[data-theme='contrast'] {
+  --color-surface: oklch(1 0 0);
+
+  /* 중립 — 채도 0. 프로젝터에서는 색 기운이 명도 차이를 뭉갠다 */
+  --color-slate-50: oklch(0.97 0 0);
+  --color-slate-100: oklch(0.93 0 0);
+  --color-slate-200: oklch(0.85 0 0);
+  --color-slate-300: oklch(0.68 0 0);
+  --color-slate-400: oklch(0.5 0 0);
+  --color-slate-500: oklch(0.36 0 0);
+  --color-slate-600: oklch(0.28 0 0);
+  --color-slate-700: oklch(0.2 0 0);
+  --color-slate-800: oklch(0.11 0 0);
+  --color-slate-900: oklch(0 0 0);
+
+  /* 과목 열둘 — 명도를 내려 채도를 벌었다. 열둘 모두 색역 안이라 채도가 진짜로 같다 */
+  --color-subject-1: oklch(0.86 0.067 20);
+  --color-subject-2: oklch(0.86 0.067 50);
+  --color-subject-3: oklch(0.86 0.067 80);
+  --color-subject-4: oklch(0.86 0.067 110);
+  --color-subject-5: oklch(0.86 0.067 140);
+  --color-subject-6: oklch(0.86 0.067 170);
+  --color-subject-7: oklch(0.86 0.067 200);
+  --color-subject-8: oklch(0.86 0.067 230);
+  --color-subject-9: oklch(0.86 0.067 260);
+  --color-subject-10: oklch(0.86 0.067 290);
+  --color-subject-11: oklch(0.86 0.067 320);
+  --color-subject-12: oklch(0.86 0.067 350);
+
+  /* 브랜드 */
+  --color-brand-50: oklch(0.94 0.0305 235);
+  --color-brand-200: oklch(0.82 0.091 235);
+  --color-brand-300: oklch(0.7 0.13 235);
+  --color-brand-500: oklch(0.54 0.115 235);
+  --color-brand-600: oklch(0.44 0.094 235);
+  --color-brand-700: oklch(0.33 0.0711 235);
+  --color-brand-press: oklch(0.33 0.0711 235);
+
+  /* 기능 — `-50` 딱지는 그 명도에서 sRGB가 담을 수 있는 최대 채도다 */
+  --color-seating-50: oklch(0.94 0.0257 265);
+  --color-seating-500: oklch(0.58 0.1725 265);
+  --color-duty-50: oklch(0.94 0.06 155);
+  --color-duty-500: oklch(0.56 0.1389 155);
+  --color-reward-50: oklch(0.94 0.0441 75);
+  --color-reward-500: oklch(0.64 0.1354 75);
+  --color-reward-700: oklch(0.33 0.071 75);
+  --color-assignment-50: oklch(0.94 0.0271 25);
+  --color-assignment-500: oklch(0.58 0.184 25);
+  --color-lesson-50: oklch(0.94 0.0257 265);
+  --color-lesson-500: oklch(0.58 0.1725 265);
+  --color-quiz-50: oklch(0.94 0.06 155);
+  --color-quiz-500: oklch(0.56 0.1389 155);
+  --color-message-50: oklch(0.94 0.0441 75);
+  --color-message-500: oklch(0.64 0.1354 75);
+  --color-task-50: oklch(0.94 0.0271 25);
+  --color-task-500: oklch(0.58 0.184 25);
+
+  /* 의미 */
+  --color-success-50: oklch(0.94 0.06 150);
+  --color-success-200: oklch(0.82 0.091 150);
+  --color-success-500: oklch(0.56 0.1547 150);
+  --color-success-700: oklch(0.33 0.0922 150);
+  --color-warning-50: oklch(0.94 0.0498 80);
+  --color-warning-200: oklch(0.82 0.104 80);
+  --color-warning-500: oklch(0.66 0.137 80);
+  --color-warning-700: oklch(0.33 0.0697 80);
+  --color-danger-50: oklch(0.94 0.0272 27);
+  --color-danger-200: oklch(0.82 0.078 27);
+  --color-danger-500: oklch(0.54 0.2185 27);
+  --color-danger-700: oklch(0.33 0.1361 27);
+  --color-danger-press: oklch(0.33 0.1361 27);
+  --color-info-50: oklch(0.94 0.0305 235);
+  --color-info-200: oklch(0.82 0.078 235);
+  --color-info-500: oklch(0.56 0.1192 235);
+  --color-info-700: oklch(0.33 0.0711 235);
+
+  /* 모둠 — 테두리를 0.828에서 0.70으로 내려 뒷자리에서도 카드가 갈린다 */
+  --color-sky-50: oklch(0.94 0.026 236.62);
+  --color-sky-300: oklch(0.7 0.129 230.318);
+  --color-sky-500: oklch(0.645 0.1418 237.323);
+  --color-sky-800: oklch(0.32 0.0756 240.79);
+  --color-teal-50: oklch(0.94 0.028 180.72);
+  --color-teal-300: oklch(0.7 0.1162 181.071);
+  --color-teal-500: oklch(0.664 0.1188 182.503);
+  --color-teal-800: oklch(0.32 0.0565 188.216);
+  --color-emerald-50: oklch(0.94 0.042 166.113);
+  --color-emerald-300: oklch(0.7 0.1356 164.978);
+  --color-emerald-500: oklch(0.656 0.1431 162.48);
+  --color-emerald-800: oklch(0.32 0.0667 166.913);
+  --color-amber-50: oklch(0.94 0.044 95.277);
+  --color-amber-300: oklch(0.7 0.132 91.605);
+  --color-amber-500: oklch(0.729 0.1581 70.08);
+  --color-amber-800: oklch(0.32 0.0917 46.201);
+  --color-orange-50: oklch(0.94 0.032 73.684);
+  --color-orange-300: oklch(0.7 0.1434 66.29);
+  --color-orange-500: oklch(0.665 0.1827 47.604);
+  --color-orange-800: oklch(0.32 0.1088 37.304);
+  --color-purple-50: oklch(0.94 0.028 308.299);
+  --color-purple-300: oklch(0.7 0.1547 306.383);
+  --color-purple-500: oklch(0.587 0.2814 303.9);
+  --color-purple-800: oklch(0.32 0.1692 303.724);
+  --color-pink-50: oklch(0.94 0.028 343.198);
+  --color-pink-300: oklch(0.7 0.156 346.018);
+  --color-pink-500: oklch(0.616 0.2539 354.308);
+  --color-pink-800: oklch(0.32 0.1306 3.815);
 }
 
 html,

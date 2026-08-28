@@ -41,7 +41,7 @@ export function GoalCelebration({
       role="dialog"
       aria-modal="true"
       aria-label="공동 목표 달성"
-      className="animate-rise-in fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-white/95 p-8 backdrop-blur-sm"
+      className="animate-rise-in fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-surface/95 p-8 backdrop-blur-sm"
     >
       <PartyPopper className="size-20 text-reward-500" aria-hidden />
 
@@ -53,7 +53,7 @@ export function GoalCelebration({
         {goals.map((goal) => (
           <li
             key={goal.id}
-            className="rounded-card border-4 border-reward-200 bg-reward-50 px-8 py-5 text-center"
+            className="rounded-card border-4 border-reward-500 bg-reward-50 px-8 py-5 text-center"
           >
             <p className="text-board-base font-bold text-slate-900">{goal.title}</p>
             <p className="mt-1 text-board-sm text-slate-600">

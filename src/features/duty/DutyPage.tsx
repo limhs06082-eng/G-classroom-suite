@@ -59,7 +59,7 @@ export default function DutyPage() {
           action={
             <Link
               to="/setup"
-              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-700"
+              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-press"
             >
               처음 설정 시작하기
             </Link>
@@ -79,7 +79,7 @@ export default function DutyPage() {
           action={
             <Link
               to="/roster"
-              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-700"
+              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-press"
             >
               명단 등록하기
             </Link>
@@ -249,7 +249,7 @@ function TodayTab({
             key={role.id}
             className={cx(
               'rounded-card border p-3',
-              isDone ? 'border-success-200 bg-success-50' : 'border-slate-200 bg-white',
+              isDone ? 'border-success-200 bg-success-50' : 'border-slate-200 bg-surface',
             )}
           >
             <header className="flex items-center gap-2">
@@ -278,7 +278,7 @@ function TodayTab({
                 onClick={() => duty.toggleRoleLock(role.id)}
                 aria-label={`${role.name} ${locked ? '고정 해제' : '고정'}`}
                 aria-pressed={locked}
-                className={cx('rounded p-0.5', locked ? 'text-brand-600' : 'text-slate-300 hover:text-slate-500')}
+                className={cx('rounded p-0.5', locked ? 'text-brand-700' : 'text-slate-300 hover:text-slate-500')}
               >
                 <Lock className="size-3.5" aria-hidden />
               </button>
@@ -486,7 +486,7 @@ function RolesTab({
         {duty.roles.map((role) => (
           <li
             key={role.id}
-            className="flex flex-wrap items-center gap-2 rounded-card border border-slate-200 bg-white p-3"
+            className="flex flex-wrap items-center gap-2 rounded-card border border-slate-200 bg-surface p-3"
           >
             <input
               defaultValue={role.name}

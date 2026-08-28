@@ -42,7 +42,7 @@ export function QuizBoard() {
   return (
     <div className="flex h-full flex-col gap-5">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="rounded-control bg-slate-900 px-4 py-1.5 text-board-sm font-bold text-white">
+        <span className="ink rounded-control bg-slate-900 px-4 py-1.5 text-board-sm font-bold text-white">
           {QUESTION_TYPE_LABELS[question.type]}
         </span>
         <span className="text-board-sm text-slate-500">
@@ -71,7 +71,7 @@ export function QuizBoard() {
                 key={index}
                 className={cx(
                   'flex items-center gap-3 rounded-card border-4 p-4 text-board-base',
-                  isAnswer ? 'border-success-500 bg-success-50' : 'border-slate-200 bg-white',
+                  isAnswer ? 'border-success-500 bg-success-50' : 'border-slate-200 bg-surface',
                 )}
               >
                 <span className="font-black text-slate-400">{index + 1}</span>

@@ -58,9 +58,9 @@ export function QuestionTimer({
         className={cx(
           'rounded-control px-4 py-1.5 font-mono text-board-base font-bold tabular-nums',
           isFinished
-            ? 'bg-danger-100 text-danger-700'
+            ? 'bg-danger-50 text-danger-700'
             : isUrgent
-              ? 'bg-warning-100 text-warning-700'
+              ? 'bg-warning-50 text-warning-700'
               : 'bg-slate-100 text-slate-700',
         )}
         aria-label={isFinished ? '시간 종료' : `남은 시간 ${formatDuration(shown)}`}

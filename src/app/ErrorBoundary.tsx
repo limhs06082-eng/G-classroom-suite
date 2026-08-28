@@ -48,7 +48,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <div role="alert" className="flex min-h-64 items-center justify-center p-6">
-        <div className="w-full max-w-lg rounded-card border border-danger-500/30 bg-white p-6 shadow-card">
+        <div className="w-full max-w-lg rounded-card border border-danger-500/30 bg-surface p-6 shadow-card">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 size-5 shrink-0 text-danger-500" aria-hidden />
             <div className="min-w-0">
@@ -71,7 +71,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <button
                   type="button"
                   onClick={this.handleReset}
-                  className="inline-flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                  className="inline-flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-press"
                 >
                   <RotateCcw className="size-4" aria-hidden />
                   다시 시도

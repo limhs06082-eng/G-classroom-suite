@@ -23,8 +23,17 @@ import { TimetableTab } from '../timetable/TimetableTab';
 import { ClassTermTab } from './ClassTermTab';
 import { LockTab } from './LockTab';
 import { SchoolSearch } from './SchoolSearch';
+import { ThemeTab } from './ThemeTab';
 
-type SettingsTab = 'school' | 'classes' | 'timetable' | 'lock' | 'sync' | 'backup' | 'legacy';
+type SettingsTab =
+  | 'school'
+  | 'classes'
+  | 'timetable'
+  | 'lock'
+  | 'theme'
+  | 'sync'
+  | 'backup'
+  | 'legacy';
 
 /**
  * 설정.
@@ -37,6 +46,7 @@ const TAB_IDS: readonly SettingsTab[] = [
   'classes',
   'timetable',
   'lock',
+  'theme',
   'sync',
   'backup',
   'legacy',
@@ -70,6 +80,16 @@ export default function SettingsPage() {
           // 시간표는 학급에 매인다. 학급을 만든 바로 다음에 할 일이라 옆에 둔다.
           { id: 'timetable', label: '시간표' },
           { id: 'lock', label: '교사 잠금' },
+          /*
+           * '화면'은 교사 잠금 옆에 둔다. 이 둘만 **이 컴퓨터의 것**이다 —
+           * PIN도 테마도 학급 자료가 아니라서 백업을 타고 다른 기기로
+           * 따라가지 않는다. 아래 '계정·동기화'부터는 전부 학급 자료를
+           * 다루는 탭이라 층이 다르다.
+           *
+           * 시간표 탭에 얹지 않는다. 시간표와 아무 상관이 없고, 나중에 글자
+           * 크기처럼 '보이는 방식'을 다루는 것들이 여기 붙는다.
+           */
+          { id: 'theme', label: '화면' },
           /*
            * '계정·동기화'는 Firebase 로그인 화면이다. 설치형에는 Firebase도,
            * 교사가 채울 설정 파일도 없다 — AccountPanel이 안내하는
@@ -107,6 +127,8 @@ export default function SettingsPage() {
           </div>
         ) : null}
         {tab === 'lock' ? <LockTab /> : null}
+        {/* 탭 목록과 그리는 곳이 따로 논다. 목록에만 더하면 눌러도 빈 화면이다. */}
+        {tab === 'theme' ? <ThemeTab /> : null}
         {/* 탭 목록에서 빼는 것만으로는 안 된다 — tab 상태가 무슨 값이든 설치형에서는 이 패널이 렌더되면 안 된다. */}
         {tab === 'sync' && !isDesktop() ? <AccountPanel /> : null}
         {tab === 'backup' ? <BackupTab /> : null}
@@ -401,7 +423,7 @@ function BackupTab() {
               지금 백업하기
             </Button>
 
-            <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-control border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-control border border-slate-300 bg-surface px-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
               <Upload className="size-4" aria-hidden />
               백업 파일 가져오기
               <input

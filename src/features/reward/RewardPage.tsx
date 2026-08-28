@@ -67,7 +67,7 @@ export default function RewardPage() {
           action={
             <Link
               to="/setup"
-              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-700"
+              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-press"
             >
               처음 설정 시작하기
             </Link>
@@ -87,7 +87,7 @@ export default function RewardPage() {
           action={
             <Link
               to="/roster"
-              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-700"
+              className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-press"
             >
               명단 등록하기
             </Link>
@@ -315,7 +315,7 @@ function ScoreTab({
                   className={cx(
                     'inline-flex items-center gap-1.5 rounded-control border px-3 py-2 text-sm',
                     tidying
-                      ? 'border-danger-300 bg-danger-50 text-danger-700 hover:border-danger-500'
+                      ? 'border-danger-200 bg-danger-50 text-danger-700 hover:border-danger-500'
                       : selected
                         ? 'border-brand-500 bg-brand-50 font-medium text-brand-700'
                         : style.card,
@@ -389,7 +389,7 @@ function ScoreTab({
               action={
                 <Link
                   to="/seating"
-                  className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-700"
+                  className="inline-flex h-10 items-center rounded-control bg-brand-600 px-3.5 text-sm font-medium text-white hover:bg-brand-press"
                 >
                   모둠 편성하러 가기
                 </Link>
@@ -429,7 +429,7 @@ function ScoreTab({
                 <button
                   type="button"
                   onClick={() => onAward(student.id, student.name)}
-                  className="flex w-full items-center gap-1.5 rounded-card border border-slate-200 bg-white p-2.5 text-left hover:bg-slate-50"
+                  className="flex w-full items-center gap-1.5 rounded-card border border-slate-200 bg-surface p-2.5 text-left hover:bg-slate-50"
                 >
                   <span className="font-mono text-xs text-slate-400">{student.number}</span>
                   <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{student.name}</span>
@@ -557,7 +557,7 @@ function GoalsTab({
             key={goal.id}
             className={cx(
               'rounded-card border p-3',
-              isAchieved ? 'border-success-200 bg-success-50' : 'border-slate-200 bg-white',
+              isAchieved ? 'border-success-200 bg-success-50' : 'border-slate-200 bg-surface',
             )}
           >
             <div className="flex flex-wrap items-center gap-2">
@@ -637,7 +637,7 @@ function LogTab({
               key={entry.id}
               className={cx(
                 'flex items-center gap-2 rounded-control border px-2.5 py-1.5 text-sm',
-                revoked ? 'border-slate-100 bg-slate-50 text-slate-400' : 'border-slate-200 bg-white',
+                revoked ? 'border-slate-100 bg-slate-50 text-slate-400' : 'border-slate-200 bg-surface',
               )}
             >
               <span className="w-28 shrink-0 truncate text-slate-500">

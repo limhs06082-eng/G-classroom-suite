@@ -217,7 +217,7 @@ function TeamSettings({ quiz }: { quiz: ReturnType<typeof useQuiz> }) {
       ) : (
         <p className="mb-3 text-sm text-slate-500">
           아직 편성한 모둠이 없어 기본 팀을 씁니다.{' '}
-          <Link to="/seating" className="font-medium text-brand-600 hover:text-brand-700">
+          <Link to="/seating" className="font-medium text-brand-700 hover:text-brand-700">
             자리·모둠
           </Link>
           에서 편성하면 그것을 그대로 씁니다.
@@ -430,7 +430,7 @@ function QuestionRow({
     <li
       className={cx(
         'rounded-card border p-3',
-        issues.length > 0 ? 'border-warning-200 bg-warning-50' : 'border-slate-200 bg-white',
+        issues.length > 0 ? 'border-warning-200 bg-warning-50' : 'border-slate-200 bg-surface',
       )}
     >
       <div className="flex flex-wrap items-center gap-2">

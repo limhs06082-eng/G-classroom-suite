@@ -125,7 +125,7 @@ export default function TaskPage() {
                     ? 'border-slate-200 bg-slate-50'
                     : overdue
                       ? 'border-danger-200 bg-danger-50'
-                      : 'border-slate-200 bg-white',
+                      : 'border-slate-200 bg-surface',
                 )}
               >
                 <div className="flex flex-wrap items-center gap-2">

@@ -60,7 +60,7 @@ export function AppShell() {
     <ToolsProvider>
       <div className="flex min-h-full flex-col">
         {/* 반투명 헤더는 스크롤할 때 본문 한글이 비쳐 읽기 어려워진다. 불투명으로 둔다. */}
-        <header className="no-print sticky top-0 z-20 border-b border-slate-200 bg-white">
+        <header className="no-print sticky top-0 z-20 border-b border-slate-200 bg-surface">
           <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
             <Link to="/" className="shrink-0 text-base font-bold tracking-tight text-slate-900">
               우리 반

@@ -1,7 +1,7 @@
 {
   "name": "classroom-suite",
   "private": true,
-  "version": "0.4.1",
+  "version": "0.5.0",
   "type": "module",
   "description": "우리 반 — 학급 운영 통합 앱",
   "scripts": {
@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:bundle": "node scripts/check-bundle-purity.mjs",
-    "verify": "npm run lint && npm run test && npm run build && npm run check:bundle web && npm run build:desktop && npm run check:bundle desktop",
+    "check:theme": "node scripts/check-theme-tokens.mjs",
+    "verify": "npm run lint && npm run check:theme && npm run test && npm run build && npm run check:bundle web && npm run build:desktop && npm run check:bundle desktop",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build"

@@ -7,7 +7,7 @@ import { SUBMISSION_LABELS } from './assignmentCore';
 import { useAssignment } from './useAssignment';
 
 const STATUS_TONE: Record<SubmissionStatus, string> = {
-  unsubmitted: 'border-slate-200 bg-white text-slate-500',
+  unsubmitted: 'border-slate-200 bg-surface text-slate-500',
   submitted: 'border-success-200 bg-success-50 text-success-700',
   supplement: 'border-warning-200 bg-warning-50 text-warning-700',
   completed: 'border-brand-200 bg-brand-50 text-brand-700',
@@ -64,7 +64,7 @@ export function StudentAssignments() {
                   'flex items-center gap-1.5 rounded-control border px-2.5 py-1.5 text-sm',
                   active
                     ? 'border-brand-500 bg-brand-50 font-medium text-brand-700'
-                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                    : 'border-slate-200 bg-surface text-slate-700 hover:bg-slate-50',
                 )}
               >
                 <span className="font-mono text-xs text-slate-400" data-numeric>

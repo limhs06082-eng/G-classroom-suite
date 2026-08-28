@@ -88,7 +88,7 @@ export function RewardBoard() {
           {reward.roster.map((student) => (
             <li
               key={student.id}
-              className="flex items-center gap-2 rounded-card border-2 border-slate-200 bg-white p-3"
+              className="flex items-center gap-2 rounded-card border-2 border-slate-200 bg-surface p-3"
             >
               <span className="font-mono text-board-sm text-slate-400">{student.number}</span>
               <span className="min-w-0 flex-1 truncate text-board-sm text-slate-900">

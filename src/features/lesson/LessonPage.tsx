@@ -20,9 +20,9 @@ import { useLesson } from './useLesson';
 const PHASES: LessonPhase[] = ['intro', 'activity', 'wrapup'];
 
 const PHASE_TONE: Record<LessonPhase, string> = {
-  intro: 'border-sky-200 bg-sky-50',
-  activity: 'border-emerald-200 bg-emerald-50',
-  wrapup: 'border-amber-200 bg-amber-50',
+  intro: 'border-sky-300 bg-sky-50',
+  activity: 'border-emerald-300 bg-emerald-50',
+  wrapup: 'border-amber-300 bg-amber-50',
 };
 
 /**
@@ -280,7 +280,7 @@ function StageRow({
           if (title !== '' && title !== stage.title) onChange({ title });
         }}
         aria-label={`${stage.title} 단계 이름`}
-        className="min-w-32 flex-1 rounded border border-transparent bg-white/70 px-2 py-1 text-sm font-medium hover:border-slate-300 focus:border-slate-400"
+        className="min-w-32 flex-1 rounded border border-transparent bg-surface/70 px-2 py-1 text-sm font-medium hover:border-slate-300 focus:border-slate-400"
       />
 
       <label className="flex items-center gap-1 text-sm text-slate-600">
@@ -346,7 +346,7 @@ function StageRow({
         onBlur={(event) => onChange({ guide: event.target.value })}
         placeholder="학생에게 보여 줄 안내 (선택)"
         aria-label={`${stage.title} 안내 문구`}
-        className="w-full rounded border border-transparent bg-white/70 px-2 py-1 text-sm hover:border-slate-300 focus:border-slate-400"
+        className="w-full rounded border border-transparent bg-surface/70 px-2 py-1 text-sm hover:border-slate-300 focus:border-slate-400"
       />
     </li>
   );

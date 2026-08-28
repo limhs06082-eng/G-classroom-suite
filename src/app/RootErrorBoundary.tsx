@@ -18,7 +18,7 @@ export function RootErrorBoundary() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-      <div className="w-full max-w-lg rounded-card border border-slate-200 bg-white p-6 shadow-card">
+      <div className="w-full max-w-lg rounded-card border border-slate-200 bg-surface p-6 shadow-card">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-danger-500" aria-hidden />
           <div className="min-w-0">
@@ -36,7 +36,7 @@ export function RootErrorBoundary() {
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="rounded-control bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                className="rounded-control bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-press"
               >
                 새로고침
               </button>

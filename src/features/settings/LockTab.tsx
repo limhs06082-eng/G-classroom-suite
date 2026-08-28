@@ -38,7 +38,7 @@ export function LockTab() {
         </p>
 
         {/* 정직하게 적는다. 이 장치를 믿고 민감한 것을 남겨 두면 안 된다. */}
-        <p className="mt-2 rounded-control bg-warning-50 px-3 py-2 text-sm text-warning-800">
+        <p className="mt-2 rounded-control bg-warning-50 px-3 py-2 text-sm text-warning-700">
           {isDesktop() ? (
             /*
              * "이 브라우저에"는 설치형에서는 거짓이다 — PIN은 파일(data.json)에

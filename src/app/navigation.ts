@@ -45,7 +45,7 @@ export const FEATURE_NAV: readonly FeatureNavItem[] = [
     label: '홈',
     hasBoardView: false,
     icon: Home,
-    accentClass: 'text-brand-600',
+    accentClass: 'text-brand-700',
     tintClass: 'bg-brand-50',
   },
   {

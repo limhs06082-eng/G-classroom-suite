@@ -46,7 +46,7 @@ export function ClassSwitcher() {
 
   if (activeClass === null) {
     return (
-      <Link to="/setup" className="text-sm font-medium text-brand-600 hover:text-brand-700">
+      <Link to="/setup" className="text-sm font-medium text-brand-700 hover:text-brand-700">
         학급 설정하기
       </Link>
     );
@@ -96,7 +96,7 @@ export function ClassSwitcher() {
         <ul
           role="listbox"
           aria-label="학급 전환"
-          className="absolute left-0 z-30 mt-1 max-h-72 w-56 overflow-y-auto rounded-card border border-slate-200 bg-white py-1 shadow-raised"
+          className="absolute left-0 z-30 mt-1 max-h-72 w-56 overflow-y-auto rounded-card border border-slate-200 bg-surface py-1 shadow-raised"
         >
           {siblings.map((room) => {
             const selected = room.id === activeClass.id;
@@ -120,7 +120,7 @@ export function ClassSwitcher() {
                   )}
                 >
                   <Check
-                    className={cx('size-4 shrink-0', selected ? 'text-brand-600' : 'text-transparent')}
+                    className={cx('size-4 shrink-0', selected ? 'text-brand-700' : 'text-transparent')}
                     aria-hidden
                   />
                   <span className="min-w-0 flex-1 truncate">{room.name}</span>
@@ -135,7 +135,7 @@ export function ClassSwitcher() {
             <Link
               to="/settings"
               onClick={() => setOpen(false)}
-              className="block px-3 py-2 text-sm text-brand-600 hover:bg-slate-50 hover:text-brand-700"
+              className="block px-3 py-2 text-sm text-brand-700 hover:bg-slate-50 hover:text-brand-700"
             >
               학급·학기 관리
             </Link>

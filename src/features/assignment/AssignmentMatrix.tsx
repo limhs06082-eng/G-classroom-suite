@@ -6,7 +6,7 @@ import { statusFromIndex, SUBMISSION_LABELS, SUBMISSION_SHORT } from './assignme
 import { useAssignment } from './useAssignment';
 
 const CELL_TONE: Record<SubmissionStatus, string> = {
-  unsubmitted: 'bg-white text-slate-300',
+  unsubmitted: 'bg-surface text-slate-300',
   submitted: 'bg-success-50 text-success-700',
   supplement: 'bg-warning-50 text-warning-700',
   completed: 'bg-brand-50 text-brand-700',
@@ -50,7 +50,7 @@ export function AssignmentMatrix() {
               {/* 이름 열이 밀려 나가면 지금 누르는 칸이 누구 것인지 알 수 없다. */}
               <th
                 scope="col"
-                className="sticky left-0 z-10 border-b border-slate-200 bg-white px-3 py-2 text-left font-medium text-slate-500"
+                className="sticky left-0 z-10 border-b border-slate-200 bg-surface px-3 py-2 text-left font-medium text-slate-500"
               >
                 학생
               </th>
@@ -87,7 +87,7 @@ export function AssignmentMatrix() {
               <tr key={student.id} className="border-b border-slate-100">
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 bg-white px-3 py-1.5 text-left font-normal whitespace-nowrap"
+                  className="sticky left-0 z-10 bg-surface px-3 py-1.5 text-left font-normal whitespace-nowrap"
                 >
                   <span className="font-mono text-xs text-slate-400" data-numeric>
                     {student.number}

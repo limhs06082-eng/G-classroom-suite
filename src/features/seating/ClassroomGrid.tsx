@@ -57,7 +57,7 @@ export function ClassroomGrid({
       {/* 방향을 알려 주지 않으면 앞뒤가 뒤집힌 배치표가 나온다 */}
       <div
         className={cx(
-          'w-full rounded-control bg-slate-800 text-center font-semibold text-white',
+          'ink w-full rounded-control bg-slate-900 text-center font-semibold text-white',
           isBoard ? 'py-3 text-board-sm' : 'py-1.5 text-sm',
         )}
       >
@@ -96,7 +96,7 @@ export function ClassroomGrid({
                 isSelected
                   ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500'
                   : student
-                    ? 'border-slate-200 bg-white'
+                    ? 'border-slate-200 bg-surface'
                     : 'border-slate-200 bg-slate-50',
               )}
               label={
@@ -114,7 +114,7 @@ export function ClassroomGrid({
                     className={cx(
                       'absolute top-1 right-1 rounded p-0.5 transition-colors duration-[120ms]',
                       isLocked
-                        ? 'text-brand-600 hover:text-brand-700'
+                        ? 'text-brand-700 hover:text-brand-700'
                         : 'text-slate-300 hover:text-slate-500',
                     )}
                   >

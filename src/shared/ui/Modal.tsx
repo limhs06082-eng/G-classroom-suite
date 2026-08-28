@@ -105,7 +105,7 @@ export function Modal({
   return createPortal(
     <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-slate-900/40"
+        className="ink absolute inset-0 bg-slate-900/40"
         onClick={dismissible ? onClose : undefined}
         aria-hidden
       />
@@ -118,7 +118,7 @@ export function Modal({
         aria-describedby={description === undefined ? undefined : descriptionId}
         tabIndex={-1}
         className={cx(
-          'relative flex max-h-[90vh] w-full flex-col rounded-card bg-white shadow-raised',
+          'relative flex max-h-[90vh] w-full flex-col rounded-card bg-surface shadow-raised',
           'animate-rise-in',
           SIZES[size],
         )}
