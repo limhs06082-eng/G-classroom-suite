@@ -1,4 +1,4 @@
-import type { TimetableEntry } from '../../shared/domain/types';
+import type { TimetableEntry, TimetableOverride } from '../../shared/domain/types';
 import { subjectsForGrade } from '../../shared/subjects';
 
 /**
@@ -129,6 +129,80 @@ export function todayPeriods(
       .sort((a, b) => a.period - b.period)
       .map((entry) => ({ period: entry.period, subject: entry.subject }))
   );
+}
+
+/** 오늘 화면이 쓰는 한 교시. overridden이면 하루 바꾸기가 적용된 칸이다. */
+export interface EffectivePeriod {
+  period: number;
+  subject: string;
+  overridden: boolean;
+}
+
+/**
+ * 그날 실제로 도는 시간표 — 주간 시간표 위에 하루 바꾸기를 얹은 것.
+ *
+ * 항목이 없으면 주간 그대로, 있으면 그 교시만 바뀐다. 빈 과목 항목은
+ * "그날 그 교시가 없다"라 목록에서 빠지고, 주간에 없는 교시를 그날만
+ * 더할 수도 있다(보강). '지금' 카드와 오늘 시간표 카드가 함께 쓴다 —
+ * 한쪽만 바뀐 시간표를 보면 카드 둘이 서로 다른 말을 한다.
+ */
+export function effectivePeriods(
+  entries: TimetableEntry[],
+  overrides: TimetableOverride[],
+  classId: string,
+  date: string,
+  weekday: number,
+): EffectivePeriod[] {
+  const todays = new Map(
+    overrides
+      .filter((override) => override.classId === classId && override.date === date)
+      .map((override) => [override.period, override.subject]),
+  );
+
+  const base = todayPeriods(entries, classId, weekday).map((slot) => {
+    const changed = todays.get(slot.period);
+    todays.delete(slot.period);
+    return changed === undefined
+      ? { ...slot, overridden: false }
+      : { period: slot.period, subject: changed, overridden: true };
+  });
+
+  // 남은 항목은 주간에 없는 교시를 그날만 더한 것이다.
+  const added = [...todays.entries()].map(([period, subject]) => ({
+    period,
+    subject,
+    overridden: true,
+  }));
+
+  return [...base, ...added]
+    .filter((slot) => slot.subject !== '')
+    .sort((a, b) => a.period - b.period);
+}
+
+/**
+ * 하루 바꾸기를 적는다. 바뀐 목록을 돌려준다.
+ *
+ * 주간 시간표의 원래 과목과 같아지면 항목을 지운다 — "바꿨다가 되돌림"이
+ * "바꿈 없음"과 같은 상태로 남아야 파일이 안 자란다.
+ */
+export function setOverride(
+  overrides: TimetableOverride[],
+  entries: TimetableEntry[],
+  classId: string,
+  date: string,
+  weekday: number,
+  period: number,
+  subject: string,
+): TimetableOverride[] {
+  const rest = overrides.filter(
+    (override) =>
+      override.classId !== classId || override.date !== date || override.period !== period,
+  );
+
+  const original = cellSubject(entries, classId, weekday, period);
+  if (subject === original) return rest;
+
+  return [...rest, { classId, date, period, subject }];
 }
 
 /**

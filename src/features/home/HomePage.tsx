@@ -35,7 +35,7 @@ import { DutySummary } from '../duty/DutySummary';
 import { nowState } from '../now/nowCore';
 import { RewardSummary } from '../reward/RewardSummary';
 import { summarizeTasks } from '../task/taskCore';
-import { todayPeriods, weekdayOf } from '../timetable/timetableCore';
+import { effectivePeriods, weekdayOf } from '../timetable/timetableCore';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
 import { MealCard, type MealState } from './MealCard';
 import { NowCard } from './NowCard';
@@ -508,7 +508,17 @@ export function TodayNow() {
    */
   if (weekday === 0) return null;
 
-  const today = todayPeriods(data.timetableEntries, activeClass.id, weekday);
+  /*
+   * 하루 바꾸기를 얹은 시간표를 본다. 시간표 카드와 같은 것을 봐야
+   * "카드는 음악인데 '지금'은 수학"이라고 서로 다른 말을 하지 않는다.
+   */
+  const today = effectivePeriods(
+    data.timetableEntries,
+    data.timetableOverrides,
+    activeClass.id,
+    date,
+    weekday,
+  );
 
   return (
     <NowCard
