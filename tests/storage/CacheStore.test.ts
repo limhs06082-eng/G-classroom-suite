@@ -438,3 +438,50 @@ describe('CacheStore — 날씨 칸이 성해야 꺼낸다', () => {
     expect(second.getWeather(SEOUL)).toEqual({ temperature: 0, low: -3, high: 0, code: 0 });
   });
 });
+
+describe('CacheStore — 급식과 날씨가 한 파일을 나눠 쓴다', () => {
+  it('날씨를 담아도 그 사이 담긴 급식이 안 지워진다', async () => {
+    /*
+     * 둘은 각자 open()해서 각자 들고 있다. 날씨 쪽이 08:00에 열면 그때
+     * 급식은 어제 것인데, 급식 카드가 08:01에 오늘 것을 담고 08:02에
+     * 날씨가 쓰면 급식이 어제 것으로 되돌아간다. 창이 없어진 것도 아닌데
+     * 담아 둔 것이 사라진다 — 인터넷이 끊긴 날 보여 주려고 담는 것이라
+     * 조용히 지워지면 담아 두는 뜻이 없다.
+     */
+    const weatherSide = await open();
+    const mealSide = await open();
+
+    await mealSide.putMeals('2026-06-01', menu('오늘 급식'));
+    await weatherSide.putWeather('경기도', weather(20));
+
+    const back = await open();
+    expect(back.getMeals('2026-06-01')?.[0]?.dishes[0]?.name).toBe('오늘 급식');
+    expect(back.getWeather('경기도')?.temperature).toBe(20);
+  });
+
+  it('급식을 담아도 그 사이 담긴 날씨가 안 지워진다', async () => {
+    const mealSide = await open();
+    const weatherSide = await open();
+
+    await weatherSide.putWeather('경기도', weather(20));
+    await mealSide.putMeals('2026-06-01', menu('오늘 급식'));
+
+    const back = await open();
+    expect(back.getWeather('경기도')?.temperature).toBe(20);
+    expect(back.getMeals('2026-06-01')?.[0]?.dishes[0]?.name).toBe('오늘 급식');
+  });
+
+  it('임자가 다른 파일에는 안 얹는다', async () => {
+    const mine = await open();
+    // 다른 학교가 쓴 파일이 놓여 있다. 남의 급식을 내 파일에 끌어오면 안 된다.
+    await files.writeAtomic(
+      'cache.json',
+      JSON.stringify({ version: 1, school: OTHER_SCHOOL, meals: { '2026-06-01': menu('남의 급식') } }),
+    );
+
+    await mine.putWeather('경기도', weather(20));
+
+    const back = await open();
+    expect(back.getMeals('2026-06-01')).toBeNull();
+  });
+});

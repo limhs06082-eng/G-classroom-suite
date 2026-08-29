@@ -154,7 +154,7 @@ export class CacheStore {
 
     // 열 때 한 번 치운다. 안 그러면 파일이 한 해 내내 커진다.
     const dropped = store.forget();
-    if (dropped > 0) await store.persist();
+    if (dropped > 0) await store.persist(false);
 
     return store;
   }
@@ -214,7 +214,7 @@ export class CacheStore {
 
   async putMeals(date: string, meals: MealMenu[]): Promise<void> {
     this.meals.set(date, meals);
-    await this.persist();
+    await this.persist(true);
   }
 
   /**
@@ -230,15 +230,60 @@ export class CacheStore {
   async putWeather(regionName: string, weather: Weather): Promise<void> {
     // 받은 때를 함께 담는다. 이것이 없으면 낡았는지 잴 방법이 없다.
     this.weather.set(regionName, { at: this.clock(), value: weather });
-    await this.persist();
+    await this.persist(true);
   }
 
-  private async persist(): Promise<void> {
+  /** 파일에 지금 담긴 것. 못 읽으면 null. 던지지 않는다. */
+  private async readShape(): Promise<CacheShape | null> {
+    try {
+      const raw = await this.files.read('cache.json');
+      if (raw === null) return null;
+
+      const parsed: unknown = JSON.parse(raw);
+      const shape = parsed as Partial<CacheShape> | null;
+      if (shape === null || typeof shape !== 'object') return null;
+
+      return {
+        version: typeof shape.version === 'number' ? shape.version : -1,
+        school: typeof shape.school === 'string' ? shape.school : '',
+        meals: typeof shape.meals === 'object' && shape.meals !== null ? shape.meals : {},
+        weather: typeof shape.weather === 'object' && shape.weather !== null ? shape.weather : {},
+      };
+    } catch {
+      // 못 읽으면 얹을 것이 없는 셈 친다. 내 것만 쓴다.
+      return null;
+    }
+  }
+
+  /**
+   * 담긴 것을 파일에 남긴다.
+   *
+   * **쓰기 직전에 파일을 다시 읽어 얹는다.** 급식과 날씨가 이 파일 하나를
+   * 나눠 쓰는데, 둘은 각자 `open()`해서 각자 들고 있다. 그냥 제 것만 쓰면
+   * 이런 일이 난다 — 날씨 쪽이 08:00에 열어(그때 급식은 어제 것) 급식 카드가
+   * 08:01에 오늘 급식을 담고, 08:02에 날씨가 쓰면서 급식을 어제 것으로
+   * 되돌린다. 창이 없어진 것도 아닌데 담아 둔 것이 사라진다.
+   *
+   * 잃을 것이 큰 자료는 아니지만(다시 받으면 그만이다), 인터넷이 끊긴 날
+   * 보여 주려고 담아 두는 것이라 조용히 지워지면 담아 두는 뜻이 없다.
+   *
+   * 임자나 판이 다르면 안 얹는다. 그건 남의 파일이다.
+   */
+  private async persist(merge: boolean): Promise<void> {
+    /*
+     * 열 때 낡은 것을 치우고 쓰는 길에서는 얹지 않는다(`merge === false`).
+     * 그때 내 손 안의 값은 **방금 읽은 파일에서 버릴 것을 뺀 것**이라, 얹으면
+     * 방금 버린 것이 그대로 되살아난다. 치우는 일 자체가 무의미해진다.
+     */
+    const onDisk = merge ? await this.readShape() : null;
+    const mergeable = onDisk !== null && onDisk.version === VERSION && onDisk.school === this.school;
+
     const shape: CacheShape = {
       version: VERSION,
       school: this.school,
-      meals: Object.fromEntries(this.meals),
-      weather: Object.fromEntries(this.weather),
+      // 내 것이 이긴다. 내 것은 열 때 파일에서 읽어 온 것에 이번 것을 더한 값이다.
+      meals: { ...(mergeable ? onDisk.meals : {}), ...Object.fromEntries(this.meals) },
+      weather: { ...(mergeable ? onDisk.weather : {}), ...Object.fromEntries(this.weather) },
     };
 
     try {
