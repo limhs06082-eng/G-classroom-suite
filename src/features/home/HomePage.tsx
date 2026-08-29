@@ -5,6 +5,7 @@ import {
   Download,
   ListChecks,
   MessageSquareText,
+  Monitor,
   Presentation,
   Quote,
   School,
@@ -23,7 +24,6 @@ import {
   useRoster,
   useSuite,
 } from '../../shared/roster/SuiteDataProvider';
-import { hasSchool } from '../../shared/domain/school';
 import { isDesktop } from '../../shared/platform/target';
 import { useNow } from '../../shared/state/useNow';
 import { useToday } from '../../shared/state/useToday';
@@ -37,12 +37,12 @@ import { RewardSummary } from '../reward/RewardSummary';
 import { summarizeTasks } from '../task/taskCore';
 import { effectivePeriods, weekdayOf } from '../timetable/timetableCore';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
-import { MealCard, type MealState } from './MealCard';
+import { MealCard } from './MealCard';
 import { NowCard } from './NowCard';
 import { quoteOfDay } from './quotes';
 import { BigStat, PendingNote, SummaryCard } from './SummaryCard';
 import { TimetableCard } from './TimetableCard';
-import { loadTodayMeal } from './todayMeal';
+import { useTodayMeal } from './useTodayMeal';
 
 /**
  * 홈.
@@ -87,12 +87,26 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+      <header className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <h1 className="text-xl font-bold text-slate-900">{activeClass.name}</h1>
         {term === null ? null : <p className="text-sm text-slate-500">{term.name}</p>}
         {data.profile.schoolName === '' ? null : (
           <p className="text-sm text-slate-400">· {data.profile.schoolName}</p>
         )}
+
+        {/*
+          아침에 학급 TV에 띄워 두는 종합 화면. 기능별 칠판과 달리 날짜·
+          시간표·급식·당번·알림장을 한 화면에 모은다.
+        */}
+        <Button
+          size="sm"
+          variant="secondary"
+          icon={Monitor}
+          className="ml-auto"
+          onClick={() => openBoard('/board/today')}
+        >
+          오늘 보드
+        </Button>
       </header>
 
       <BackupBanner studentCount={roster.length} getLastExportedAt={() => adapter.getLastExportedAt()} />
@@ -542,60 +556,11 @@ export function TodayNow() {
 }
 
 /**
- * 오늘 급식을 받아 온다.
- *
- * 캐시를 먼저 보고, 없으면 NEIS에 묻는다. 학교 인터넷은 끊긴다 —
- * 어제 받아 둔 것이 있으면 그날도 보인다.
+ * 오늘 급식 카드. 받아 오는 일은 `useTodayMeal`이 한다(오늘 보드와 공유).
  *
  * 설치형에서만 그린다. NEIS가 `Access-Control` 헤더를 안 줘서 브라우저는
  * 직접 못 부르고, 그 제약은 우리가 어쩔 수 없다.
  */
 export function TodayMeal() {
-  const { data } = useSuite();
-  const [state, setState] = useState<MealState>({ kind: 'loading' });
-
-  const officeCode = data.profile.officeCode ?? '';
-  const schoolCode = data.profile.schoolCode ?? '';
-
-  const date = useToday();
-
-  useEffect(() => {
-    // 학교가 없으면 여기서 끝낸다. 물을 데가 없는데 Tauri 조각을 들일 이유가 없다.
-    if (!hasSchool(officeCode, schoolCode)) {
-      setState({ kind: 'no-school' });
-      return;
-    }
-
-    let cancelled = false;
-    setState({ kind: 'loading' });
-
-    void (async () => {
-      const [{ NeisSource }, { TauriHttpClient }, { CacheStore }, { TauriFileStore }] =
-        await Promise.all([
-          import('../../shared/external/NeisSource'),
-          import('../../shared/external/TauriHttpClient'),
-          import('../../shared/storage/CacheStore'),
-          import('../../shared/storage/TauriFileStore'),
-        ]);
-
-      // 캐시에 임자를 달아 연다. 학교를 고치면 앞 학교 급식은 통째로 버려진다.
-      const cache = await CacheStore.open(new TauriFileStore(), `${officeCode}:${schoolCode}`);
-
-      const next = await loadTodayMeal(
-        cache,
-        new NeisSource(new TauriHttpClient()),
-        officeCode,
-        schoolCode,
-        date,
-      );
-
-      if (!cancelled) setState(next);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [officeCode, schoolCode, date]);
-
-  return <MealCard state={state} />;
+  return <MealCard state={useTodayMeal()} />;
 }

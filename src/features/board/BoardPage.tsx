@@ -11,6 +11,7 @@ import { LessonBoard } from '../lesson/LessonBoard';
 import { NoticeBoard } from '../notice/NoticeBoard';
 import { RewardBoard } from '../reward/RewardBoard';
 import { SeatingBoard } from '../seating/SeatingBoard';
+import { TodayBoard } from './TodayBoard';
 
 /*
  * 형성평가 칠판만 따로 뗀다.
@@ -44,6 +45,23 @@ export default function BoardPage() {
   const navigate = useNavigate();
   const activeClass = useActiveClass();
   const term = useActiveTerm();
+
+  /*
+   * '오늘 보드'는 기능이 아니라 기능 여럿의 모음이라 FEATURE_NAV에 없다.
+   * 넣으면 헤더 네비에도 떠 버린다. 여기서만 특별 취급한다.
+   */
+  if (feature === 'today') {
+    const todaySubtitle = [term?.name, activeClass?.name].filter(Boolean).join(' · ');
+    return (
+      <BoardScreen
+        title="오늘"
+        {...(todaySubtitle === '' ? {} : { subtitle: todaySubtitle })}
+        onExit={() => closeBoard(() => void navigate('/'))}
+      >
+        <TodayBoard />
+      </BoardScreen>
+    );
+  }
 
   const item = feature === undefined ? undefined : findFeature(feature);
 
