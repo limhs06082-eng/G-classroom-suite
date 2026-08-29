@@ -154,3 +154,91 @@ describe('검색 결과가 잘렸을 때', () => {
     expect(result.hits).toHaveLength(1);
   });
 });
+
+describe('학교 코드로 주소 받아 오기', () => {
+  /*
+   * 이 판에서 주소를 담기 시작했다. 그 전에 학교를 고른 교사에게는 주소가
+   * 없고, 그대로 두면 **기존 사용자 전원에게 날씨가 안 보인다.** 다시
+   * 고르라고 하지 않고 학교 코드로 한 번 물어 채운다.
+   */
+  const url =
+    'https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=5' +
+    '&ATPT_OFCDC_SC_CODE=E10&SD_SCHUL_CODE=7341236';
+
+  const ADDRESS = '인천광역시 남동구 서창남순환로 190-28';
+
+  function schoolBody(address: string): unknown {
+    return {
+      schoolInfo: [
+        { head: [{ list_total_count: 1 }, { RESULT: { CODE: 'INFO-000' } }] },
+        {
+          row: [
+            {
+              ATPT_OFCDC_SC_CODE: 'E10',
+              ATPT_OFCDC_SC_NM: '인천광역시교육청',
+              SD_SCHUL_CODE: '7341236',
+              SCHUL_NM: '서창초등학교',
+              ORG_RDNMA: address,
+              SCHUL_KND_SC_NM: '초등학교',
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  it('이름이 아니라 코드 둘로 묻는다', async () => {
+    /*
+     * 이름으로 물으면 같은 이름의 학교가 여럿이라 엉뚱한 곳의 주소가 온다.
+     * 그러면 부산 학교에 서울 날씨를 띄우는 그 자리로 되돌아간다.
+     */
+    http.put(url, schoolBody(ADDRESS));
+
+    await neis.fetchAddress('E10', '7341236');
+
+    expect(http.calls).toEqual([url]);
+  });
+
+  it('도로명 주소를 준다', async () => {
+    http.put(url, schoolBody(ADDRESS));
+
+    expect(await neis.fetchAddress('E10', '7341236')).toBe(ADDRESS);
+  });
+
+  it('학교 코드가 없으면 부르지 않는다', async () => {
+    expect(await neis.fetchAddress('', '7341236')).toBe('');
+    expect(await neis.fetchAddress('E10', '')).toBe('');
+    expect(http.calls).toEqual([]);
+  });
+
+  it('없는 학교면 빈 글자다', async () => {
+    // 던지지 않는다. 물어봤더니 없더라는 것은 실패가 아니다 — 급식과 같다.
+    http.put(url, emptyResult);
+
+    expect(await neis.fetchAddress('E10', '7341236')).toBe('');
+  });
+
+  it('주소 칸이 비어 있어도 빈 글자다', async () => {
+    http.put(url, schoolBody(''));
+
+    expect(await neis.fetchAddress('E10', '7341236')).toBe('');
+  });
+
+  it('통신이 실패하면 그대로 던진다', async () => {
+    /*
+     * 여기서 빈 글자로 삼키면 부르는 쪽이 '이 학교는 주소가 없다'로 읽고
+     * 다시 안 묻는다. 인터넷이 잠깐 끊긴 것뿐인데 날씨가 영영 안 뜬다.
+     */
+    http.fail(url, 'NEIS가 응답하지 않음');
+
+    await expect(neis.fetchAddress('E10', '7341236')).rejects.toThrow('NEIS가 응답하지 않음');
+  });
+
+  it('200에 실려 온 오류도 던진다', async () => {
+    http.put(url, {
+      RESULT: { CODE: 'ERROR-337', MESSAGE: '일별 트래픽 제한을 넘은 호출입니다.' },
+    });
+
+    await expect(neis.fetchAddress('E10', '7341236')).rejects.toThrow('일별 트래픽');
+  });
+});
