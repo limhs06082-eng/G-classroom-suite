@@ -896,6 +896,15 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
       teacherName: str(profileRaw['teacherName']),
       ...(typeof profileRaw['officeCode'] === 'string' ? { officeCode: profileRaw['officeCode'] } : {}),
       ...(typeof profileRaw['schoolCode'] === 'string' ? { schoolCode: profileRaw['schoolCode'] } : {}),
+      /*
+       * 주소는 **글자일 때만** 담는다. 다른 선택 항목과 같은 꼴이지만 여기는
+       * 걸린 적이 있는 자리다 — 이 값을 받는 regionOfAddress()가 곧바로
+       * .trim()을 부르므로, 숫자나 객체가 그대로 통과하면 머리띠를 그리는
+       * 순간 화면 전체가 죽는다. 상한 백업 한 줄이 앱을 못 열게 만든다.
+       */
+      ...(typeof profileRaw['schoolAddress'] === 'string'
+        ? { schoolAddress: profileRaw['schoolAddress'] }
+        : {}),
       // 도구함에서 옮겨 온 것. 가정 통신 문구에 그대로 끼워 넣는 글자다.
       grade: str(profileRaw['grade']),
       classNo: str(profileRaw['classNo']),

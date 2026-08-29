@@ -17,6 +17,13 @@ export interface SchoolProfile {
   officeCode?: string;
   /** NEIS 표준학교코드 */
   schoolCode?: string;
+  /**
+   * 학교 도로명 주소. 날씨 지역을 여기서 뽑는다.
+   *
+   * 교사가 직접 치지 않는다 — 학교를 고를 때 NEIS가 준 것을 그대로 담는다.
+   * 없어도 앱은 돈다(날씨만 안 뜬다). 그래서 선택 항목이다.
+   */
+  schoolAddress?: string;
   teacherName: string;
   /**
    * 가정 통신 문구에 넣을 학년·반. "3", "2"처럼 숫자만 담는다.

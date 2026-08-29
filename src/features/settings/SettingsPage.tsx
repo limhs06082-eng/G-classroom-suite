@@ -213,6 +213,14 @@ function SchoolTab() {
                       schoolName: hit.schoolName,
                       officeCode: hit.officeCode,
                       schoolCode: hit.schoolCode,
+                      /*
+                       * 주소도 함께 담는다. 날씨 지역을 여기서 뽑기 때문이다.
+                       *
+                       * 지역을 따로 묻지 않는 것이 이 기능의 요점이다. 여기서
+                       * 안 담으면 교사가 시·도를 고르는 화면이 하나 더 생긴다.
+                       * NEIS가 이미 준 것을 버리고 다시 묻는 셈이다.
+                       */
+                      schoolAddress: hit.address,
                     },
                   }));
                   toast.success(`${hit.schoolName}으로 정했습니다.`);
