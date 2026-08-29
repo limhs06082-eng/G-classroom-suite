@@ -1,4 +1,4 @@
-import { Bookmark, Eraser, Grid3x3, Monitor, Shuffle, Users } from 'lucide-react';
+import { Bookmark, Eraser, Grid3x3, Monitor, Printer, Shuffle, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -9,7 +9,7 @@ import {
   MIN_SEAT_ROWS,
 } from '../../shared/domain/types';
 import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
-import { Badge, Button, Card, ConfirmDialog, cx, EmptyState, Tabs, useToast } from '../../shared/ui';
+import { Badge, Button, Card, ConfirmDialog, cx, EmptyState, PrintLayout, Tabs, usePrint, useToast } from '../../shared/ui';
 import { openBoard } from '../../shared/window/openBoard';
 import { ClassroomGrid, type GridMode } from './ClassroomGrid';
 import { GroupingPanel } from './GroupingPanel';
@@ -29,6 +29,7 @@ export default function SeatingPage() {
   const { data } = useSuite();
   const toast = useToast();
   const seating = useSeating();
+  const printNow = usePrint();
 
   const [tab, setTab] = useState<SeatingTab>('seats');
   const [mode, setMode] = useState<GridMode>('assign');
@@ -178,8 +179,45 @@ export default function SeatingPage() {
           <Button variant="secondary" icon={Monitor} onClick={() => openBoard('/board/seating')}>
             전자칠판
           </Button>
+          <Button variant="secondary" icon={Printer} onClick={printNow}>
+            자리표 인쇄
+          </Button>
         </div>
       </div>
+
+      {/*
+        인쇄 전용 자리표. 화면에는 안 보이고 #print-root 포털로만 나간다.
+        학부모 상담 주간에 교탁에 붙여 두는 종이가 이것이다.
+      */}
+      <PrintLayout
+        title={`${activeClass.name} 자리 배치표`}
+        subtitle={new Date().toISOString().slice(0, 10)}
+        footer={[data.profile.schoolName, data.profile.teacherName].filter(Boolean).join(' · ')}
+      >
+        <p className="mb-2 text-center text-sm font-semibold">▲ 칠판 쪽</p>
+        <table className="w-full border-collapse text-center text-sm">
+          <tbody>
+            {Array.from({ length: seating.rows }, (_, rowIndex) => rowIndex + 1).map((row) => (
+              <tr key={row}>
+                {Array.from({ length: seating.cols }, (_, colIndex) => colIndex + 1).map((col) => {
+                  const id = `r${row}c${col}`;
+                  const student = seating.studentBySeat.get(id);
+                  const disabled = seating.seats.find((seat) => seat.id === id)?.isDisabled === true;
+
+                  return (
+                    <td
+                      key={id}
+                      className={cx('h-14 border border-black px-1', disabled && 'bg-slate-200')}
+                    >
+                      {disabled ? '' : (student?.name ?? '')}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </PrintLayout>
 
       <Card
         title={activeClass.name}

@@ -4,6 +4,7 @@ import {
   Lock,
   Monitor,
   Plus,
+  Printer,
   Scale,
   Shuffle,
   Trash2,
@@ -25,7 +26,9 @@ import {
   cx,
   EmptyState,
   Modal,
+  PrintLayout,
   Tabs,
+  usePrint,
   useToast,
 } from '../../shared/ui';
 import { openBoard } from '../../shared/window/openBoard';
@@ -43,6 +46,8 @@ export default function DutyPage() {
   const activeClass = useActiveClass();
   const duty = useDuty();
   const toast = useToast();
+  const { data } = useSuite();
+  const printNow = usePrint();
 
   const [tab, setTab] = useState<DutyTab>('today');
   const [addOpen, setAddOpen] = useState(false);
@@ -118,8 +123,51 @@ export default function DutyPage() {
           <Button variant="secondary" icon={Monitor} onClick={() => openBoard('/board/duty')}>
             전자칠판
           </Button>
+          <Button
+            variant="secondary"
+            icon={Printer}
+            disabled={duty.currentRound === null}
+            onClick={printNow}
+          >
+            당번표 인쇄
+          </Button>
         </div>
       </div>
+
+      {/* 인쇄 전용 당번표. 교실 뒤 게시판에 붙이는 종이다. */}
+      {duty.currentRound !== null ? (
+        <PrintLayout
+          title={`${activeClass?.name ?? ''} 당번표`}
+          subtitle={duty.currentRound.label}
+          footer={[data.profile.schoolName, data.profile.teacherName].filter(Boolean).join(' · ')}
+        >
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="border border-black px-2 py-1.5 text-left">역할</th>
+                <th className="border border-black px-2 py-1.5 text-left">맡은 학생</th>
+              </tr>
+            </thead>
+            <tbody>
+              {duty.currentRound.assignments.map((assignment) => {
+                const role = duty.roles.find((item) => item.id === assignment.roleId);
+                if (role === undefined) return null;
+                const names = assignment.studentIds
+                  .map((id) => duty.roster.find((student) => student.id === id)?.name)
+                  .filter(Boolean)
+                  .join(', ');
+
+                return (
+                  <tr key={assignment.roleId}>
+                    <td className="border border-black px-2 py-1.5">{role.name}</td>
+                    <td className="border border-black px-2 py-1.5">{names}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </PrintLayout>
+      ) : null}
 
       <Tabs
         items={[

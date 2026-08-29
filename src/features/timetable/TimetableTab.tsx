@@ -1,10 +1,10 @@
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Printer } from 'lucide-react';
 import { useId, useState } from 'react';
 
-import { type ClassRoom } from '../../shared/domain/types';
+import { MAX_PERIOD, type ClassRoom } from '../../shared/domain/types';
 import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { normalizeSubject, subjectTint } from '../../shared/subjects';
-import { Button, Card, ConfirmDialog, cx, EmptyState } from '../../shared/ui';
+import { Button, Card, ConfirmDialog, cx, EmptyState, PrintLayout, usePrint } from '../../shared/ui';
 import {
   WEEKDAY_NAMES,
   cellSubject,
@@ -83,6 +83,7 @@ function TimetableEditor({ room }: { room: ClassRoom }) {
   const [note, setNote] = useState('');
   const [clearing, setClearing] = useState(false);
   const baseId = useId();
+  const printNow = usePrint();
 
   const classId = room.id;
 
@@ -276,11 +277,53 @@ function TimetableEditor({ room }: { room: ClassRoom }) {
         {/* 한 칸도 없으면 지울 것이 없다. 누를 수 있는데 아무 일도 안 일어나면
             선생님은 앱이 고장 났다고 여긴다. */}
         {filled === 0 ? null : (
-          <Button variant="ghost" onClick={() => setClearing(true)}>
-            전체 지우기
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" icon={Printer} onClick={printNow}>
+              인쇄
+            </Button>
+            <Button variant="ghost" onClick={() => setClearing(true)}>
+              전체 지우기
+            </Button>
+          </div>
         )}
       </div>
+
+      {/* 인쇄 전용 주간 시간표. 교실 게시판·학부모 안내용이다. */}
+      {filled === 0 ? null : (
+        <PrintLayout
+          title={`${room.name} 시간표`}
+          footer={data.profile.schoolName === '' ? undefined : data.profile.schoolName}
+        >
+          <table className="w-full border-collapse text-center text-sm">
+            <thead>
+              <tr>
+                <th className="w-12 border border-black px-2 py-1.5">교시</th>
+                {WEEKDAY_NAMES.map((name) => (
+                  <th key={name} className="border border-black px-2 py-1.5">
+                    {name}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(periods.length > 0 ? periods : Array.from({ length: MAX_PERIOD }, (_, i) => i + 1)).map(
+                (period) => (
+                  <tr key={period}>
+                    <td data-numeric className="border border-black px-2 py-2 font-semibold">
+                      {period}
+                    </td>
+                    {WEEKDAY_NAMES.map((name, index) => (
+                      <td key={name} className="border border-black px-2 py-2">
+                        {cellSubject(data.timetableEntries, classId, index + 1, period)}
+                      </td>
+                    ))}
+                  </tr>
+                ),
+              )}
+            </tbody>
+          </table>
+        </PrintLayout>
+      )}
 
       <ConfirmDialog
         open={clearing}
