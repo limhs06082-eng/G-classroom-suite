@@ -2,13 +2,12 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "G-board",
   "mainBinaryName": "G-board",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "identifier": "net.ssamdongne.gboard",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:3000",
     "beforeDevCommand": "npm run dev",
-    "_beforeBuildCommand_주석": "check:release를 앞에 둔다. package.json의 desktop:build에만 두면 npx tauri build·cargo tauri build·tauri-action이 전부 검사를 건너뛴다. 여기 두면 tauri CLI를 거치는 모든 길이 지나간다. tauri dev는 beforeDevCommand를 쓰므로 개발 중에는 안 걸린다.",
     "beforeBuildCommand": "npm run check:release && npm run build:desktop"
   },
   "app": {
