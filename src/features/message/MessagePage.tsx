@@ -13,6 +13,7 @@ import {
   renderMessage,
 } from './messageCore';
 import { GEMINI_KEY_STORAGE, refineText } from './refineClient';
+import { isDesktop } from '../../shared/platform/target';
 
 function todayString(): string {
   const now = new Date();
@@ -38,13 +39,28 @@ export default function MessagePage() {
   const [saveOpen, setSaveOpen] = useState(false);
   const [refining, setRefining] = useState(false);
 
+  /*
+   * 설치형에서는 다듬기 자리를 아예 안 보인다.
+   *
+   * `refineText`가 `/api/refine`을 부르는데, 그건 웹 배포본에만 있는
+   * 서버 함수다. 설치형에서는 그 주소가 없으므로 **무엇을 해도 실패한다.**
+   * 그런데 실패하기 전에 선생님은 [AI 다듬기 켜기]를 눌러 설정으로 가서
+   * Gemini 키를 붙여 넣게 된다 — 쓰이지도 않을 열쇠를 받아 두는 셈이다.
+   *
+   * 이 저장소는 형성평가를 두고 같은 판단을 이미 했다. 반쯤 살려 두면
+   * "되는 줄 알았는데 안 되는 자리"가 되고, 그건 없는 것보다 나쁘다.
+   * 알림장 자체는 AI 없이 온전히 돌므로 이 단추만 감춘다.
+   */
+  const canRefine = !isDesktop();
+
   const hasApiKey = useMemo(() => {
+    if (!canRefine) return false;
     try {
       return (window.localStorage.getItem(GEMINI_KEY_STORAGE) ?? '').trim() !== '';
     } catch {
       return false;
     }
-  }, []);
+  }, [canRefine]);
 
   /** 기본 문구 + 내가 만든 문구. 숨긴 기본 문구는 뺀다. */
   const templates = useMemo((): MessageTemplate[] => {
@@ -304,7 +320,7 @@ export default function MessagePage() {
                     >
                       AI로 다듬기
                     </Button>
-                  ) : (
+                  ) : canRefine ? (
                     <Link
                       to="/settings"
                       className="inline-flex h-10 items-center gap-2 rounded-control border border-slate-300 bg-surface px-3.5 text-sm font-medium text-slate-500 hover:bg-slate-50"
@@ -312,7 +328,7 @@ export default function MessagePage() {
                       <Sparkles className="size-4" aria-hidden />
                       AI 다듬기 켜기
                     </Link>
-                  )}
+                  ) : null}
 
                   {rendered.missing.length > 0 ? (
                     <Badge tone="warning" className="self-center">
