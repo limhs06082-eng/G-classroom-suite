@@ -15,7 +15,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { ROLE_CATEGORIES, type DutyRole, type RoleCategory, type RoleCycle } from '../../shared/domain/types';
-import { useActiveClass } from '../../shared/roster/SuiteDataProvider';
+import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
+import { statusOf, STATUS_LABELS } from '../attendance/attendanceCore';
 import {
   Badge,
   Button,
@@ -209,6 +210,15 @@ function TodayTab({
   onGoRoles: () => void;
   onSubstitute: (roleId: string) => void;
 }) {
+  /*
+   * 오늘 출결을 여기서 읽는다. 결석·체험학습인 학생이 당번이면 배지로
+   * 보여야 교사가 대체를 떠올린다 — 출결을 찍는 화면과 당번을 보는 화면이
+   * 다른데, 그 사이를 잇는 것이 이 배지다.
+   */
+  const { data } = useSuite();
+  const activeClass = useActiveClass();
+  const classId = activeClass?.id ?? '';
+
   if (!duty.hasRoles) {
     return (
       <EmptyState
@@ -317,6 +327,13 @@ function TodayTab({
                         {swap ? (
                           <Badge tone="info">{swap.original.name} 대신</Badge>
                         ) : null}
+                        {(() => {
+                          const status = statusOf(data.attendanceRecords, classId, duty.today, student.id);
+                          // 결석·체험학습은 오늘 교실에 없다. 대체가 필요하다는 신호다.
+                          return status === 'absent' || status === 'fieldTrip' ? (
+                            <Badge tone="danger">{STATUS_LABELS[status]}</Badge>
+                          ) : null;
+                        })()}
                       </button>
                     </li>
                   );
@@ -348,6 +365,11 @@ function SubstituteModal({
   roleId: string | null;
   onClose: () => void;
 }) {
+  // 훅은 이른 return보다 먼저. 출결은 대체 후보를 거르는 데 쓴다.
+  const { data } = useSuite();
+  const activeClass = useActiveClass();
+  const classId = activeClass?.id ?? '';
+
   const entry = duty.todayDuties.find((item) => item.role.id === roleId);
   if (roleId === null || entry === undefined) return null;
 
@@ -363,8 +385,13 @@ function SubstituteModal({
   });
 
   // 오늘 이 역할을 맡은 사람은 후보에서 뺀다. 당번이 당번을 대신하는 것은 대체가 아니다.
+  // 결석·체험학습인 학생도 뺀다. 없는 사람을 대신 세우는 것은 대체가 아니라 실수다.
   const onDuty = new Set(students.map((student) => student.id));
-  const candidates = duty.roster.filter((student) => !onDuty.has(student.id));
+  const candidates = duty.roster.filter((student) => {
+    if (onDuty.has(student.id)) return false;
+    const status = statusOf(data.attendanceRecords, classId, duty.today, student.id);
+    return status !== 'absent' && status !== 'fieldTrip';
+  });
 
   return (
     <Modal
