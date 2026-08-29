@@ -741,6 +741,22 @@ table,
   animation: rise-in var(--duration-fast) var(--ease-out-soft);
 }
 
+/* 뽑힌 이름이 커지며 나타난다. 뒷자리 시선을 모으는 연출이라 조금 길다. */
+@keyframes pick-reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-pick-reveal {
+  animation: pick-reveal 400ms var(--ease-out-soft);
+}
+
 /* 키보드 사용자에게만 포커스 링을 보인다. 교사는 단축키를 많이 쓴다. */
 :focus-visible {
   @apply outline-2 outline-offset-2 outline-brand-500;

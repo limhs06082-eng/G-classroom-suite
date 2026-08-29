@@ -1,8 +1,9 @@
-import { Bell, EyeOff, Maximize2, Pause, Play, RotateCcw, Timer as TimerIcon, X } from 'lucide-react';
+import { Bell, Dices, EyeOff, Maximize2, Pause, Play, RotateCcw, Timer as TimerIcon, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { Button, cx, Modal } from '../../shared/ui';
+import { PickerModal } from './PickerModal';
 import { useTools } from './ToolsContext';
 import { formatDuration, useTimer } from './useTimer';
 
@@ -35,6 +36,9 @@ export function ToolsBar() {
           <Button size="sm" icon={Bell} onClick={() => open('notice')}>
             알림 띄우기
           </Button>
+          <Button size="sm" icon={Dices} onClick={() => open('picker')}>
+            뽑기
+          </Button>
           <span className="ml-auto hidden text-xs text-slate-400 sm:inline">
             수업 중 쓰는 도구입니다
           </span>
@@ -44,6 +48,11 @@ export function ToolsBar() {
       <TimerModal open={openTool === 'timer'} onClose={close} />
       {openTool === 'curtain' ? <ScreenCurtain onClose={close} /> : null}
       <NoticeModal open={openTool === 'notice'} onClose={close} />
+      {/*
+        뽑기는 열렸을 때만 마운트한다. 명단(useSuite)을 읽는 모달이라,
+        늘 마운트해 두면 SuiteDataProvider 없이 툴바만 그리는 자리가 깨진다.
+      */}
+      {openTool === 'picker' ? <PickerModal onClose={close} /> : null}
     </>
   );
 }

@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 
-export type ToolName = 'timer' | 'curtain' | 'notice';
+export type ToolName = 'timer' | 'curtain' | 'notice' | 'picker';
 
 interface ToolsValue {
   /** 지금 열려 있는 것. 없으면 null. */
