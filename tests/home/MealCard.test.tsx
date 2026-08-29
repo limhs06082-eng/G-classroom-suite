@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
@@ -44,6 +44,24 @@ describe('오늘 급식 카드', () => {
     // 이름 안에 번호가 섞여 있으면 한눈에 안 읽힌다.
     expect(screen.getByText('두부새우젓국')).toBeInTheDocument();
     expect(screen.queryByText(/두부새우젓국 \(/)).not.toBeInTheDocument();
+  });
+
+  it('알레르기 표시를 켜면 번호가 아니라 이름으로 나온다', () => {
+    renderCard({ kind: 'ready', meals: lunch });
+
+    fireEvent.click(screen.getByRole('button', { name: '알레르기 표시' }));
+
+    // 5.9.18을 외우고 있는 사람은 없다.
+    expect(screen.getByText('(대두·새우·조개류)')).toBeInTheDocument();
+  });
+
+  it('알레르기 정보가 없는 급식에는 토글 자체가 없다', () => {
+    renderCard({
+      kind: 'ready',
+      meals: [{ kind: '중식', date: '2026-06-01', dishes: [{ name: '홍국쌀밥', allergens: [] }], calories: '' }],
+    });
+
+    expect(screen.queryByRole('button', { name: '알레르기 표시' })).not.toBeInTheDocument();
   });
 
   it('학교를 안 정했으면 무엇을 하면 되는지 말한다', () => {
