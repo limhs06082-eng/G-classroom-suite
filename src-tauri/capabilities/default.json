@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "enables the default permissions. Tauri의 기본 권한은 창을 **묻는 것**만 준다. `is-maximized`, `available-monitors` 같은 조회 28개가 전부고, 창 상태를 **바꾸는** 것은 하나도 없다. 그래서 창을 만들거나 부수려면 여기 하나씩 적어야 한다. 이걸 빠뜨리면 증상이 조용하다 — 앱이 안 닫히고, 전자칠판 단추가 아무 반응이 없다.",
+  "description": "enables the default permissions. Tauri의 기본 권한은 창을 **묻는 것**만 준다. `is-maximized`, `available-monitors` 같은 조회 28개가 전부고, 창 상태를 **바꾸는** 것은 하나도 없다. 그래서 창을 만들거나 부수려면 여기 하나씩 적어야 한다. 이걸 빠뜨리면 증상이 조용하다 — 앱이 안 닫히고, 전자칠판 단추가 아무 반응이 없다. `http:default`의 `allow`는 **실제로 부르는 곳만** 적는다. 여기 없는 주소는 요청이 나가기도 전에 Tauri가 막고, 그때는 우리 오류 문구가 아니라 plugin-http의 영어 오류로 드러난다. `geocoding-api.open-meteo.com`은 일부러 안 적었다 — 시·군·구 이름을 대부분 못 찾고 '부산 강서구'를 물으면 서울 강서구를 주는 것을 확인했으므로 쓰지 않는다. 좌표는 `src/shared/domain/regions.ts`의 고정 표에서 얻는다.",
   "windows": [
     "main",
     "board"
@@ -23,7 +23,8 @@
     {
       "identifier": "http:default",
       "allow": [
-        { "url": "https://open.neis.go.kr/*" }
+        { "url": "https://open.neis.go.kr/*" },
+        { "url": "https://api.open-meteo.com/*" }
       ]
     }
   ]
