@@ -36,7 +36,7 @@ describe('FEATURE_NAV', () => {
   it('전자칠판은 학생에게 보여 줄 것이 있는 기능만 지원한다', () => {
     const withBoard = FEATURE_NAV.filter((f) => f.hasBoardView).map((f) => f.id);
 
-    expect(withBoard).toEqual(['seating', 'duty', 'reward', 'assignment', 'lesson', 'quiz']);
+    expect(withBoard).toEqual(['seating', 'duty', 'reward', 'assignment', 'notice', 'lesson', 'quiz']);
   });
 
   it('홈은 전자칠판을 갖지 않는다', () => {

@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   Home,
   ListChecks,
+  Megaphone,
   MessageSquareText,
   Presentation,
   Sparkles,
@@ -100,6 +101,19 @@ export const FEATURE_NAV: readonly FeatureNavItem[] = [
     icon: ClipboardCheck,
     accentClass: 'text-assignment-500',
     tintClass: 'bg-assignment-50',
+  },
+  {
+    /*
+     * 과제 다음이다. 종례의 순서(과제 확인 → 알림장)를 따른다.
+     * 칠판이 핵심 화면이고, 내일까지인 과제가 자동으로 함께 나온다.
+     */
+    id: 'notice',
+    path: '/notice',
+    label: '알림장',
+    hasBoardView: true,
+    icon: Megaphone,
+    accentClass: 'text-notice-500',
+    tintClass: 'bg-notice-50',
   },
     {
       id: 'lesson',

@@ -18,6 +18,7 @@ import { RootErrorBoundary } from './RootErrorBoundary';
  */
 const HomePage = lazy(() => import('../features/home/HomePage'));
 const AttendancePage = lazy(() => import('../features/attendance/AttendancePage'));
+const NoticePage = lazy(() => import('../features/notice/NoticePage'));
 const SeatingPage = lazy(() => import('../features/seating/SeatingPage'));
 const DutyPage = lazy(() => import('../features/duty/DutyPage'));
 const RewardPage = lazy(() => import('../features/reward/RewardPage'));
@@ -54,6 +55,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: 'attendance', element: <AttendancePage /> },
+      { path: 'notice', element: <NoticePage /> },
       { path: 'seating', element: <SeatingPage /> },
       { path: 'duty', element: <DutyPage /> },
       { path: 'reward', element: <RewardPage /> },

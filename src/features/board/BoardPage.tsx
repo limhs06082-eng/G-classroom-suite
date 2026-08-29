@@ -8,6 +8,7 @@ import { closeBoard } from '../../shared/window/openBoard';
 import { AssignmentBoard } from '../assignment/AssignmentBoard';
 import { DutyBoard } from '../duty/DutyBoard';
 import { LessonBoard } from '../lesson/LessonBoard';
+import { NoticeBoard } from '../notice/NoticeBoard';
 import { RewardBoard } from '../reward/RewardBoard';
 import { SeatingBoard } from '../seating/SeatingBoard';
 
@@ -75,6 +76,8 @@ export default function BoardPage() {
         <AssignmentBoard />
       ) : item.id === 'lesson' ? (
         <LessonBoard />
+      ) : item.id === 'notice' ? (
+        <NoticeBoard />
       ) : item.id === 'quiz' ? (
         QuizBoard === null ? (
           // 설치형에는 QuizBoard 자체가 번들에 없다. 아무도 여기로 오지
