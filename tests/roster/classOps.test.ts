@@ -82,6 +82,20 @@ function seeded(): { data: SuiteData; mineId: string; otherId: string; studentId
     ],
     submissions: [{ assignmentId: 'as-mine', studentId: a.id, status: 'submitted', note: '', updatedAt: NOW }],
     timetableEntries: [{ classId: mine.id, weekday: 1, period: 1, subject: '국어' }],
+    attendanceRecords: [
+      { classId: mine.id, date: '2026-08-14', entries: [{ studentId: a.id, status: 'absent', note: '' }] },
+    ],
+    notices: [{ classId: mine.id, date: '2026-08-14', items: [{ id: 'ni-1', text: '준비물: 색연필' }] }],
+    timetableOverrides: [{ classId: mine.id, date: '2026-08-14', period: 1, subject: '체육' }],
+    rewardItems: [
+      { id: 'ri-mine', classId: mine.id, name: '자리 선택권', cost: 10, isActive: true, order: 0, createdAt: NOW },
+    ],
+    redemptions: [
+      { id: 'rd-mine', classId: mine.id, occurredAt: NOW, targetUnit: 'student', targetId: a.id, itemName: '자리 선택권', cost: 10 },
+    ],
+    observations: [
+      { id: 'ob-mine', classId: mine.id, studentId: a.id, date: '2026-08-14', text: '발표를 잘했다', createdAt: NOW },
+    ],
     activeTermId: term.id,
     activeClassId: mine.id,
   };
@@ -110,6 +124,12 @@ describe('countClassData', () => {
       assignments: 1,
       submissions: 1,
       timetableEntries: 1,
+      attendanceRecords: 1,
+      notices: 1,
+      timetableOverrides: 1,
+      rewardItems: 1,
+      redemptions: 1,
+      observations: 1,
     });
   });
 
@@ -124,7 +144,7 @@ describe('countClassData', () => {
 });
 
 describe('deleteClassRoom', () => {
-  it('16개 배열에서 그 학급 것이 함께 사라진다', () => {
+  it('22개 배열에서 그 학급 것이 함께 사라진다', () => {
     const { data, mineId } = seeded();
 
     const next = deleteClassRoom(data, mineId);
@@ -146,6 +166,12 @@ describe('deleteClassRoom', () => {
       assignments: 0,
       submissions: 0,
       timetableEntries: 0,
+      attendanceRecords: 0,
+      notices: 0,
+      timetableOverrides: 0,
+      rewardItems: 0,
+      redemptions: 0,
+      observations: 0,
     });
     expect(next.classRooms.some((room) => room.id === mineId)).toBe(false);
   });

@@ -37,6 +37,12 @@ export interface ClassDataCount {
   timetableEntries: number;
   assignments: number;
   submissions: number;
+  attendanceRecords: number;
+  notices: number;
+  timetableOverrides: number;
+  rewardItems: number;
+  redemptions: number;
+  observations: number;
 }
 
 /** 그 학급 학생의 id 집합. 프로필 세 종류가 이것으로 딸려 온다. */
@@ -77,6 +83,12 @@ export function countClassData(data: SuiteData, classId: string): ClassDataCount
     timetableEntries: byClass(data.timetableEntries),
     assignments: assignmentIds.size,
     submissions: data.submissions.filter((row) => assignmentIds.has(row.assignmentId)).length,
+    attendanceRecords: byClass(data.attendanceRecords),
+    notices: byClass(data.notices),
+    timetableOverrides: byClass(data.timetableOverrides),
+    rewardItems: byClass(data.rewardItems),
+    redemptions: byClass(data.redemptions),
+    observations: byClass(data.observations),
   };
 }
 
@@ -130,7 +142,7 @@ export function updateClassRoom(
 }
 
 /**
- * 학급과 딸린 자료 16종을 지운다.
+ * 학급과 딸린 자료 22종을 지운다.
  *
  * 불변조건 검사의 고아 정리에 맡기지 않는다. 그쪽에 맡기면 정상 삭제인데도
  * "자료가 깨졌으니 고쳤다"는 복구 경보가 뜨고, 학생은 '복구된 학급'이라는
@@ -180,6 +192,12 @@ export function deleteClassRoom(data: SuiteData, classId: string): SuiteData {
     timetableEntries: keepClass(data.timetableEntries),
     assignments: data.assignments.filter((item) => item.classId !== classId),
     submissions: data.submissions.filter((row) => !assignmentIds.has(row.assignmentId)),
+    attendanceRecords: keepClass(data.attendanceRecords),
+    notices: keepClass(data.notices),
+    timetableOverrides: keepClass(data.timetableOverrides),
+    rewardItems: keepClass(data.rewardItems),
+    redemptions: keepClass(data.redemptions),
+    observations: keepClass(data.observations),
     activeClassId: nextActive,
   };
 }

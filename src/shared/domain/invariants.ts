@@ -75,7 +75,9 @@ export type RepairCode =
   | 'ORPHAN_DUTY_RECORD'
   | 'INVALID_DUTY_ASSIGNMENT'
   | 'ORPHAN_REWARD_RECORD'
-  | 'ORPHAN_ASSIGNMENT_RECORD';
+  | 'ORPHAN_ASSIGNMENT_RECORD'
+  /** 2판 기록(출결·알림장·하루 바꾸기·쿠폰·관찰)이 없는 학급·학생을 가리킬 때 */
+  | 'ORPHAN_CLASS_RECORD';
 
 export interface RepairLog {
   code: RepairCode;
@@ -773,6 +775,85 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
     return { assignments, submissions };
   })();
 
+  // ── 8-5. 2판 기록이 실제 학급·학생·모둠을 가리키는가 ──────────
+  //     출결·알림장·하루 바꾸기·쿠폰은 학급을, 출결 항목·관찰·사용 기록은
+  //     학생(또는 모둠)을 가리킨다. 유령 참조는 화면에 빈 이름으로 떠서
+  //     한 건씩 세어 한 번에 알린다.
+  const extra = (() => {
+    const classIds = new Set(classRooms.map((c) => c.id));
+    const studentById = new Map(students.map((s) => [s.id, s]));
+    const groupIds = new Set(groups.map((g) => g.id));
+
+    let dropped = 0;
+
+    const attendanceRecords = input.attendanceRecords.flatMap((record) => {
+      if (!classIds.has(record.classId)) {
+        dropped += 1;
+        return [];
+      }
+      const entries = record.entries.filter(
+        (entry) => studentById.get(entry.studentId)?.classId === record.classId,
+      );
+      if (entries.length === record.entries.length) return [record];
+      dropped += record.entries.length - entries.length;
+      return [{ ...record, entries }];
+    });
+
+    const notices = input.notices.filter((notice) => {
+      if (classIds.has(notice.classId)) return true;
+      dropped += 1;
+      return false;
+    });
+
+    const timetableOverrides = input.timetableOverrides.filter((override) => {
+      if (classIds.has(override.classId)) return true;
+      dropped += 1;
+      return false;
+    });
+
+    const rewardItems = input.rewardItems.filter((item) => {
+      if (classIds.has(item.classId)) return true;
+      dropped += 1;
+      return false;
+    });
+
+    const redemptions = input.redemptions.filter((redemption) => {
+      const targetAlive =
+        redemption.targetUnit === 'group'
+          ? groupIds.has(redemption.targetId)
+          : studentById.get(redemption.targetId)?.classId === redemption.classId;
+      if (classIds.has(redemption.classId) && targetAlive) return true;
+      dropped += 1;
+      return false;
+    });
+
+    /*
+     * 관찰 기록은 학생을 따라간다. 학생이 복구 학급으로 옮겨졌으면 기록도
+     * 따라 옮긴다 — 학생을 지우지 않는 원칙과 같은 이유로, 관찰 기록은
+     * 그 학생 1년의 일부라 학급이 어긋났다고 버리면 안 된다.
+     */
+    const observations = input.observations.flatMap((observation) => {
+      const student = studentById.get(observation.studentId);
+      if (student === undefined) {
+        dropped += 1;
+        return [];
+      }
+      if (student.classId === observation.classId) return [observation];
+      return [{ ...observation, classId: student.classId }];
+    });
+
+    if (dropped > 0) {
+      repairs.push({
+        code: 'ORPHAN_CLASS_RECORD',
+        severity: 'info',
+        entityIds: [],
+        message: `없어진 학급·학생을 가리키던 출결·알림장·쿠폰·관찰 기록 ${dropped}건을 정리했습니다.`,
+      });
+    }
+
+    return { attendanceRecords, notices, timetableOverrides, rewardItems, redemptions, observations };
+  })();
+
   // ── 9. 활성 학기·학급이 실제로 존재하는가 ────────────────────
   let activeTermId = input.activeTermId;
   let activeClassId = input.activeClassId;
@@ -822,6 +903,12 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       scoreGoals: reward.scoreGoals,
       assignments: assignmentData.assignments,
       submissions: assignmentData.submissions,
+      attendanceRecords: extra.attendanceRecords,
+      notices: extra.notices,
+      timetableOverrides: extra.timetableOverrides,
+      rewardItems: extra.rewardItems,
+      redemptions: extra.redemptions,
+      observations: extra.observations,
       activeTermId,
       activeClassId,
     },

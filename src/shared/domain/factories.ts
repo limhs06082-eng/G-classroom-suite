@@ -29,6 +29,13 @@ import {
   type QuizQuestion,
   type QuizSet,
   type TaskItem,
+  // 2판에서 늘어난 것
+  type AttendanceRecord,
+  type DailyNotice,
+  type ObservationEntry,
+  type Redemption,
+  type RedemptionTargetUnit,
+  type RewardItem,
 } from './types';
 
 /**
@@ -471,6 +478,81 @@ function addMinutes(hm: string, minutes: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
+// ── 2판에서 늘어난 것 ──────────────────────────────────────────
+
+export function createAttendanceRecord(classId: string, date: string): AttendanceRecord {
+  return { classId, date, entries: [] };
+}
+
+export function createDailyNotice(classId: string, date: string): DailyNotice {
+  return { classId, date, items: [] };
+}
+
+/**
+ * 처음 만들 때 제안하는 쿠폰 묶음.
+ *
+ * 역할·행동 항목과 같은 이유다 — 빈 화면에서 처음부터 만들게 하면
+ * 기능이 있는 줄도 모르고 지나간다. 실제 교실에서 흔한 것만 골랐다.
+ */
+export const STARTER_REWARD_ITEMS: ReadonlyArray<Pick<RewardItem, 'name' | 'cost'>> = [
+  { name: '자리 선택권', cost: 10 },
+  { name: '자유 시간 10분', cost: 15 },
+  { name: '숙제 하루 연기권', cost: 20 },
+];
+
+export function createRewardItem(
+  input: Pick<RewardItem, 'classId' | 'name' | 'cost'> &
+    Partial<Pick<RewardItem, 'id' | 'isActive' | 'order'>>,
+  now: string = nowIso(),
+): RewardItem {
+  return {
+    id: input.id ?? createId(),
+    classId: input.classId,
+    name: input.name,
+    // 0점짜리 쿠폰은 잔액과 무관하게 무한히 쓸 수 있어 목록을 망가뜨린다.
+    cost: Math.max(1, Math.round(input.cost)),
+    isActive: input.isActive ?? true,
+    order: input.order ?? 0,
+    createdAt: now,
+  };
+}
+
+export function createRedemption(
+  input: {
+    classId: string;
+    targetUnit: RedemptionTargetUnit;
+    targetId: string;
+    itemName: string;
+    cost: number;
+  } & Partial<Pick<Redemption, 'id' | 'occurredAt'>>,
+  now: string = nowIso(),
+): Redemption {
+  return {
+    id: input.id ?? createId(),
+    classId: input.classId,
+    occurredAt: input.occurredAt ?? now,
+    targetUnit: input.targetUnit,
+    targetId: input.targetId,
+    itemName: input.itemName,
+    cost: Math.max(1, Math.round(input.cost)),
+  };
+}
+
+export function createObservation(
+  input: Pick<ObservationEntry, 'classId' | 'studentId' | 'text'> &
+    Partial<Pick<ObservationEntry, 'id' | 'date'>>,
+  now: string = nowIso(),
+): ObservationEntry {
+  return {
+    id: input.id ?? createId(),
+    classId: input.classId,
+    studentId: input.studentId,
+    date: input.date ?? now.slice(0, 10),
+    text: input.text,
+    createdAt: now,
+  };
+}
+
 /** 최초 실행 시의 빈 데이터. 설정 마법사를 거치기 전 상태다. */
 export function createEmptySuiteData(): SuiteData {
   return {
@@ -510,5 +592,11 @@ export function createEmptySuiteData(): SuiteData {
     quizTeams: [],
     lockPin: '',
     isLocked: false,
+    attendanceRecords: [],
+    notices: [],
+    timetableOverrides: [],
+    rewardItems: [],
+    redemptions: [],
+    observations: [],
   };
 }

@@ -47,6 +47,16 @@ import {
   // 도구함에서 옮겨 온 것
   MESSAGE_CATEGORIES,
   TASK_AREAS,
+  // 2판에서 늘어난 것
+  ATTENDANCE_STATUSES,
+  type AttendanceRecord,
+  type AttendanceStatus,
+  type DailyNotice,
+  type ObservationEntry,
+  type Redemption,
+  type RedemptionTargetUnit,
+  type RewardItem,
+  type TimetableOverride,
   type ActivityMode,
   type LessonPhase,
   type LessonRun,
@@ -785,6 +795,137 @@ function parseScoreCycle(raw: unknown): ScoreCycle {
   };
 }
 
+// ── 2판에서 늘어난 것 ──────────────────────────────────────────
+
+const REDEMPTION_UNITS: readonly RedemptionTargetUnit[] = ['student', 'group'];
+
+function parseAttendanceRecord(raw: unknown): AttendanceRecord | null {
+  if (!isRecord(raw)) return null;
+  const classId = requiredStr(raw['classId']);
+  const date = requiredStr(raw['date']);
+  if (classId === null || date === null) return null;
+
+  const entries = asArray(raw['entries']).flatMap((entry) => {
+    if (!isRecord(entry)) return [];
+    const studentId = requiredStr(entry['studentId']);
+    const status = entry['status'];
+    // 알 수 없는 상태는 항목째 버린다. 기본값으로 바꾸면 지각이 결석이 되는
+    // 식으로 조용히 틀린다 — 없는 항목은 그냥 '출석'이라 버리는 쪽이 안전하다.
+    if (
+      studentId === null ||
+      typeof status !== 'string' ||
+      !(ATTENDANCE_STATUSES as readonly string[]).includes(status)
+    ) {
+      return [];
+    }
+    return [{ studentId, status: status as AttendanceStatus, note: str(entry['note']) }];
+  });
+
+  return { classId, date, entries };
+}
+
+function parseDailyNotice(raw: unknown): DailyNotice | null {
+  if (!isRecord(raw)) return null;
+  const classId = requiredStr(raw['classId']);
+  const date = requiredStr(raw['date']);
+  if (classId === null || date === null) return null;
+
+  const items = asArray(raw['items']).flatMap((item) => {
+    if (!isRecord(item)) return [];
+    const id = requiredStr(item['id']);
+    const itemText = requiredStr(item['text']);
+    // 빈 글줄은 보드에 빈 줄만 만든다.
+    if (id === null || itemText === null) return [];
+    return [{ id, text: itemText }];
+  });
+
+  return { classId, date, items };
+}
+
+function parseTimetableOverride(raw: unknown): TimetableOverride | null {
+  if (!isRecord(raw)) return null;
+  const classId = requiredStr(raw['classId']);
+  const date = requiredStr(raw['date']);
+  if (classId === null || date === null) return null;
+
+  const period = Math.round(num(raw['period'], 0));
+  if (period < 1 || period > MAX_PERIOD) return null;
+
+  // subject 빈 글자는 "그날 그 교시가 없다"라는 뜻이라 requiredStr을 안 쓴다.
+  return { classId, date, period, subject: str(raw['subject']) };
+}
+
+function parseRewardItem(raw: unknown, now: string): RewardItem | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  const classId = requiredStr(raw['classId']);
+  if (id === null || classId === null) return null;
+
+  return {
+    id,
+    classId,
+    name: str(raw['name'], '이름 없는 쿠폰'),
+    // 0점짜리 쿠폰은 잔액과 무관하게 무한히 쓸 수 있다.
+    cost: Math.max(1, Math.round(num(raw['cost'], 1))),
+    isActive: bool(raw['isActive'], true),
+    order: num(raw['order'], 0),
+    createdAt: str(raw['createdAt'], now),
+  };
+}
+
+function parseRedemption(raw: unknown, now: string): Redemption | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  const classId = requiredStr(raw['classId']);
+  const targetId = requiredStr(raw['targetId']);
+  if (id === null || classId === null || targetId === null) return null;
+
+  return {
+    id,
+    classId,
+    occurredAt: str(raw['occurredAt'], now),
+    targetUnit: oneOf(raw['targetUnit'], REDEMPTION_UNITS, 'student'),
+    targetId,
+    itemName: str(raw['itemName'], '이름 없는 쿠폰'),
+    cost: Math.max(1, Math.round(num(raw['cost'], 1))),
+    ...(typeof raw['revokedAt'] === 'string' ? { revokedAt: raw['revokedAt'] } : {}),
+  };
+}
+
+function parseObservation(raw: unknown, now: string): ObservationEntry | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  const classId = requiredStr(raw['classId']);
+  const studentId = requiredStr(raw['studentId']);
+  if (id === null || classId === null || studentId === null) return null;
+
+  return {
+    id,
+    classId,
+    studentId,
+    date: str(raw['date'], now.slice(0, 10)),
+    text: str(raw['text']),
+    createdAt: str(raw['createdAt'], now),
+  };
+}
+
+/**
+ * (classId, date)가 자연키인 목록에서 겹치는 것을 버린다.
+ *
+ * 같은 날 기록이 둘이면 화면이 어느 쪽을 믿을지 모른다. 겹침은 상한
+ * 파일에서만 생기므로(화면은 항상 한 날짜에 하나만 만든다) 첫 것을
+ * 남기는 것으로 충분하다.
+ */
+function dedupeByClassDate<T extends { classId: string; date: string }>(list: T[]): T[] {
+  const seen = new Set<string>();
+  return list.filter((record) => {
+    const key = `${record.classId}:${record.date}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 // ── 진입점 ────────────────────────────────────────────────────
 
 export interface ParseResult {
@@ -947,6 +1088,26 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     messageFavorites: strArray(root['messageFavorites']),
     messageHidden: strArray(root['messageHidden']),
     quizTeams: strArray(root['quizTeams']),
+
+    // ── 2판에서 늘어난 것 ────────────────────────────────────
+    attendanceRecords: dedupeByClassDate(
+      parseList('attendanceRecords', '출결 기록', parseAttendanceRecord),
+    ),
+    notices: dedupeByClassDate(parseList('notices', '알림장', parseDailyNotice)),
+    /*
+     * 지난 날짜의 하루 바꾸기는 해석한 뒤에 버린다. 복구가 아니라 **만료**다 —
+     * 어제의 보강은 어제로 끝났고, 남겨 두면 파일만 해마다 자란다. 그래서
+     * '손상'으로 세지도, 알리지도 않는다. YYYY-MM-DD 글자 비교로 충분하다
+     * (ISO 날짜는 사전순 = 시간순).
+     */
+    timetableOverrides: parseList(
+      'timetableOverrides',
+      '시간표 하루 바꾸기',
+      parseTimetableOverride,
+    ).filter((override) => override.date >= now.slice(0, 10)),
+    rewardItems: parseList('rewardItems', '쿠폰', (r) => parseRewardItem(r, now)),
+    redemptions: parseList('redemptions', '쿠폰 사용 기록', (r) => parseRedemption(r, now)),
+    observations: parseList('observations', '관찰 기록', (r) => parseObservation(r, now)),
   };
 
   const repaired = validateAndRepair(shaped, now);

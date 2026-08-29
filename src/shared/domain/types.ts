@@ -673,13 +673,142 @@ export interface TimetableEntry {
 }
 
 // ─────────────────────────────────────────────────────────────
+// 출결 (features/attendance)
+//
+// **기록이 없는 학생이 출석이다.** 과제의 "기록 없음 = 미제출"과 같은
+// 원칙이다. 서른 명 중 스물아홉이 출석인 날, 스물아홉 줄을 만들지 않는다.
+// ─────────────────────────────────────────────────────────────
+
+export const ATTENDANCE_STATUSES = ['absent', 'late', 'early', 'fieldTrip'] as const;
+/** 결석 · 지각 · 조퇴 · 체험학습 */
+export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
+
+export interface AttendanceEntry {
+  studentId: string;
+  status: AttendanceStatus;
+  /** 사유. 비어 있어도 된다. */
+  note: string;
+}
+
+/** 날짜·학급마다 하나. DutyCompletion과 같은 자연키다. */
+export interface AttendanceRecord {
+  classId: string;
+  /** YYYY-MM-DD */
+  date: string;
+  entries: AttendanceEntry[];
+}
+
+// ─────────────────────────────────────────────────────────────
+// 알림장 (features/notice)
+//
+// 종례 때 칠판에 띄우는 그날의 전달 사항. 날짜·학급마다 하나다.
+// 내일까지인 과제는 여기 담지 않는다 — 과제 자료가 이미 말하고 있는 것을
+// 베껴 두면 한쪽만 고쳐지는 날이 온다. 화면이 그때그때 계산해 보여 준다.
+// ─────────────────────────────────────────────────────────────
+
+export interface NoticeItem {
+  id: string;
+  text: string;
+}
+
+export interface DailyNotice {
+  classId: string;
+  /** YYYY-MM-DD */
+  date: string;
+  items: NoticeItem[];
+}
+
+// ─────────────────────────────────────────────────────────────
+// 시간표 하루 바꾸기 (features/timetable)
+//
+// 행사·보강으로 그날만 교시가 바뀔 때. 주간 시간표(TimetableEntry)는
+// 건드리지 않는다 — 다음 주에는 원래대로 돌아와야 하기 때문이다.
+//
+// subject가 빈 글자면 "그날 그 교시가 없다"이다. 항목 자체가 없는 것은
+// "바뀐 것이 없다"이고, 그때는 주간 시간표가 그대로 보인다.
+// 지난 날짜의 항목은 불러올 때 조용히 버린다. 만료이지 복구가 아니다.
+// ─────────────────────────────────────────────────────────────
+
+export interface TimetableOverride {
+  classId: string;
+  /** YYYY-MM-DD */
+  date: string;
+  /** 1 ~ MAX_PERIOD */
+  period: number;
+  subject: string;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 보상 사용 — 쿠폰 (features/reward)
+//
+// 점수를 모으기만 하고 쓸 곳이 없으면 순환이 끊긴다. 쿠폰(RewardItem)을
+// 정의해 두고, 사용(Redemption)을 기록한다.
+//
+// **지도(음수 ScoreEntry)와 섞지 않는다.** 자리 선택권으로 점수를 쓴 것과
+// 약속을 어겨 점수가 깎인 것이 같은 목록에 보이면 안 된다.
+// 잔액은 저장하지 않는다 — 통산 획득에서 사용을 빼서 매번 계산한다.
+// ─────────────────────────────────────────────────────────────
+
+export interface RewardItem {
+  id: string;
+  classId: string;
+  /** "자리 선택권", "자유 시간 10분" */
+  name: string;
+  /** 필요한 점수. 1 이상. */
+  cost: number;
+  isActive: boolean;
+  order: number;
+  createdAt: string;
+}
+
+/** 쿠폰 대상. 학급 전체가 점수를 쓰는 일은 없어 class는 뺀다. */
+export type RedemptionTargetUnit = 'student' | 'group';
+
+export interface Redemption {
+  id: string;
+  classId: string;
+  occurredAt: string;
+  targetUnit: RedemptionTargetUnit;
+  /** studentId · groupId */
+  targetId: string;
+  /** 사용한 시점의 쿠폰 이름. 쿠폰을 지워도 기록은 읽혀야 한다. */
+  itemName: string;
+  cost: number;
+  /** 되돌린 시각. ScoreEntry.revokedAt과 같은 원칙 — 지우지 않고 표시한다. */
+  revokedAt?: string;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 관찰 기록 (shared/roster)
+//
+// 학생별 날짜 있는 메모의 타임라인. 학기말 생활기록부·상담 준비가
+// 이 기록을 시간순으로 꺼내 쓴다. SeatingProfile.note(한 칸 메모)와 달리
+// 쌓인다.
+// ─────────────────────────────────────────────────────────────
+
+export interface ObservationEntry {
+  id: string;
+  classId: string;
+  studentId: string;
+  /** YYYY-MM-DD — 관찰한 날. 적은 날(createdAt)과 다를 수 있다. */
+  date: string;
+  text: string;
+  createdAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────
 // 전체 데이터 루트
 //
 // 기능별 데이터(좌석 배치, 역할, 과제, 점수 기록)는 각 feature를
 // 이식하는 7~10단계에서 이 인터페이스에 추가된다.
 // ─────────────────────────────────────────────────────────────
 
-export const CURRENT_SCHEMA_VERSION = 1;
+/**
+ * 2판: 출결·알림장·시간표 하루 바꾸기·쿠폰·관찰 기록이 늘었다.
+ * 1판 앱이 2판 백업을 열면 이 필드들을 잃으므로, 버전을 올려
+ * SCHEMA_VERSION_AHEAD 경고가 뜨게 한다.
+ */
+export const CURRENT_SCHEMA_VERSION = 2;
 
 export interface SuiteData {
   schemaVersion: number;
@@ -754,4 +883,16 @@ export interface SuiteData {
   lockPin: string;
   /** 지금 잠겨 있는가. 새로 고쳐도 남아야 하므로 저장한다. */
   isLocked: boolean;
+
+  // ── 2판에서 늘어난 것 ──────────────────────────────────────
+
+  /** 출결. 날짜·학급마다 최대 하나. 기록 없는 학생이 출석이다. */
+  attendanceRecords: AttendanceRecord[];
+  /** 알림장. 날짜·학급마다 최대 하나. */
+  notices: DailyNotice[];
+  /** 시간표 하루 바꾸기. 지난 날짜는 불러올 때 만료된다. */
+  timetableOverrides: TimetableOverride[];
+  rewardItems: RewardItem[];
+  redemptions: Redemption[];
+  observations: ObservationEntry[];
 }
