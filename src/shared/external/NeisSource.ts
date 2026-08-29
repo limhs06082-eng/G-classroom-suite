@@ -84,6 +84,36 @@ export class NeisSource {
     return { total: schoolSearchTotal(raw), hits: parseSchoolSearch(raw) };
   }
 
+  /**
+   * 학교 코드로 도로명 주소만 받아 온다. 없으면 빈 글자.
+   *
+   * 학교를 고를 때 주소도 함께 담기 시작한 것은 이 판부터다. 그 전에 고른
+   * 교사에게는 주소 칸이 비어 있고, 그대로 두면 **기존 사용자 전원에게
+   * 날씨가 안 보인다.** 다시 고르라고 하지 않고 여기로 한 번 채운다.
+   *
+   * 이름이 아니라 코드 둘로 묻는다. 이름으로 물으면 같은 이름의 학교가
+   * 여럿이라 엉뚱한 곳의 주소가 오고, 그러면 부산 학교에 서울 날씨를 띄우는
+   * 자리로 되돌아간다 — 지오코딩을 버린 바로 그 까닭이다.
+   *
+   * 약속은 급식과 같다. **빈 글자는 '물어봤더니 없더라'이고, 던지면 '못
+   * 물어봤다'다.** 통신 실패를 빈 글자로 삼키면 부르는 쪽이 '이 학교는 주소가
+   * 없다'로 읽고 다시 안 묻는다.
+   */
+  async fetchAddress(officeCode: string, schoolCode: string): Promise<string> {
+    if (officeCode === '' || schoolCode === '') return '';
+
+    const url =
+      `${BASE}/schoolInfo?Type=json&pIndex=1&pSize=${PAGE}` +
+      `&ATPT_OFCDC_SC_CODE=${encodeURIComponent(officeCode)}` +
+      `&SD_SCHUL_CODE=${encodeURIComponent(schoolCode)}`;
+
+    const raw = await this.http.getJson(url);
+    refuseFault(raw);
+
+    // 코드 둘로 물었으니 한 행이다. 여럿이 와도 첫 행이 그 학교다.
+    return parseSchoolSearch(raw)[0]?.address ?? '';
+  }
+
   /** `date`는 `YYYY-MM-DD`. NEIS는 `YYYYMMDD`를 받으므로 여기서 바꾼다. */
   async fetchMeals(officeCode: string, schoolCode: string, date: string): Promise<MealMenu[]> {
     if (officeCode === '' || schoolCode === '') return [];
