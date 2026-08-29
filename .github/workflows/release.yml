@@ -1,9 +1,10 @@
 # 설치 파일을 만들어 릴리스에 올린다.
 #
-# 판 번호를 붙여 밀 때만 돈다.
+# 판 번호를 붙여 밀 때만 돈다. **태그와 tauri.conf.json의 판 번호가 같아야
+# 한다** — 다르면 검사에서 걸린다.
 #
-#     git tag v0.5.0
-#     git push origin v0.5.0
+#     git tag v0.6.0
+#     git push origin v0.6.0
 #
 # 끝나면 GitHub의 Releases에 **초안**이 생긴다. 자동으로 공개하지 않는다 —
 # 사람이 설치해 보고 나서 [Publish release]를 눌러야 남에게 보인다.
@@ -55,10 +56,13 @@ jobs:
       # 걸리면 Rust 빌드까지 가지 않는다 — 값싼 검사가 먼저다.
       - run: npm run verify
 
-      # tauri-action이 `npm run desktop:build`와 같은 일을 하되 릴리스까지
-      # 올린다. 그 스크립트가 앞서 돌리는 check-release.mjs는 여기서
-      # 안 도므로, 대신 이 줄에서 명시적으로 돌린다.
+      # 태그와 판 번호가 맞는지도 여기서 본다. v0.7.0을 밀었는데 파일이
+      # 0.6.0이면, 받는 분이 덮어씌워도 Windows가 같은 판으로 보고 아무
+      # 일도 안 한다. tauri.conf.json의 beforeBuildCommand도 이 검사를
+      # 돌리지만 거기서는 태그를 모른다.
       - run: npm run check:release
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
 
       - uses: tauri-apps/tauri-action@v0
         env:

@@ -47,7 +47,18 @@ npm run verify
 npm run check:release
 ```
 
-`check:release`가 보는 것 — 개발자 도구가 꺼졌는지, CSP가 있는지, 판 번호가 셋 다 같은지, 바깥으로 나가는 주소가 아는 두 곳뿐인지.
+`check:release`가 보는 것.
+
+| | |
+|---|---|
+| 디버그 빌드 | `--debug`로 만들고 있지 않은가 (그러면 features와 무관하게 개발자 도구가 산다) |
+| 개발자 도구 | `features`에서 꺼졌는가 |
+| CSP | 비어 있지 않고, `*`나 `unsafe-eval`로 넓히지 않았는가 |
+| 판 번호 | 세 파일이 같은가. 태그를 밀 때는 태그와도 같은가 |
+| 바깥 주소 | `capabilities/` **전부**를 훑어, 실제로 부르는 두 곳뿐인가 |
+| 권한 | 아는 열넷뿐인가 (`shell:allow-execute`가 조용히 늘어나는 것을 막는다) |
+
+> `tauri.conf.json`의 `beforeBuildCommand`가 이 검사를 먼저 돌린다. **`npx tauri build`든 `cargo tauri build`든 GitHub Actions든 전부 여기를 지나간다.** `tauri dev`는 안 걸린다 — 개발 중에 개발자 도구를 켜는 것은 정상이다.
 
 ### 3. 태그를 붙여 민다
 
@@ -65,7 +76,9 @@ Actions가 십 분쯤 돌고 나면 Releases에 **초안**이 생긴다.
 
 **자동으로 공개되지 않는다.** 이 앱은 학생 이름을 담으므로 아무도 안 본 설치 파일이 저절로 남에게 가는 자리를 두지 않았다.
 
-`docs/gboard-first-run.md`의 사람 확인 목록을 돌린 뒤, 릴리스 화면에서 **[Publish release]**를 누르면 그때부터 남에게 보인다.
+`docs/gboard-before-release.md`의 **'사람이 눈으로 봐야 하는 것'** 목록을 돌린 뒤, 릴리스 화면에서 **[Publish release]**를 누르면 그때부터 남에게 보인다.
+
+> `docs/gboard-first-run.md`는 **받으시는 분용**이다. 확인 목록은 거기 없다.
 
 ---
 
@@ -130,3 +143,11 @@ npx tauri signer generate -w %USERPROFILE%\.tauri\gboard.key
 | 릴리스 주소를 드릴 수 있다 | ✅ 태그를 밀면 된다 |
 | 파란 창이 안 뜬다 | ❌ 인증서가 필요하다 |
 | 앱이 스스로 갱신한다 | ❌ 열쇠가 필요하다 |
+
+---
+
+## 아직 안 해 본 것
+
+작업 흐름 두 개는 **한 번도 안 돌았다.** GitHub Actions가 아직 안 켜져 있어서다. 파일은 문법과 액션 판을 확인해 두었지만, 처음 미실 때 한두 가지가 걸릴 수 있다. 걸리면 Actions 탭의 빨간 줄에 무엇이 문제인지 나온다.
+
+먼저 `main`에 한 번 밀어 `verify.yml`이 도는지 보시는 편이 낫다. 그게 초록이면 `release.yml`의 앞부분(체크아웃·노드·npm)은 이미 검증된 셈이고, 남는 것은 Rust 빌드와 릴리스 올리기뿐이다.
