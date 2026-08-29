@@ -423,3 +423,94 @@ describe('켜 둔 채로 다시 물어 온다', () => {
     expect(screen.getByText('26°')).toBeInTheDocument();
   });
 });
+
+describe('끊겼다고 이미 받아 둔 것을 지우지 않는다', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(2026, 7, 29, 9, 0, 0));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('다시 묻다 실패해도 머리띠에 기온이 남는다', async () => {
+    show();
+    expect(await screen.findByText('26°')).toBeInTheDocument();
+
+    // 한 시간 뒤 다시 물으려는데 학교 공유기가 십오 초 끊긴다.
+    shared.failWeather = true;
+    await act(async () => {
+      vi.advanceTimersByTime(70 * 60 * 1000);
+      await Promise.resolve();
+    });
+
+    /*
+     * "다시 물을 때 loading으로 되돌리지 않는다"고 해 놓고 실패는 그대로
+     * 덮고 있었다. 그러면 온 화면의 머리띠에서 날씨가 사라지고 다음에
+     * 성공할 때까지 안 돌아온다 — 오후 내내 끊기면 하교할 때까지 빈자리다.
+     * 열 분 묵은 기온이 빈자리보다 낫다는 판단이 loading에만 걸릴 이유가 없다.
+     */
+    expect(screen.getByText('26°')).toBeInTheDocument();
+  });
+
+  it('한 번도 못 받았으면 실패는 실패다', async () => {
+    shared.failWeather = true;
+    show();
+
+    // 지킬 것이 없을 때까지 붙들면 영영 빈 채로 '있는 척'하게 된다.
+    await waitFor(() => expect(weatherCalls().length).toBeGreaterThan(0));
+    expect(screen.queryByText(/°/)).not.toBeInTheDocument();
+  });
+})
+
+describe('주소를 못 받았으면 다시 해 본다', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(2026, 7, 29, 9, 0, 0));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('부팅 때 실패해도 열 분 뒤에 다시 묻는다', async () => {
+    /*
+     * 이 효과가 도는 때가 하필 부팅 직후다 — 교실 컴퓨터가 켜지고 G-board가
+     * 자동으로 뜨는 그 순간이 학교 네트워크가 아직 안 붙어 있을 확률이 가장
+     * 높은 때다. 한 번 실패하고 끝내면, 이 판 이전에 학교를 고른 선생님은
+     * 날씨를 영영 못 본다 — 주소를 얻는 길이 이것뿐이다.
+     */
+    shared.failAddress = true;
+    show(withProfile({ schoolAddress: undefined }));
+    await screen.findByText('우리 반');
+
+    const neis = (): string[] =>
+      shared.asked.filter((url) => url.startsWith('https://open.neis.go.kr/'));
+    await waitFor(() => expect(neis().length).toBe(1));
+
+    // 네트워크가 붙었다.
+    shared.failAddress = false;
+    await act(async () => {
+      vi.advanceTimersByTime(11 * 60 * 1000);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(neis().length).toBeGreaterThan(1));
+    expect(await screen.findByText('26°')).toBeInTheDocument();
+  });
+
+  it('한 번 받아 두면 그 뒤로는 안 묻는다', async () => {
+    show(withProfile({ schoolAddress: undefined }));
+    await screen.findByText('26°');
+
+    const before = shared.asked.filter((u) => u.startsWith('https://open.neis.go.kr/')).length;
+    await act(async () => {
+      vi.advanceTimersByTime(30 * 60 * 1000);
+      await Promise.resolve();
+    });
+
+    // 켤 때마다·열 분마다 물으면 NEIS 하루 한도를 태운다.
+    expect(shared.asked.filter((u) => u.startsWith('https://open.neis.go.kr/')).length).toBe(before);
+  });
+})

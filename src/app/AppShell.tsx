@@ -266,6 +266,20 @@ export function TodayWeather() {
       try {
         found = await new NeisSource(new TauriHttpClient()).fetchAddress(officeCode, schoolCode);
       } catch {
+        /*
+         * 다음 tick에 다시 해 본다.
+         *
+         * 표시를 안 지우면 이 프로세스가 사는 동안 다시는 안 묻는다. 그런데
+         * **이 효과가 도는 때가 하필 부팅 직후**다 — 교실 컴퓨터가 켜지고
+         * G-board가 자동으로 뜨는 그 순간이 학교 네트워크가 아직 안 붙어
+         * 있을 확률이 가장 높은 때다. 한 번 실패하고 끝내면, 이 판 이전에
+         * 학교를 고른 선생님은 **날씨를 영영 못 본다.** 그 길이 이것뿐이다.
+         *
+         * 표시는 그대로 두고 실패했을 때만 지운다. 표시가 막는 것은
+         * 같은 tick 안에서 두 번 묻는 것이고, 열 분 뒤에 다시 묻는 것은
+         * 막을 일이 아니다.
+         */
+        askedAddress.current = null;
         return;
       }
 
@@ -281,7 +295,8 @@ export function TodayWeather() {
     return () => {
       cancelled = true;
     };
-  }, [officeCode, schoolCode, address, update]);
+    // tick이 있어야 실패한 뒤 열 분마다 다시 해 본다. 위 catch와 짝이다.
+  }, [officeCode, schoolCode, address, update, tick]);
 
   useEffect(() => {
     /*
@@ -315,7 +330,20 @@ export function TodayWeather() {
 
       const next = await loadTodayWeather(cache, new WeatherSource(new TauriHttpClient()), address);
 
-      if (!cancelled) setState(next);
+      if (cancelled) return;
+
+      /*
+       * 이미 받아 둔 것이 있으면 실패로 지우지 않는다.
+       *
+       * 위에서 "다시 물을 때 loading으로 되돌리지 않는다"고 해 놓고 실패는
+       * 그대로 덮고 있었다. 그러면 학교 공유기가 십오 초 끊긴 것만으로
+       * **온 화면의 머리띠에서 날씨가 사라지고**, 다음에 성공할 때까지
+       * 안 돌아온다. 오후 내내 끊기면 하교할 때까지 빈자리다.
+       *
+       * 열 분 묵은 기온이 빈자리보다 낫다는 판단이 loading에만 걸릴
+       * 이유가 없다. 화면에서 보면 둘 다 '사라짐'이다.
+       */
+      setState((prev) => (next.kind === 'failed' && prev.kind === 'ready' ? prev : next));
     })();
 
     return () => {
