@@ -21,9 +21,18 @@ tauri-build = { version = "2.6.3", features = [] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-# devtools는 2판 동안만 켠다. CSP 위반과 NEIS 응답 문제는 개발자 도구
-# 없이는 증상이 "빈 화면"뿐이라 원인을 짚을 수 없다. 3판에서 뺀다.
-tauri = { version = "2.11.3", features = ["devtools"] }
+# devtools를 껐다. 2판 동안만 켠 것이고, 3판에서 끄기로 적어 두었다.
+#
+# 켜 두면 안 되는 까닭이 권한에 있다. capabilities/default.json이
+# fs:allow-appdata-write-recursive와 fs:allow-remove를 주는데, 개발자
+# 도구가 열리면 키보드 앞의 누구나 window.__TAURI__.core.invoke(...)로
+# 그 명령을 화면을 거치지 않고 직접 부를 수 있다. 단일 인스턴스 잠금이
+# 막으려던 자료 손실이 다른 문으로 열리는 셈이고, 교실 컴퓨터는 아이들이
+# 앉는 자리다.
+#
+# 다시 켜야 할 일이 있으면 features = ["devtools"]로 되돌리되,
+# **내보내기 전에 반드시 다시 끈다.** scripts/check-release.mjs가 센다.
+tauri = { version = "2.11.3", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-http = "2"
