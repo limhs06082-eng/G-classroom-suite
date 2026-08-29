@@ -22,6 +22,7 @@ import {
   readStudentDetail,
   type StudentDetail,
 } from './studentDetail';
+import { addObservation, observationsOf, removeObservation } from './observationCore';
 import {
   addStudent,
   applyRosterImport,
@@ -487,7 +488,89 @@ function EditStudentModal({
             역할·당번을 자동 배정할 때 이 학생은 늘 이 역할을 맡습니다.
           </span>
         </label>
+
+        {student !== null ? <ObservationSection student={student} /> : null}
       </div>
     </Modal>
+  );
+}
+
+/**
+ * 관찰 기록.
+ *
+ * 학생별 날짜 있는 메모의 타임라인이다. 특성 태그(한 단어 분류)와 달리
+ * 쌓인다 — 학기말 생활기록부·상담 준비 때 시간순으로 꺼내 쓴다.
+ *
+ * 모달의 [저장]과 따로 논다. 위 필드들은 고치다 취소할 수 있는 값이지만
+ * 기록은 적는 순간이 사실이라, 추가·삭제가 바로 저장된다.
+ */
+function ObservationSection({ student }: { student: Student }) {
+  const { data, update } = useSuite();
+  const [text, setText] = useState('');
+
+  const mine = observationsOf(data.observations, student.id);
+
+  const add = (): void => {
+    if (text.trim() === '') return;
+    update((suite) => ({
+      ...suite,
+      observations: addObservation(suite.observations, {
+        classId: student.classId,
+        studentId: student.id,
+        text,
+      }),
+    }));
+    setText('');
+  };
+
+  return (
+    <div className="border-t border-slate-100 pt-3">
+      <span className="text-sm text-slate-700">관찰 기록</span>
+      <input
+        type="text"
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          add();
+        }}
+        placeholder="예: 모둠 활동에서 친구를 먼저 도왔다 — Enter로 저장"
+        aria-label={`${student.name} 관찰 기록 추가`}
+        className="mt-1 h-10 w-full rounded-control border border-slate-300 px-3 text-sm"
+      />
+      <span className="mt-1 block text-sm text-slate-500">
+        날짜와 함께 바로 저장됩니다. 생활기록부·상담 준비 때 시간순으로 봅니다.
+      </span>
+
+      {mine.length > 0 ? (
+        <ul className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
+          {mine.map((entry) => (
+            <li
+              key={entry.id}
+              className="flex items-start gap-2 rounded-control border border-slate-200 px-2.5 py-1.5"
+            >
+              <span data-numeric className="shrink-0 pt-0.5 text-xs text-slate-400">
+                {entry.date}
+              </span>
+              <span className="min-w-0 flex-1 text-sm text-slate-800">{entry.text}</span>
+              <button
+                type="button"
+                aria-label={`${entry.date} 관찰 기록 삭제`}
+                onClick={() =>
+                  update((suite) => ({
+                    ...suite,
+                    observations: removeObservation(suite.observations, entry.id),
+                  }))
+                }
+                className="shrink-0 rounded p-0.5 text-slate-300 hover:text-danger-500"
+              >
+                <Trash2 className="size-3.5" aria-hidden />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }
