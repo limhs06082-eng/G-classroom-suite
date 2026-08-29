@@ -1,9 +1,12 @@
 import { Clock, EyeOff, Monitor, Timer } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import { Button, Card } from '../../shared/ui';
+import { Button, Card, cx } from '../../shared/ui';
 import type { NowState } from '../now/nowCore';
 import { useTools } from '../tools/ToolsContext';
+
+/** 이 분 이하로 남으면 '곧 끝난다'고 알린다. 마무리 발문·정리 시간과 맞춘 값이다. */
+export const ENDING_SOON_MINUTES = 5;
 
 /**
  * '지금' 카드.
@@ -82,7 +85,14 @@ function NowBody({
         />
       );
 
-    case 'lesson':
+    case 'lesson': {
+      /*
+       * 종료 예고. 5분 전부터 글자색으로만 조용히 알린다 — 소리는 내지
+       * 않는다. 학교 종이 이미 울리는 교실에서 소리가 겹치면 잡음이고,
+       * 하루 종일 켜 둔 화면이 스스로 소리를 내면 끄는 법부터 찾게 된다.
+       */
+      const endingSoon = state.minutesLeft <= ENDING_SOON_MINUTES;
+
       return (
         <div className="flex flex-col gap-3">
           <div>
@@ -99,15 +109,20 @@ function NowBody({
               남은 시간은 1분마다 바뀐다. tabular-nums가 아니면 숫자 폭이
               달라져 글자가 좌우로 흔들린다.
             */}
-            <p data-numeric className="mt-0.5 text-sm text-slate-500">
+            <p
+              data-numeric
+              className={cx('mt-0.5 text-sm', endingSoon ? 'font-semibold text-warning-700' : 'text-slate-500')}
+            >
               {/* 여기만 untilText를 안 거치면 두 시간짜리 블록 수업에서
                   '150분 남음'이 홈에서 가장 큰 글씨 아래에 붙는다. */}
               {`${leftText(state.minutesLeft)} 남음`}
+              {endingSoon ? ' · 곧 수업이 끝납니다' : ''}
             </p>
           </div>
           <LessonTools onOpenBoard={onOpenBoard} />
         </div>
       );
+    }
 
     case 'break':
       /*

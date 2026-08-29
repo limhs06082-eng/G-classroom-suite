@@ -62,6 +62,14 @@ describe('지금 카드', () => {
 
     expect(screen.getByText(/3교시 수학/)).toBeInTheDocument();
     expect(screen.getByText(/12분 남음/)).toBeInTheDocument();
+    // 아직 여유가 있으면 종료 예고는 없다.
+    expect(screen.queryByText(/곧 수업이 끝납니다/)).not.toBeInTheDocument();
+  });
+
+  it('5분 이하로 남으면 곧 끝난다고 조용히 알린다', () => {
+    show({ kind: 'lesson', period: 3, subject: '수학', minutesLeft: 5 });
+
+    expect(screen.getByText(/곧 수업이 끝납니다/)).toBeInTheDocument();
   });
 
   it('수업 중에만 도구가 손에 닿는다', () => {
