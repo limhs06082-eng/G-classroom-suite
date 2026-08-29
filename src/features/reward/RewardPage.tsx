@@ -27,11 +27,12 @@ import {
 } from '../../shared/ui';
 import { openBoard } from '../../shared/window/openBoard';
 import { groupColorStyle } from '../seating/groupColors';
+import { CouponsTab } from './CouponsTab';
 import { GoalCelebration } from './GoalCelebration';
 import { goalTargetLabel, type CyclePeriod } from './rewardCore';
 import { useReward } from './useReward';
 
-type RewardTab = 'score' | 'goals' | 'log';
+type RewardTab = 'score' | 'goals' | 'coupons' | 'log';
 
 const PERIODS: Array<{ id: CyclePeriod; label: string }> = [
   { id: 'weekly', label: '이번 주' },
@@ -147,6 +148,7 @@ export default function RewardPage() {
         items={[
           { id: 'score', label: '점수 주기' },
           { id: 'goals', label: '공동 목표', count: reward.goals.length },
+          { id: 'coupons', label: '쿠폰' },
           { id: 'log', label: '기록', count: reward.recentEntries.length },
         ]}
         activeId={tab}
@@ -163,6 +165,8 @@ export default function RewardPage() {
         ) : null}
 
         {tab === 'goals' ? <GoalsTab reward={reward} onAdd={() => setGoalOpen(true)} /> : null}
+
+        {tab === 'coupons' ? <CouponsTab /> : null}
 
         {tab === 'log' ? <LogTab reward={reward} onClear={() => setConfirmClear(true)} /> : null}
       </Tabs>
