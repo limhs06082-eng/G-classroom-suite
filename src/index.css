@@ -115,6 +115,14 @@
   --color-task-500: oklch(0.62 0.16 25);
   --color-task-700: oklch(0.46 0.14 25);
 
+  /* 2판 기능 색 — 출결(청록)·알림장(분홍). 기존 기능과 색상환이 겹치지 않는다. */
+  --color-attendance-50: oklch(0.96 0.02 190);
+  --color-attendance-500: oklch(0.6 0.13 190);
+  --color-attendance-700: oklch(0.44 0.11 190);
+  --color-notice-50: oklch(0.96 0.03 330);
+  --color-notice-500: oklch(0.62 0.14 330);
+  --color-notice-700: oklch(0.46 0.12 330);
+
   /* ── 의미색 ─────────────────────────────────────────────── */
   --color-success-50: oklch(0.96 0.03 150);
   --color-success-200: oklch(0.87 0.07 150);
@@ -359,6 +367,10 @@
   --color-message-500: oklch(0.68 0.14 75);
   --color-task-50: oklch(0.94 0.02 25);
   --color-task-500: oklch(0.62 0.16 25);
+  --color-attendance-50: oklch(0.94 0.02 190);
+  --color-attendance-500: oklch(0.6 0.13 190);
+  --color-notice-50: oklch(0.94 0.03 330);
+  --color-notice-500: oklch(0.62 0.14 330);
 
   /* 의미 */
   --color-success-50: oklch(0.94 0.03 150);
@@ -502,6 +514,10 @@
   --color-message-500: oklch(0.71 0.14 75);
   --color-task-50: oklch(0.315 0.034 25);
   --color-task-500: oklch(0.65 0.16 25);
+  --color-attendance-50: oklch(0.315 0.034 190);
+  --color-attendance-500: oklch(0.65 0.13 190);
+  --color-notice-50: oklch(0.315 0.051 330);
+  --color-notice-500: oklch(0.68 0.14 330);
 
   /* 의미 */
   --color-success-50: oklch(0.315 0.051 150);
@@ -632,6 +648,10 @@
   --color-message-500: oklch(0.64 0.1354 75);
   --color-task-50: oklch(0.94 0.0271 25);
   --color-task-500: oklch(0.58 0.184 25);
+  --color-attendance-50: oklch(0.94 0.0257 190);
+  --color-attendance-500: oklch(0.56 0.15 190);
+  --color-notice-50: oklch(0.94 0.0345 330);
+  --color-notice-500: oklch(0.58 0.161 330);
 
   /* 의미 */
   --color-success-50: oklch(0.94 0.06 150);
