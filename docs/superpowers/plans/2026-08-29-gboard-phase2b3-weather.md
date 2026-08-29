@@ -406,6 +406,24 @@ export class WeatherSource {
 - Consumes: 앞 네 과제 전부
 - Produces: `WeatherState`, `loadTodayWeather`, `WeatherBadge`
 
+> **이미 학교를 고른 선생님도 날씨가 떠야 한다.** Task 2 구현자가 짚은 것이다.
+> 주소는 이번 판에 새로 담기 시작한 칸이라, 그 전에 학교를 고른 사람에게는
+> 없다. 그대로 두면 **기존 사용자 전원에게 이 기능이 안 보인다.**
+>
+> 다시 고르라고 하지 않는다. **NEIS에 학교 코드로 물으면 주소가 온다** —
+> 확인했다.
+>
+> ```
+> GET .../schoolInfo?Type=json&pIndex=1&pSize=5
+>       &ATPT_OFCDC_SC_CODE=E10&SD_SCHUL_CODE=7341236
+> → 1행, ORG_RDNMA = "인천광역시 남동구 서창남순환로 190-28"
+> ```
+>
+> 그러니 이렇게 한다 — **학교 코드는 있는데 주소가 없으면 한 번 받아 와
+> `update()`로 담는다.** 한 번 담기면 다시 안 묻는다. 실패하면 조용히
+> 넘어간다(날씨만 안 뜬다). `NeisSource`에 `fetchAddress(officeCode,
+> schoolCode)`를 더하고, 그 시험도 함께 쓴다.
+
 - [ ] **Step 1: 판단 (순수)**
 
 ```ts
