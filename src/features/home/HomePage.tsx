@@ -1,4 +1,5 @@
 import {
+  CalendarCheck,
   CheckSquare,
   ClipboardCheck,
   Download,
@@ -29,6 +30,7 @@ import { useToday } from '../../shared/state/useToday';
 import { Button, Card, EmptyState, useToast } from '../../shared/ui';
 import { openBoard } from '../../shared/window/openBoard';
 import { AssignmentSummary } from '../assignment/AssignmentSummary';
+import { AttendanceSummary } from '../attendance/AttendanceSummary';
 import { DutySummary } from '../duty/DutySummary';
 import { nowState } from '../now/nowCore';
 import { RewardSummary } from '../reward/RewardSummary';
@@ -121,6 +123,18 @@ export default function HomePage() {
           보는 것 자체가 안 된다.
         */}
         <TodayNow />
+
+        {/* '지금' 바로 다음. 아침에 홈을 열면 출결부터 찍는 것이 하루의 순서다. */}
+        <SummaryCard
+          to="/attendance"
+          label="오늘 출결"
+          icon={CalendarCheck}
+          accentClass="text-attendance-500"
+          tintClass="bg-attendance-50"
+          cta="출결 열기"
+        >
+          <AttendanceSummary />
+        </SummaryCard>
 
         <SummaryCard
           to="/duty"

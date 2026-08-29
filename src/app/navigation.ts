@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  CalendarCheck,
   CheckSquare,
   ClipboardCheck,
   Home,
@@ -15,10 +16,12 @@ import {
 export type FeatureId =
   | 'home'
   // 학급 자료를 다루는 기능
+  | 'attendance'
   | 'seating'
   | 'duty'
   | 'reward'
   | 'assignment'
+  | 'notice'
   // 수업·업무를 돕는 기능. 학급에 매이지 않는다.
   | 'lesson'
   | 'quiz'
@@ -47,6 +50,20 @@ export const FEATURE_NAV: readonly FeatureNavItem[] = [
     icon: Home,
     accentClass: 'text-brand-700',
     tintClass: 'bg-brand-50',
+  },
+  {
+    /*
+     * 홈 바로 다음이다. 아침에 제일 먼저 여는 화면이라 맨 앞에 손이
+     * 닿아야 한다. 전자칠판이 없다 — 결석자 명단은 교실 화면에 띄울
+     * 것이 아니다.
+     */
+    id: 'attendance',
+    path: '/attendance',
+    label: '출결',
+    hasBoardView: false,
+    icon: CalendarCheck,
+    accentClass: 'text-attendance-500',
+    tintClass: 'bg-attendance-50',
   },
   {
     id: 'seating',

@@ -1,0 +1,109 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  absentToday,
+  monthlyCounts,
+  nextStatus,
+  setNote,
+  setStatus,
+  statusOf,
+  summarize,
+} from '../../src/features/attendance/attendanceCore';
+import type { AttendanceRecord } from '../../src/shared/domain/types';
+
+const CLASS = 'class-1';
+const DATE = '2026-08-29';
+
+describe('setStatus · statusOf', () => {
+  it('기록이 없으면 출석(null)이다', () => {
+    expect(statusOf([], CLASS, DATE, 'stu-1')).toBeNull();
+  });
+
+  it('상태를 찍으면 그날 기록이 생긴다', () => {
+    const next = setStatus([], CLASS, DATE, 'stu-1', 'absent');
+
+    expect(statusOf(next, CLASS, DATE, 'stu-1')).toBe('absent');
+    // 다른 학생·다른 날은 그대로 출석이다.
+    expect(statusOf(next, CLASS, DATE, 'stu-2')).toBeNull();
+    expect(statusOf(next, CLASS, '2026-08-30', 'stu-1')).toBeNull();
+  });
+
+  it('출석(null)으로 되돌리면 항목이 사라지고, 빈 기록은 통째로 사라진다', () => {
+    const marked = setStatus([], CLASS, DATE, 'stu-1', 'late');
+    const cleared = setStatus(marked, CLASS, DATE, 'stu-1', null);
+
+    expect(statusOf(cleared, CLASS, DATE, 'stu-1')).toBeNull();
+    // 서른 명 전원 출석인 날의 빈 껍데기가 파일에 쌓이면 안 된다.
+    expect(cleared).toEqual([]);
+  });
+
+  it('상태를 바꿔도 사유 메모는 남는다', () => {
+    const marked = setStatus([], CLASS, DATE, 'stu-1', 'absent');
+    const noted = setNote(marked, CLASS, DATE, 'stu-1', '감기');
+    const changed = setStatus(noted, CLASS, DATE, 'stu-1', 'late');
+
+    const record = changed.find((r) => r.date === DATE);
+    expect(record?.entries[0]).toEqual({ studentId: 'stu-1', status: 'late', note: '감기' });
+  });
+
+  it('넘겨받은 목록을 건드리지 않는다', () => {
+    const original: AttendanceRecord[] = [];
+    setStatus(original, CLASS, DATE, 'stu-1', 'absent');
+    expect(original).toEqual([]);
+  });
+});
+
+describe('nextStatus — 탭-탭 순환', () => {
+  it('출석 → 결석 → 지각 → 조퇴 → 체험학습 → 출석', () => {
+    expect(nextStatus(null)).toBe('absent');
+    expect(nextStatus('absent')).toBe('late');
+    expect(nextStatus('late')).toBe('early');
+    expect(nextStatus('early')).toBe('fieldTrip');
+    expect(nextStatus('fieldTrip')).toBeNull();
+  });
+});
+
+describe('summarize', () => {
+  it('출석 수는 명단에서 기록된 항목 수를 뺀 것이다', () => {
+    let records: AttendanceRecord[] = [];
+    records = setStatus(records, CLASS, DATE, 'stu-1', 'absent');
+    records = setStatus(records, CLASS, DATE, 'stu-2', 'late');
+
+    const summary = summarize(records, CLASS, DATE, 25);
+
+    expect(summary.present).toBe(23);
+    expect(summary.byStatus).toEqual({ absent: 1, late: 1, early: 0, fieldTrip: 0 });
+    expect(summary.marked).toBe(2);
+  });
+});
+
+describe('absentToday — 등교하지 않은 학생', () => {
+  it('결석·체험학습만 꼽고 지각·조퇴는 꼽지 않는다', () => {
+    let records: AttendanceRecord[] = [];
+    records = setStatus(records, CLASS, DATE, 'stu-1', 'absent');
+    records = setStatus(records, CLASS, DATE, 'stu-2', 'late');
+    records = setStatus(records, CLASS, DATE, 'stu-3', 'fieldTrip');
+    records = setStatus(records, CLASS, DATE, 'stu-4', 'early');
+
+    // 지각은 늦게라도 오고, 조퇴는 아침에는 있다. 뽑기·당번에서 빼야 할
+    // 사람은 그날 교실에 아예 없는 결석·체험학습이다.
+    expect(absentToday(records, CLASS, DATE)).toEqual(['stu-1', 'stu-3']);
+  });
+});
+
+describe('monthlyCounts', () => {
+  it('그 달 학생별 상태 횟수를 센다', () => {
+    let records: AttendanceRecord[] = [];
+    records = setStatus(records, CLASS, '2026-08-03', 'stu-1', 'absent');
+    records = setStatus(records, CLASS, '2026-08-04', 'stu-1', 'absent');
+    records = setStatus(records, CLASS, '2026-08-04', 'stu-2', 'late');
+    records = setStatus(records, CLASS, '2026-09-01', 'stu-1', 'absent'); // 다음 달
+    records = setStatus(records, 'other-class', '2026-08-05', 'stu-1', 'absent'); // 옆 반
+
+    const counts = monthlyCounts(records, CLASS, '2026-08');
+
+    expect(counts.get('stu-1')).toEqual({ absent: 2, late: 0, early: 0, fieldTrip: 0 });
+    expect(counts.get('stu-2')).toEqual({ absent: 0, late: 1, early: 0, fieldTrip: 0 });
+    expect(counts.has('stu-3')).toBe(false);
+  });
+});
