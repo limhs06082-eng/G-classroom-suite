@@ -757,6 +757,23 @@ table,
   animation: pick-reveal 400ms var(--ease-out-soft);
 }
 
+/* 점수를 받은 단추가 한 번 통통 튄다. 눌린 것이 손에 만져지게. */
+@keyframes score-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-score-pop {
+  animation: score-pop 250ms var(--ease-out-soft);
+}
+
 /* 키보드 사용자에게만 포커스 링을 보인다. 교사는 단축키를 많이 쓴다. */
 :focus-visible {
   @apply outline-2 outline-offset-2 outline-brand-500;

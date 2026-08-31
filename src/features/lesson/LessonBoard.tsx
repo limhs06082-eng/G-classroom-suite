@@ -1,6 +1,7 @@
 import { Check, Pause, Play, RotateCcw } from 'lucide-react';
 import { useEffect } from 'react';
 
+import { playChime } from '../../shared/fx/sound';
 import { formatDuration, useTimer } from '../../shared/useTimer';
 import { Button, cx, EmptyState } from '../../shared/ui';
 import { MODE_LABELS, PHASE_LABELS } from './lessonCore';
@@ -14,7 +15,9 @@ import { useLesson } from './useLesson';
  */
 export function LessonBoard() {
   const lesson = useLesson();
-  const timer = useTimer();
+  // 단계 시간이 다 되면 종을 울린다. 칠판을 보고 있는 것은 학생들이고,
+  // 활동을 접는 신호는 눈보다 귀가 빠르다. 툴바 스피커 단추로 꺼진다.
+  const timer = useTimer(playChime);
   const current = lesson.progress?.current ?? null;
 
   /*

@@ -25,6 +25,7 @@ import {
   Tabs,
   useToast,
 } from '../../shared/ui';
+import { playDing } from '../../shared/fx/sound';
 import { openBoard } from '../../shared/window/openBoard';
 import { groupColorStyle } from '../seating/groupColors';
 import { CouponsTab } from './CouponsTab';
@@ -105,6 +106,11 @@ export default function RewardPage() {
     if (result === null) return;
 
     const points = selectedPreset.defaultPoints;
+    /*
+     * 칭찬에만 소리를 낸다. 지도(음수) 점수에 효과음을 붙이면 교실에서
+     * 학생을 향해 울리는 벌 소리가 된다 — 그건 도구가 아니라 망신이다.
+     */
+    if (points > 0) playDing();
     toast.info(`${label} ${points > 0 ? `+${points}` : points}점 (${selectedPreset.name})`, {
       actionLabel: '실행 취소',
       onAction: () => reward.revoke(result.entryId),
@@ -124,6 +130,7 @@ export default function RewardPage() {
 
     const entryIds = results.map((result) => result.entryId);
     const points = selectedPreset.defaultPoints;
+    if (points > 0) playDing();
     toast.info(`전원 ${results.length}명에게 ${points > 0 ? `+${points}` : points}점 (${selectedPreset.name})`, {
       actionLabel: '실행 취소',
       onAction: () => {
@@ -264,6 +271,13 @@ function ScoreTab({
   const toast = useToast();
   const [tidying, setTidying] = useState(false);
   const [deletingPreset, setDeletingPreset] = useState<BehaviorPreset | null>(null);
+  /** 방금 점수를 받은 대상. 단추가 한 번 통통 튄다. */
+  const [popId, setPopId] = useState<string | null>(null);
+
+  const awardWithPop = (targetId: string, label: string): void => {
+    onAward(targetId, label);
+    setPopId(targetId);
+  };
 
   if (!reward.hasPresets) {
     return (
@@ -433,9 +447,11 @@ function ScoreTab({
                   <li key={group.id}>
                     <button
                       type="button"
-                      onClick={() => onAward(group.id, group.name)}
+                      onClick={() => awardWithPop(group.id, group.name)}
+                      onAnimationEnd={() => setPopId(null)}
                       className={cx(
                         'flex w-full items-center gap-2 rounded-card border p-3 text-left hover:brightness-95',
+                        popId === group.id && 'animate-score-pop',
                         style.card,
                       )}
                     >
@@ -465,8 +481,12 @@ function ScoreTab({
               <li key={student.id}>
                 <button
                   type="button"
-                  onClick={() => onAward(student.id, student.name)}
-                  className="flex w-full items-center gap-1.5 rounded-card border border-slate-200 bg-surface p-2.5 text-left hover:bg-slate-50"
+                  onClick={() => awardWithPop(student.id, student.name)}
+                  onAnimationEnd={() => setPopId(null)}
+                  className={cx(
+                    'flex w-full items-center gap-1.5 rounded-card border border-slate-200 bg-surface p-2.5 text-left hover:bg-slate-50',
+                    popId === student.id && 'animate-score-pop',
+                  )}
                 >
                   <span className="font-mono text-xs text-slate-400">{student.number}</span>
                   <span className="min-w-0 flex-1 truncate text-sm text-slate-800">{student.name}</span>

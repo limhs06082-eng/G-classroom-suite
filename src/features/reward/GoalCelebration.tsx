@@ -1,6 +1,8 @@
 import { PartyPopper } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
+import { confettiBurst } from '../../shared/fx/confetti';
+import { playFanfare } from '../../shared/fx/sound';
 import type { ScoreGoal } from '../../shared/domain/types';
 import { Button } from '../../shared/ui';
 
@@ -33,6 +35,22 @@ export function GoalCelebration({
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
+
+  /*
+   * 화면이 뜨는 순간 색종이와 팡파르. 한 학기를 모은 목표라 이 정도
+   * 야단은 마땅하다. goals가 빈 채로 마운트되는 평소에는 안 터진다.
+   */
+  const celebrated = useRef(false);
+  useEffect(() => {
+    if (goals.length === 0) {
+      celebrated.current = false;
+      return;
+    }
+    if (celebrated.current) return;
+    celebrated.current = true;
+    playFanfare();
+    confettiBurst();
+  }, [goals]);
 
   if (goals.length === 0) return null;
 

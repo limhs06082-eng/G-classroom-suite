@@ -2,12 +2,26 @@ import { Dices, RotateCcw, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { confettiBurst } from '../../shared/fx/confetti';
+import { playFanfare, playTick } from '../../shared/fx/sound';
 import { useActiveClass, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { useToday } from '../../shared/state/useToday';
 import { Badge, Button, cx, Modal } from '../../shared/ui';
 import { absentToday } from '../attendance/attendanceCore';
 import { systemRng } from '../seating/rng';
 import { drawMany, remainingPool } from './pickerCore';
+
+/** 룰렛이 도는 시간과 감속 곡선. 짧으면 김빠지고 길면 수업이 늘어진다. */
+const SPIN_STEPS = 16;
+const SPIN_BASE_MS = 45;
+
+function prefersReducedMotion(): boolean {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * 발표자 뽑기.
@@ -34,6 +48,9 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
   const [count, setCount] = useState(1);
   const [current, setCurrent] = useState<string[]>([]);
   const [revealing, setRevealing] = useState(false);
+  /** 룰렛이 도는 동안 번쩍이며 지나가는 이름. null이면 결과 공개다. */
+  const [spinName, setSpinName] = useState<string | null>(null);
+  const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const absentIds = activeClass === null ? [] : absentToday(data.attendanceRecords, activeClass.id, today);
   const pool = remainingPool(roster, absentIds, pickedIds, excludePicked);
@@ -45,12 +62,53 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
     .filter((student) => student !== undefined);
 
   const draw = (): void => {
+    if (spinTimerRef.current !== null) return; // 룰렛이 도는 중에는 또 못 돌린다.
+
     const students = drawMany(pool, count, systemRng);
     if (students.length === 0) return;
     setCurrent(students.map((student) => student.id));
     setPickedIds((ids) => [...ids, ...students.map((s) => s.id).filter((id) => !ids.includes(id))]);
     setRevealing(true);
+
+    /*
+     * 룰렛. 결과는 이미 정해져 있고(공정성은 위 drawMany가 책임진다)
+     * 이름들이 점점 느리게 지나가다 멈추는 **연출**이다. 뽑기의 재미
+     * 절반은 이 뜸 들이기다. 움직임을 꺼 달라는 시스템 설정이면
+     * 연출 없이 바로 결과를 보여 준다.
+     */
+    if (prefersReducedMotion() || roster.length < 2) {
+      setSpinName(null);
+      playFanfare();
+      confettiBurst();
+      return;
+    }
+
+    let step = 0;
+    const spin = (): void => {
+      if (step >= SPIN_STEPS) {
+        spinTimerRef.current = null;
+        setSpinName(null);
+        playFanfare();
+        confettiBurst();
+        return;
+      }
+      const name = roster[Math.floor(Math.random() * roster.length)]?.name ?? '';
+      setSpinName(name);
+      playTick();
+      step += 1;
+      // 갈수록 느려진다 — 45ms에서 시작해 마지막엔 200ms쯤.
+      spinTimerRef.current = setTimeout(spin, SPIN_BASE_MS + step * step * 0.6);
+    };
+    spin();
   };
+
+  // 닫히거나 사라질 때 돌던 룰렛을 멈춘다.
+  useEffect(
+    () => () => {
+      if (spinTimerRef.current !== null) clearTimeout(spinTimerRef.current);
+    },
+    [],
+  );
 
   /*
    * 공개 화면의 키보드. 교실을 돌아다니며 연달아 뽑는 도구라 손이
@@ -64,7 +122,15 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     if (!revealing) return;
     const handleKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') setRevealing(false);
+      if (event.key === 'Escape') {
+        // 돌던 룰렛도 함께 멈춘다. 멈춘 룰렛이 뒤에서 계속 째깍대면 안 된다.
+        if (spinTimerRef.current !== null) {
+          clearTimeout(spinTimerRef.current);
+          spinTimerRef.current = null;
+        }
+        setSpinName(null);
+        setRevealing(false);
+      }
       if ((event.key === 'Enter' || event.key === ' ') && !poolEmptyRef.current) {
         event.preventDefault();
         drawRef.current();
@@ -187,34 +253,46 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
               aria-label="뽑힌 학생"
               className="no-print fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-surface p-8"
             >
-              {/* 여럿을 뽑으면 이름마다 줄을 준다. 한 줄에 이어 붙이면
-                  누가 뽑혔는지 뒷자리에서 세어 읽어야 한다. */}
-              <div className="flex flex-col items-center gap-2">
-                {currentStudents.map((student) => (
-                  <p
-                    key={student.id}
-                    className={cx(
-                      'animate-pick-reveal text-center font-black text-slate-900',
-                      currentStudents.length === 1
-                        ? 'text-board-xl'
-                        : currentStudents.length <= 3
-                          ? 'text-board-lg'
-                          : 'text-board-md',
-                    )}
-                  >
-                    {student.name}
-                  </p>
-                ))}
-              </div>
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button size="lg" icon={Dices} variant="primary" disabled={pool.length === 0} onClick={draw}>
-                  {count === 1 ? '한 명 더' : `${count}명 더`}
-                </Button>
-                <Button size="lg" icon={X} onClick={() => setRevealing(false)}>
-                  닫기
-                </Button>
-              </div>
-              <p className="text-sm text-slate-400">Enter는 한 번 더, Esc는 닫기입니다</p>
+              {spinName !== null ? (
+                /*
+                 * 룰렛이 도는 중 — 이름들이 번쩍이며 지나간다. 결과와
+                 * 헷갈리지 않게 흐린 색으로, 단추도 없이.
+                 */
+                <p className="text-center text-board-xl font-black text-slate-300">{spinName}</p>
+              ) : (
+                <>
+                  {/* 여럿을 뽑으면 이름마다 줄을 준다. 한 줄에 이어 붙이면
+                      누가 뽑혔는지 뒷자리에서 세어 읽어야 한다. */}
+                  <div className="flex flex-col items-center gap-2">
+                    {currentStudents.map((student) => (
+                      <p
+                        key={student.id}
+                        className={cx(
+                          'animate-pick-reveal text-center font-black text-slate-900',
+                          currentStudents.length === 1
+                            ? 'text-board-xl'
+                            : currentStudents.length <= 3
+                              ? 'text-board-lg'
+                              // board 스케일에 md는 없다. 없는 클래스는 Tailwind가
+                              // 조용히 안 내보내 기본 크기로 보이는 함정이다.
+                              : 'text-board-base',
+                        )}
+                      >
+                        {student.name}
+                      </p>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button size="lg" icon={Dices} variant="primary" disabled={pool.length === 0} onClick={draw}>
+                      {count === 1 ? '한 명 더' : `${count}명 더`}
+                    </Button>
+                    <Button size="lg" icon={X} onClick={() => setRevealing(false)}>
+                      닫기
+                    </Button>
+                  </div>
+                  <p className="text-sm text-slate-400">Enter는 한 번 더, Esc는 닫기입니다</p>
+                </>
+              )}
             </div>,
             document.body,
           )

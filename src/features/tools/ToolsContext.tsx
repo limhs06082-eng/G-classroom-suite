@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 
+import { playChime } from '../../shared/fx/sound';
 import { useToast } from '../../shared/ui';
 import { useTimer, type Timer } from './useTimer';
 
@@ -38,9 +39,13 @@ export function ToolsProvider({ children }: { children: ReactNode }) {
   const timer = useTimer(() => {
     /*
      * durationMs: 0 — 저절로 사라지지 않는다. 다른 화면에 있다가 돌아와도
-     * 끝났다는 사실이 남아 있어야 한다. 소리는 내지 않는다(수업 종료
-     * 예고와 같은 판단 — 학교 종이 울리는 교실에서 소리는 잡음이다).
+     * 끝났다는 사실이 남아 있어야 한다.
+     *
+     * 종소리도 함께 낸다. 학교 종은 교시를 알리는 것이고 이 종은 교사가
+     * 직접 건 활동 시간을 알리는 것이라 겹칠 일이 없다. 시끄러우면
+     * 툴바의 스피커 단추 하나로 전부 꺼진다.
      */
+    playChime();
     toast.warning('타이머가 끝났습니다.', {
       durationMs: 0,
       actionLabel: '타이머 열기',

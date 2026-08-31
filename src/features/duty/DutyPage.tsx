@@ -15,6 +15,7 @@ import {
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { playPop } from '../../shared/fx/sound';
 import { ROLE_CATEGORIES, type DutyRole, type RoleCategory, type RoleCycle } from '../../shared/domain/types';
 import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { statusOf, STATUS_LABELS } from '../attendance/attendanceCore';
@@ -372,7 +373,10 @@ function TodayTab({
               {students.length > 0 ? (
                 <button
                   type="button"
-                  onClick={() => duty.setRoleDone(role.id, students.map((s) => s.id), !isDone)}
+                  onClick={() => {
+                    if (!isDone) playPop();
+                    duty.setRoleDone(role.id, students.map((s) => s.id), !isDone);
+                  }}
                   aria-pressed={isDone}
                   className="rounded px-1 py-0.5 text-xs font-medium text-slate-400 hover:text-success-700"
                 >
@@ -435,7 +439,11 @@ function TodayTab({
                     <li key={student.id}>
                       <button
                         type="button"
-                        onClick={() => duty.toggleCompleted(role.id, student.id)}
+                        onClick={() => {
+                          // 체크할 때만 소리. 해제는 정정이라 조용한 게 맞다.
+                          if (!done) playPop();
+                          duty.toggleCompleted(role.id, student.id);
+                        }}
                         aria-pressed={done}
                         className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-sm hover:bg-slate-50"
                       >

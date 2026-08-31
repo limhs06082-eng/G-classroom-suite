@@ -1,6 +1,7 @@
 import { Plus, RotateCcw, Ticket, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
+import { playCoin } from '../../shared/fx/sound';
 import { createRewardItem, STARTER_REWARD_ITEMS } from '../../shared/domain/factories';
 import type { RedemptionTargetUnit, RewardItem } from '../../shared/domain/types';
 import { useActiveClass, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
@@ -82,6 +83,8 @@ export function CouponsTab() {
     }
 
     update((suite) => ({ ...suite, redemptions: result.redemptions }));
+    // 모은 점수를 쓰는 순간의 동전 소리. 아이들이 제일 기다리는 순간이다.
+    playCoin();
     const newest = result.redemptions[result.redemptions.length - 1];
     toast.info(`${label} — ${selected.name} 사용 (−${selected.cost}점)`, {
       actionLabel: '실행 취소',

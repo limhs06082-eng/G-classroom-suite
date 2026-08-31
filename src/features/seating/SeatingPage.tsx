@@ -1,4 +1,6 @@
 import { Bookmark, Eraser, Grid3x3, Monitor, Printer, Shuffle, Users } from 'lucide-react';
+
+import { playPop } from '../../shared/fx/sound';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -38,6 +40,8 @@ export default function SeatingPage() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [layoutName, setLayoutName] = useState('');
   const [confirmDeleteLayoutId, setConfirmDeleteLayoutId] = useState<string | null>(null);
+  /** 무작위 배치 횟수. 그리드 재마운트 연출(key)에만 쓴다. */
+  const [shuffleTick, setShuffleTick] = useState(0);
 
   if (activeClass === null) {
     return (
@@ -124,6 +128,8 @@ export default function SeatingPage() {
 
     const result = seating.shuffleSeats();
     if (result.ok) {
+      setShuffleTick((tick) => tick + 1);
+      playPop();
       const lockedCount = seating.lockedStudentIds.size;
       toast.success(
         lockedCount > 0
@@ -332,6 +338,13 @@ export default function SeatingPage() {
                 : '자리를 누르면 선택되고, 다른 자리를 누르면 서로 바뀝니다.'}
         </p>
 
+        {/*
+          key가 shuffleTick을 물고 있어 무작위 배치마다 그리드가 새로
+          마운트되며 떠오른다(rise-in). 자리 하나하나를 날리는 연출은
+          그리드 내부를 흔들어야 해서 안 했다 — 화면 전체가 "새 판이
+          깔렸다"고 말하는 것으로 충분하다.
+        */}
+        <div key={shuffleTick} className={shuffleTick > 0 ? 'animate-rise-in' : undefined}>
         <ClassroomGrid
           seats={seating.seats}
           cols={seating.cols}
@@ -349,6 +362,7 @@ export default function SeatingPage() {
               : undefined
           }
         />
+        </div>
       </Card>
 
       {seating.unseated.length > 0 ? (

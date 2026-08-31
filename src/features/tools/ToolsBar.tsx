@@ -1,7 +1,8 @@
-import { Bell, Dices, EyeOff, Maximize2, Pause, Play, RotateCcw, Timer as TimerIcon, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Bell, Dices, EyeOff, Maximize2, Pause, Play, RotateCcw, Timer as TimerIcon, Volume2, VolumeX, X } from 'lucide-react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 
+import { isMuted, setMuted, subscribeMuted } from '../../shared/fx/sound';
 import { Button, cx, Modal } from '../../shared/ui';
 import { PickerModal } from './PickerModal';
 import { useTools } from './ToolsContext';
@@ -59,6 +60,7 @@ export function ToolsBar() {
           <span className="ml-auto hidden text-xs text-slate-400 sm:inline">
             수업 중 쓰는 도구입니다
           </span>
+          <MuteToggle />
         </div>
       </div>
 
@@ -71,6 +73,32 @@ export function ToolsBar() {
       */}
       {openTool === 'picker' ? <PickerModal onClose={close} /> : null}
     </>
+  );
+}
+
+/**
+ * 효과음 끄기. 소리는 기기의 취향이라(테마처럼) 여기 한 단추로 전부 꺼진다.
+ *
+ * 뽑기·점수·타이머마다 따로 묻지 않는다 — 조용히 해야 하는 시간(시험,
+ * 옆 반 배려)은 소리 전부가 조용해야 하는 시간이다.
+ */
+function MuteToggle() {
+  const muted = useSyncExternalStore(subscribeMuted, isMuted, isMuted);
+
+  return (
+    <button
+      type="button"
+      onClick={() => setMuted(!muted)}
+      aria-pressed={muted}
+      aria-label={muted ? '효과음 켜기' : '효과음 끄기'}
+      title={muted ? '효과음 켜기' : '효과음 끄기'}
+      className={cx(
+        'rounded-control p-1.5 transition-colors',
+        muted ? 'text-slate-300 hover:text-slate-500' : 'text-slate-500 hover:text-slate-700',
+      )}
+    >
+      {muted ? <VolumeX className="size-4" aria-hidden /> : <Volume2 className="size-4" aria-hidden />}
+    </button>
   );
 }
 
