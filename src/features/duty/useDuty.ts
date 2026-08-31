@@ -63,6 +63,8 @@ export interface DutyView {
   assignWeek: () => { warnings: AutoAssignWarning[]; assignedRoles: number };
   toggleRoleLock: (roleId: string) => void;
   toggleCompleted: (roleId: string, studentId: string) => void;
+  /** 역할 하나의 오늘 완료를 통째로 켜거나 끈다. 청소 검사 때 12번 누르지 않게. */
+  setRoleDone: (roleId: string, studentIds: string[], done: boolean) => void;
   setSubstitute: (roleId: string, originalStudentId: string, substituteStudentId: string | null) => void;
   clearRounds: () => Promise<void>;
 }
@@ -264,15 +266,40 @@ export function useDuty(): DutyView {
       now,
     );
 
-    update((current) => ({
-      ...current,
-      dutyRounds: [
-        ...current.dutyRounds.filter(
-          (r) => !(r.classId === classId && r.startDate === week.startDate),
-        ),
-        round,
-      ],
-    }));
+    update((current) => {
+      /*
+       * 재배정하면 이번 주의 완료·대체 기록도 새 배정에 맞춰 정리한다.
+       *
+       * 안 하면 두 가지가 어긋난다: 빠진 학생의 완료가 유령으로 남고,
+       * 새로 뽑힌 학생이 예전에 그 역할로 체크된 적 있으면 하지도 않은
+       * 당번이 완료로 표시된다. 당번 체크는 이 화면의 신뢰도 그 자체다.
+       */
+      const stillAssigned = (roleId: string, studentId: string): boolean =>
+        round.assignments.some((a) => a.roleId === roleId && a.studentIds.includes(studentId));
+
+      const dutyCompletions = current.dutyCompletions.map((entry) => {
+        if (entry.classId !== classId) return entry;
+        if (entry.date < week.startDate || entry.date > week.endDate) return entry;
+        return {
+          ...entry,
+          completed: entry.completed.filter((c) => stillAssigned(c.roleId, c.studentId)),
+          substitutions: entry.substitutions.filter((s) =>
+            stillAssigned(s.roleId, s.originalStudentId),
+          ),
+        };
+      });
+
+      return {
+        ...current,
+        dutyRounds: [
+          ...current.dutyRounds.filter(
+            (r) => !(r.classId === classId && r.startDate === week.startDate),
+          ),
+          round,
+        ],
+        dutyCompletions,
+      };
+    });
 
     return { warnings: result.warnings, assignedRoles: result.assignments.length };
   }, [classId, data.dutyProfiles, roster, roles, rounds, week, update]);
@@ -312,6 +339,25 @@ export function useDuty(): DutyView {
             completed: exists
               ? entry.completed.filter((c) => !(c.roleId === roleId && c.studentId === studentId))
               : [...entry.completed, { roleId, studentId }],
+          };
+        }),
+      );
+    },
+    [classId, today, update],
+  );
+
+  const setRoleDone = useCallback(
+    (roleId: string, studentIds: string[], done: boolean): void => {
+      if (classId === null) return;
+
+      update((current) =>
+        upsertCompletion(current, classId, today, (entry) => {
+          const rest = entry.completed.filter((c) => c.roleId !== roleId);
+          return {
+            ...entry,
+            completed: done
+              ? [...rest, ...studentIds.map((studentId) => ({ roleId, studentId }))]
+              : rest,
           };
         }),
       );
@@ -369,6 +415,7 @@ export function useDuty(): DutyView {
     assignWeek,
     toggleRoleLock,
     toggleCompleted,
+    setRoleDone,
     setSubstitute,
     clearRounds,
   };

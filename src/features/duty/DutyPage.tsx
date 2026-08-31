@@ -54,6 +54,7 @@ export default function DutyPage() {
   const [deleting, setDeleting] = useState<DutyRole | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [substituteRoleId, setSubstituteRoleId] = useState<string | null>(null);
+  const [confirmReassign, setConfirmReassign] = useState(false);
 
   if (activeClass === null) {
     return (
@@ -95,7 +96,10 @@ export default function DutyPage() {
     );
   }
 
-  const handleAssign = (): void => {
+  // 이번 주 배정이 이미 있는가. 있으면 버튼은 '다시 배정'이고 확인을 거친다.
+  const hasThisWeek = duty.currentRound !== null && duty.currentRound.startDate === duty.week.startDate;
+
+  const doAssign = (): void => {
     const { warnings, assignedRoles } = duty.assignWeek();
 
     if (assignedRoles === 0) {
@@ -105,6 +109,15 @@ export default function DutyPage() {
 
     toast.success(`${duty.week.label} 당번을 배정했습니다.`);
     for (const warning of warnings) toast.warning(warning.message);
+  };
+
+  const handleAssign = (): void => {
+    /*
+     * "이미 배정했나?" 확인하려고 눌렀다가 학생들에게 이미 알린 당번표가
+     * 통째로 바뀌는 사고를 막는다. 처음 배정에는 물을 것이 없다.
+     */
+    if (hasThisWeek) setConfirmReassign(true);
+    else doAssign();
   };
 
   return (
@@ -118,7 +131,7 @@ export default function DutyPage() {
 
         <div className="ml-auto flex flex-wrap gap-2">
           <Button icon={Shuffle} variant="primary" disabled={!duty.hasRoles} onClick={handleAssign}>
-            이번 주 배정
+            {hasThisWeek ? '다시 배정' : '이번 주 배정'}
           </Button>
           <Button variant="secondary" icon={Monitor} onClick={() => openBoard('/board/duty')}>
             전자칠판
@@ -183,6 +196,7 @@ export default function DutyPage() {
             duty={duty}
             onGoRoles={() => setTab('roles')}
             onSubstitute={setSubstituteRoleId}
+            onAssign={handleAssign}
           />
         ) : null}
 
@@ -232,6 +246,18 @@ export default function DutyPage() {
       />
 
       <ConfirmDialog
+        open={confirmReassign}
+        title="이번 주 당번을 다시 배정할까요?"
+        description="고정하지 않은 역할의 담당이 모두 바뀝니다. 학생들에게 이미 알린 당번표라면 고정할 역할부터 잠가 주세요."
+        confirmLabel="다시 배정"
+        onCancel={() => setConfirmReassign(false)}
+        onConfirm={() => {
+          setConfirmReassign(false);
+          doAssign();
+        }}
+      />
+
+      <ConfirmDialog
         open={confirmClear}
         title="당번 배정 기록을 지울까요?"
         description="이 학급의 지난 배정이 모두 사라집니다. 역할 자체는 남습니다. 공정성 계산도 처음부터 다시 시작됩니다."
@@ -253,10 +279,12 @@ function TodayTab({
   duty,
   onGoRoles,
   onSubstitute,
+  onAssign,
 }: {
   duty: ReturnType<typeof useDuty>;
   onGoRoles: () => void;
   onSubstitute: (roleId: string) => void;
+  onAssign: () => void;
 }) {
   /*
    * 오늘 출결을 여기서 읽는다. 결석·체험학습인 학생이 당번이면 배지로
@@ -297,10 +325,34 @@ function TodayTab({
     );
   }
 
+  // 이번 주 배정이 없어 지난 배정을 보여 주는 중인가.
+  const stale = duty.currentRound !== null && duty.currentRound.startDate !== duty.week.startDate;
+
   return (
+    <div className="flex flex-col gap-3">
+    {stale ? (
+      /*
+       * 지난주 배정이 "오늘의 당번"인 척하면 월요일 아침 전자칠판에 지난주
+       * 당번이 나온다. 교사도 학생도 눈치채기 어렵다 — 여기서 밝힌다.
+       */
+      <div className="flex flex-wrap items-center gap-2 rounded-card border border-warning-200 bg-warning-50 p-3">
+        <p className="min-w-0 flex-1 text-sm text-warning-700">
+          지난 배정({duty.currentRound?.label})을 보여 주고 있습니다. 이번 주 배정은 아직 없습니다.
+        </p>
+        <Button size="sm" variant="primary" icon={Shuffle} onClick={onAssign}>
+          이번 주 배정
+        </Button>
+      </div>
+    ) : null}
+
     <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {duty.todayDuties.map(({ role, students, replaced, doneStudentIds, isDone }) => {
         const locked = duty.currentRound?.lockedRoleIds.includes(role.id) === true;
+        // 오늘 교실에 없는 담당이 있는 역할 — 대체 지정으로 가는 길을 드러낸다.
+        const hasAway = students.some((student) => {
+          const status = statusOf(data.attendanceRecords, classId, duty.today, student.id);
+          return status === 'absent' || status === 'fieldTrip';
+        });
 
         return (
           <li
@@ -316,6 +368,32 @@ function TodayTab({
               </h3>
               {isDone ? <Badge tone="success">완료</Badge> : null}
 
+              {/* 청소 검사 때 역할 6개 × 2명을 12번 누르지 않게. */}
+              {students.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => duty.setRoleDone(role.id, students.map((s) => s.id), !isDone)}
+                  aria-pressed={isDone}
+                  className="rounded px-1 py-0.5 text-xs font-medium text-slate-400 hover:text-success-700"
+                >
+                  {isDone ? '완료 해제' : '모두 완료'}
+                </button>
+              ) : null}
+
+              {/*
+                결석 배지를 보고 그 줄을 누르면 '완료'가 찍힌다 — 반대 행동이다.
+                담당 중에 오늘 없는 학생이 있으면 대체로 가는 길을 글자로 드러낸다.
+              */}
+              {hasAway ? (
+                <button
+                  type="button"
+                  onClick={() => onSubstitute(role.id)}
+                  className="rounded px-1 py-0.5 text-xs font-medium text-danger-700 hover:bg-danger-50"
+                >
+                  대체 지정
+                </button>
+              ) : null}
+
               {/*
                 대체 버튼을 학생 줄이 아니라 여기 둔다.
                 학생 줄은 줄 전체가 완료 토글 버튼이라, 그 안에 버튼을 넣으면
@@ -326,7 +404,7 @@ function TodayTab({
                 onClick={() => onSubstitute(role.id)}
                 aria-label={`${role.name} 오늘 대체`}
                 title="오늘 대체"
-                className="rounded p-0.5 text-slate-300 hover:text-slate-500"
+                className="rounded p-0.5 text-slate-400 hover:text-slate-600"
               >
                 <UserRoundCog className="size-3.5" aria-hidden />
               </button>
@@ -392,6 +470,7 @@ function TodayTab({
         );
       })}
     </ul>
+    </div>
   );
 }
 
@@ -591,6 +670,58 @@ function RolesTab({
                 className="h-8 w-14 rounded-control border border-slate-300 px-2 text-sm"
               />
             </label>
+
+            {/*
+              주기와 요일을 여기서 고친다. 전에는 만들 때만 정할 수 있었는데,
+              오늘 탭의 빈 상태가 "역할 관리에서 활성 요일을 확인하라"고
+              보내 놓고 정작 여기에 그 설정이 없었다 — 막다른 길이었다.
+            */}
+            <select
+              value={role.cycle}
+              onChange={(event) => duty.updateRole(role.id, { cycle: event.target.value as RoleCycle })}
+              aria-label={`${role.name} 주기`}
+              className="h-8 rounded-control border border-slate-300 px-1.5 text-sm"
+            >
+              <option value="daily">매일</option>
+              <option value="weekly">주간</option>
+              <option value="biweekly">격주</option>
+              <option value="monthly">월간</option>
+            </select>
+
+            <div
+              className="inline-flex gap-0.5 rounded-control border border-slate-200 p-0.5"
+              role="group"
+              aria-label={`${role.name} 필요한 요일`}
+            >
+              {([1, 2, 3, 4, 5] as const).map((day) => {
+                const dayLabel = ['월', '화', '수', '목', '금'][day - 1] ?? '';
+                const on = role.activeDays.includes(day);
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    aria-pressed={on}
+                    title={role.activeDays.length === 0 ? '비어 있으면 매일입니다' : undefined}
+                    onClick={() =>
+                      duty.updateRole(role.id, {
+                        activeDays: on
+                          ? role.activeDays.filter((d) => d !== day)
+                          : [...role.activeDays, day].sort((a, b) => a - b),
+                      })
+                    }
+                    className={cx(
+                      'size-7 rounded text-xs font-medium',
+                      on ? 'bg-brand-50 text-brand-700' : 'text-slate-400 hover:bg-slate-100',
+                    )}
+                  >
+                    {dayLabel}
+                  </button>
+                );
+              })}
+            </div>
+            {role.activeDays.length === 0 ? (
+              <span className="text-xs text-slate-400">매일</span>
+            ) : null}
 
             <Button
               size="sm"

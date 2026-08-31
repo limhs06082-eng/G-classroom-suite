@@ -1,6 +1,8 @@
 import { Check } from 'lucide-react';
 
+import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { cx, EmptyState } from '../../shared/ui';
+import { statusOf } from '../attendance/attendanceCore';
 import { useDuty } from './useDuty';
 
 /**
@@ -11,6 +13,9 @@ import { useDuty } from './useDuty';
  */
 export function DutyBoard() {
   const duty = useDuty();
+  const { data } = useSuite();
+  const activeClass = useActiveClass();
+  const classId = activeClass?.id ?? '';
 
   if (duty.todayDuties.length === 0) {
     return (
@@ -42,12 +47,25 @@ export function DutyBoard() {
             ) : (
               students.map((student) => {
                 const swap = replaced.find((r) => r.substitute.id === student.id);
+                /*
+                 * 오늘 없는 학생은 흐리게 긋는다. 대체를 아직 안 정한 날,
+                 * 결석한 이름이 멀쩡히 걸려 있으면 다른 학생이 대신 하려다
+                 * 혼선이 생긴다. 대체가 정해지면 이미 대체자로 바뀌어 나온다.
+                 */
+                const away = (() => {
+                  const status = statusOf(data.attendanceRecords, classId, duty.today, student.id);
+                  return status === 'absent' || status === 'fieldTrip';
+                })();
                 return (
-                  <li key={student.id} className="text-board-sm text-slate-900">
+                  <li
+                    key={student.id}
+                    className={cx('text-board-sm', away ? 'text-slate-300 line-through' : 'text-slate-900')}
+                  >
                     <span className="truncate">{student.name}</span>
                     {swap ? (
                       <span className="ml-2 text-slate-400">({swap.original.name} 대신)</span>
                     ) : null}
+                    {away ? <span className="ml-2 text-slate-400 no-underline">결석</span> : null}
                   </li>
                 );
               })
