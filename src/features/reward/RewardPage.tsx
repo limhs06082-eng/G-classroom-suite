@@ -114,6 +114,28 @@ export default function RewardPage() {
     if (result.achieved.length > 0) setCelebrating(result.achieved);
   };
 
+  const handleAwardAll = (): void => {
+    if (selectedPreset === null || selectedPreset.targetUnit !== 'student') return;
+
+    const results = reward.roster
+      .map((student) => reward.award(selectedPreset, student.id))
+      .filter((result) => result !== null);
+    if (results.length === 0) return;
+
+    const entryIds = results.map((result) => result.entryId);
+    const points = selectedPreset.defaultPoints;
+    toast.info(`전원 ${results.length}명에게 ${points > 0 ? `+${points}` : points}점 (${selectedPreset.name})`, {
+      actionLabel: '실행 취소',
+      onAction: () => {
+        for (const entryId of entryIds) reward.revoke(entryId);
+      },
+    });
+
+    // 같은 목표가 여러 번 잡혀도 축하는 한 번이다.
+    const achieved = [...new Map(results.flatMap((r) => r.achieved).map((g) => [g.id, g])).values()];
+    if (achieved.length > 0) setCelebrating(achieved);
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -160,6 +182,7 @@ export default function RewardPage() {
             selectedPreset={selectedPreset}
             onSelectPreset={setSelectedPreset}
             onAward={handleAward}
+            onAwardAll={handleAwardAll}
             onAddPreset={() => setPresetOpen(true)}
           />
         ) : null}
@@ -227,12 +250,15 @@ function ScoreTab({
   selectedPreset,
   onSelectPreset,
   onAward,
+  onAwardAll,
   onAddPreset,
 }: {
   reward: ReturnType<typeof useReward>;
   selectedPreset: BehaviorPreset | null;
   onSelectPreset: (preset: BehaviorPreset | null) => void;
   onAward: (targetId: string, label: string) => void;
+  /** 학생 전원에게 한 번에. "발표 참여 전원 +1"을 30번 누르지 않게. */
+  onAwardAll: () => void;
   onAddPreset: () => void;
 }) {
   const toast = useToast();
@@ -427,6 +453,13 @@ function ScoreTab({
             </ul>
           )
         ) : (
+          <>
+          <div className="mb-2">
+            <Button size="sm" variant="secondary" onClick={onAwardAll}>
+              전원에게 {selectedPreset.defaultPoints > 0 ? '+' : ''}
+              {selectedPreset.defaultPoints}점 주기
+            </Button>
+          </div>
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             {reward.roster.map((student) => (
               <li key={student.id}>
@@ -444,6 +477,7 @@ function ScoreTab({
               </li>
             ))}
           </ul>
+          </>
         )}
       </section>
 
@@ -534,6 +568,8 @@ function GoalsTab({
   reward: ReturnType<typeof useReward>;
   onAdd: () => void;
 }) {
+  const toast = useToast();
+
   if (reward.goals.length === 0) {
     return (
       <EmptyState
@@ -575,7 +611,14 @@ function GoalsTab({
                 icon={Trash2}
                 iconOnly
                 aria-label={`${goal.title} 삭제`}
-                onClick={() => reward.deleteGoal(goal.id)}
+                onClick={() => {
+                  // 한 학기 누적 목표다. 오탭 삭제에서 돌아올 길을 준다.
+                  reward.deleteGoal(goal.id);
+                  toast.warning(`'${goal.title}' 목표를 지웠습니다.`, {
+                    actionLabel: '실행 취소',
+                    onAction: () => reward.restoreGoal(goal),
+                  });
+                }}
               />
             </div>
 

@@ -52,8 +52,9 @@ export function RewardBoard() {
       {view === 'group' ? (
         reward.groups.length === 0 ? (
           <EmptyState
-            title="아직 모둠이 없습니다"
-            description="자리·모둠 화면에서 모둠을 편성하면 여기에 점수판이 나타납니다."
+            title="아직 모둠 점수가 없습니다"
+            // 학생이 보는 화면이다. 교사용 조작 안내를 크게 띄우지 않는다.
+            description="모둠을 만들면 점수판이 여기에 나타납니다."
           />
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -106,7 +107,7 @@ export function RewardBoard() {
         reward.goals.length === 0 ? (
           <EmptyState
             title="아직 공동 목표가 없습니다"
-            description="활동·보상 화면에서 목표를 만들면 여기에 진행률이 표시됩니다."
+            description="목표가 생기면 진행률이 여기에 표시됩니다."
           />
         ) : (
           <ul className="flex flex-col gap-5">

@@ -98,6 +98,8 @@ export interface RewardView {
   restore: (entryId: string) => void;
   addGoal: (input: Pick<ScoreGoal, 'title' | 'targetUnit' | 'targetId' | 'targetPoints' | 'reward'>) => void;
   deleteGoal: (goalId: string) => void;
+  /** 지운 목표 되살리기 — 삭제 실행 취소용 */
+  restoreGoal: (goal: ScoreGoal) => void;
   clearEntries: () => Promise<void>;
   /** 점수 주기 설정을 바꾼다 */
   setCycle: (patch: Partial<ScoreCycle>) => void;
@@ -301,6 +303,19 @@ export function useReward(): RewardView {
     [update],
   );
 
+  /**
+   * 지운 목표를 그대로 되살린다. 삭제 토스트의 실행 취소가 쓴다.
+   *
+   * 한 학기 누적 목표가 오탭 한 번에 사라지면 시작일·달성 기록까지
+   * 같이 사라진다 — 객체째 기억해 뒀다가 그대로 돌려놓는다.
+   */
+  const restoreGoal = useCallback(
+    (goal: ScoreGoal): void => {
+      update((current) => ({ ...current, scoreGoals: [...current.scoreGoals, goal] }));
+    },
+    [update],
+  );
+
   const setCycle = useCallback(
     (patch: Partial<ScoreCycle>): void => {
       update((current) => ({ ...current, scoreCycle: { ...current.scoreCycle, ...patch } }));
@@ -338,6 +353,7 @@ export function useReward(): RewardView {
     restore,
     addGoal,
     deleteGoal,
+    restoreGoal,
     clearEntries,
     setCycle,
     cycle: data.scoreCycle,

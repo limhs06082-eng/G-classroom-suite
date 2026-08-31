@@ -47,6 +47,7 @@ export function CouponsTab() {
         ),
       ],
     }));
+    toast.success(`기본 쿠폰 ${STARTER_REWARD_ITEMS.length}개를 담았습니다.`);
   };
 
   const removeItem = (item: RewardItem): void => {
@@ -56,6 +57,12 @@ export function CouponsTab() {
       rewardItems: suite.rewardItems.filter((row) => row.id !== item.id),
     }));
     if (selected?.id === item.id) setSelected(null);
+    // 삭제 버튼이 선택 버튼 바로 옆이라 오탭이 잦은 자리다. 돌아올 길을 준다.
+    toast.warning(`'${item.name}' 쿠폰을 지웠습니다.`, {
+      actionLabel: '실행 취소',
+      onAction: () =>
+        update((suite) => ({ ...suite, rewardItems: [...suite.rewardItems, item] })),
+    });
   };
 
   const spend = (targetId: string, label: string): void => {
@@ -192,6 +199,12 @@ export function CouponsTab() {
                     type="button"
                     disabled={selected === null || short}
                     onClick={() => spend(student.id, student.name)}
+                    // '왜 안 눌리지'에 답한다 — 안 고른 것과 잔액 부족은 다른 이유다.
+                    title={
+                      short && selected !== null
+                        ? `잔액 ${balance}점 — ${selected.name}은 ${selected.cost}점이 필요합니다`
+                        : undefined
+                    }
                     className={cx(
                       'flex h-11 w-full items-center gap-2 rounded-control border px-2.5 text-left text-sm',
                       'border-slate-200 bg-surface text-slate-800 enabled:hover:border-reward-500',
@@ -199,7 +212,10 @@ export function CouponsTab() {
                     )}
                   >
                     <span className="min-w-0 flex-1 truncate font-medium">{student.name}</span>
-                    <span data-numeric className="shrink-0 text-xs text-slate-500">
+                    <span
+                      data-numeric
+                      className={cx('shrink-0 text-xs', short ? 'font-semibold text-danger-700' : 'text-slate-500')}
+                    >
                       {balance}점
                     </span>
                   </button>
@@ -218,6 +234,11 @@ export function CouponsTab() {
                     type="button"
                     disabled={selected === null || short}
                     onClick={() => spend(group.id, group.name)}
+                    title={
+                      short && selected !== null
+                        ? `잔액 ${balance}점 — ${selected.name}은 ${selected.cost}점이 필요합니다`
+                        : undefined
+                    }
                     className={cx(
                       'flex h-11 w-full items-center gap-2 rounded-control border px-2.5 text-left text-sm',
                       'border-slate-200 bg-surface text-slate-800 enabled:hover:border-reward-500',
@@ -229,7 +250,10 @@ export function CouponsTab() {
                       aria-hidden
                     />
                     <span className="min-w-0 flex-1 truncate font-medium">{group.name}</span>
-                    <span data-numeric className="shrink-0 text-xs text-slate-500">
+                    <span
+                      data-numeric
+                      className={cx('shrink-0 text-xs', short ? 'font-semibold text-danger-700' : 'text-slate-500')}
+                    >
                       {balance}점
                     </span>
                   </button>
