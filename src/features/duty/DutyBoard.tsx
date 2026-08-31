@@ -2,7 +2,7 @@ import { Check } from 'lucide-react';
 
 import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { cx, EmptyState } from '../../shared/ui';
-import { statusOf } from '../attendance/attendanceCore';
+import { absentToday } from '../attendance/attendanceCore';
 import { useDuty } from './useDuty';
 
 /**
@@ -16,6 +16,13 @@ export function DutyBoard() {
   const { data } = useSuite();
   const activeClass = useActiveClass();
   const classId = activeClass?.id ?? '';
+
+  /*
+   * 오늘 없는 학생 집합을 렌더마다 한 번만 만든다. 종일 켜 두는 칠판이
+   * 학생마다 한 해치 출결 기록을 다시 훑으면 학기말에는 그게 다 비용이다.
+   * 규칙 자체(결석·체험학습)는 attendanceCore가 소유한다.
+   */
+  const awayIds = new Set(absentToday(data.attendanceRecords, classId, duty.today));
 
   if (duty.todayDuties.length === 0) {
     return (
@@ -52,10 +59,7 @@ export function DutyBoard() {
                  * 결석한 이름이 멀쩡히 걸려 있으면 다른 학생이 대신 하려다
                  * 혼선이 생긴다. 대체가 정해지면 이미 대체자로 바뀌어 나온다.
                  */
-                const away = (() => {
-                  const status = statusOf(data.attendanceRecords, classId, duty.today, student.id);
-                  return status === 'absent' || status === 'fieldTrip';
-                })();
+                const away = awayIds.has(student.id);
                 return (
                   <li
                     key={student.id}

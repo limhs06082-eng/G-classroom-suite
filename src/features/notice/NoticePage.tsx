@@ -88,13 +88,26 @@ export default function NoticePage() {
   };
 
   const removeItem = (id: string): void => {
-    const removed = items;
+    const index = items.findIndex((item) => item.id === id);
+    const target = items[index];
+    if (target === undefined) return;
+
     replaceItems(items.filter((item) => item.id !== id));
-    const target = items.find((item) => item.id === id);
-    // 종례 직전에 적은 다섯 줄 중 하나를 잘못 지우면 다시 타이핑이다.
-    toast.info(`'${target?.text ?? ''}' 항목을 지웠습니다.`, {
+    /*
+     * 되돌리기는 지운 **그 항목 하나**를 지금 목록의 제자리에 돌려놓는다.
+     * 지우기 전 목록을 통째로 되돌리면, 토스트가 떠 있는 동안 추가·수정한
+     * 다른 항목까지 소리 없이 사라진다(지운 것을 또 지우면 살아나고).
+     */
+    toast.info(`'${target.text}' 항목을 지웠습니다.`, {
       actionLabel: '실행 취소',
-      onAction: () => replaceItems(removed),
+      onAction: () =>
+        update((suite) => {
+          const current = itemsFor(suite.notices, classId, date);
+          if (current.some((item) => item.id === id)) return suite;
+          const next = [...current];
+          next.splice(Math.min(index, next.length), 0, target);
+          return { ...suite, notices: setItems(suite.notices, classId, date, next) };
+        }),
     });
   };
 
@@ -120,7 +133,11 @@ export default function NoticePage() {
         <input
           type="date"
           value={date}
-          onChange={(event) => setPickedDate(event.target.value === today ? null : event.target.value)}
+          onChange={(event) => {
+            const value = event.target.value;
+            // 지우면 빈 글자('')가 온다. 그대로 두면 날짜 ''에 알림장이 쌓인다.
+            setPickedDate(value === '' || value === today ? null : value);
+          }}
           aria-label="알림장 날짜"
           className="h-9 rounded-control border border-slate-300 px-2 text-sm"
         />
@@ -151,7 +168,8 @@ export default function NoticePage() {
             value={text}
             onChange={(event) => setText(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') addItem();
+              // 한글 조합을 마치는 Enter(IME)에 제출되면 마지막 글자가 잘린다.
+              if (event.key === 'Enter' && !event.nativeEvent.isComposing) addItem();
             }}
             placeholder="예: 내일 색연필 가져오기 — Enter로 계속 추가"
             aria-label="알림장 항목 추가"
@@ -185,7 +203,9 @@ export default function NoticePage() {
                   defaultValue={item.text}
                   onBlur={(event) => editItem(item.id, event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === 'Enter') event.currentTarget.blur();
+                    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                      event.currentTarget.blur();
+                    }
                   }}
                   aria-label={`${index + 1}번 항목 수정`}
                   className="h-8 min-w-0 flex-1 rounded-control border border-transparent px-1.5 text-sm text-slate-800 hover:border-slate-200 focus:border-slate-300"

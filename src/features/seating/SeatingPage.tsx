@@ -211,7 +211,9 @@ export default function SeatingPage() {
             icon={Bookmark}
             disabled={seating.positions.length === 0}
             onClick={() => {
-              const name = `${new Date().toISOString().slice(0, 10)} 자리`;
+              // toISOString()은 UTC라 아침 9시 전에는 어제 날짜가 나온다.
+              const local = new Date();
+              const name = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')} 자리`;
               if (seating.saveCurrentLayout(name)) {
                 toast.success(`'${name}' 이름으로 저장했습니다.`);
               }

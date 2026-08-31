@@ -28,10 +28,32 @@ const COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#ec4899', '#8b5cf6', '#ef4444'
 const DURATION_MS = 2200;
 const COUNT = 140;
 
+/** 움직임을 줄여 달라는 시스템 설정. 룰렛·색종이가 함께 본다. */
+export function prefersReducedMotion(): boolean {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
+/** 지금 터지고 있는 색종이. 겹쳐 부르면 캔버스를 쌓지 않고 여기에 합류한다. */
+let active: { particles: Particle[]; canvas: HTMLCanvasElement } | null = null;
+
 export function confettiBurst(): void {
   try {
     if (typeof document === 'undefined') return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (prefersReducedMotion()) return;
+
+    /*
+     * '한 명 더'를 연타하면 색종이도 연달아 터진다. 그때마다 전체 화면
+     * 캔버스와 rAF 루프를 하나씩 더 만들면 약한 교실 PC가 버벅인다 —
+     * 돌고 있는 판에 조각만 부어 준다.
+     */
+    if (active !== null) {
+      active.particles.push(...makeParticles(active.canvas));
+      return;
+    }
 
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
@@ -45,21 +67,8 @@ export function confettiBurst(): void {
     canvas.setAttribute('aria-hidden', 'true');
     document.body.appendChild(canvas);
 
-    const particles: Particle[] = Array.from({ length: COUNT }, () => {
-      // 화면 위쪽 가운데 넓은 부채꼴로 쏜다.
-      const angle = Math.PI * (0.15 + Math.random() * 0.7);
-      const speed = 6 + Math.random() * 9;
-      return {
-        x: canvas.width * (0.3 + Math.random() * 0.4),
-        y: canvas.height * 0.35,
-        vx: Math.cos(angle) * speed * (Math.random() < 0.5 ? -1 : 1),
-        vy: -Math.sin(angle) * speed,
-        size: 6 + Math.random() * 6,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)] ?? '#f59e0b',
-        rotation: Math.random() * Math.PI,
-        spin: (Math.random() - 0.5) * 0.3,
-      };
-    });
+    const particles = makeParticles(canvas);
+    active = { particles, canvas };
 
     const startedAt = performance.now();
 
@@ -67,6 +76,7 @@ export function confettiBurst(): void {
       const elapsed = nowMs - startedAt;
       if (elapsed > DURATION_MS) {
         canvas.remove();
+        active = null;
         return;
       }
 
@@ -95,5 +105,24 @@ export function confettiBurst(): void {
     requestAnimationFrame(frame);
   } catch {
     // 축하가 안 터졌다고 앱이 멈추면 안 된다.
+    active = null;
   }
+}
+
+function makeParticles(canvas: HTMLCanvasElement): Particle[] {
+  return Array.from({ length: COUNT }, () => {
+    // 화면 위쪽 가운데 넓은 부채꼴로 쏜다.
+    const angle = Math.PI * (0.15 + Math.random() * 0.7);
+    const speed = 6 + Math.random() * 9;
+    return {
+      x: canvas.width * (0.3 + Math.random() * 0.4),
+      y: canvas.height * 0.35,
+      vx: Math.cos(angle) * speed * (Math.random() < 0.5 ? -1 : 1),
+      vy: -Math.sin(angle) * speed,
+      size: 6 + Math.random() * 6,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)] ?? '#f59e0b',
+      rotation: Math.random() * Math.PI,
+      spin: (Math.random() - 0.5) * 0.3,
+    };
+  });
 }

@@ -123,24 +123,24 @@ export default function RewardPage() {
   const handleAwardAll = (): void => {
     if (selectedPreset === null || selectedPreset.targetUnit !== 'student') return;
 
-    const results = reward.roster
-      .map((student) => reward.award(selectedPreset, student.id))
-      .filter((result) => result !== null);
-    if (results.length === 0) return;
+    // update() 한 번에 전원. 30번 반복하면 목표 동기화도 30번 돈다.
+    const result = reward.awardMany(
+      selectedPreset,
+      reward.roster.map((student) => student.id),
+    );
+    if (result === null) return;
 
-    const entryIds = results.map((result) => result.entryId);
     const points = selectedPreset.defaultPoints;
     if (points > 0) playDing();
-    toast.info(`전원 ${results.length}명에게 ${points > 0 ? `+${points}` : points}점 (${selectedPreset.name})`, {
-      actionLabel: '실행 취소',
-      onAction: () => {
-        for (const entryId of entryIds) reward.revoke(entryId);
+    toast.info(
+      `전원 ${result.entryIds.length}명에게 ${points > 0 ? `+${points}` : points}점 (${selectedPreset.name})`,
+      {
+        actionLabel: '실행 취소',
+        onAction: () => reward.revokeMany(result.entryIds),
       },
-    });
+    );
 
-    // 같은 목표가 여러 번 잡혀도 축하는 한 번이다.
-    const achieved = [...new Map(results.flatMap((r) => r.achieved).map((g) => [g.id, g])).values()];
-    if (achieved.length > 0) setCelebrating(achieved);
+    if (result.achieved.length > 0) setCelebrating(result.achieved);
   };
 
   return (

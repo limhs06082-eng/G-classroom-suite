@@ -98,7 +98,18 @@ function TimetableSection({
   weekday: number;
   nowPeriod: number | null;
 }) {
-  if (weekday === 0 || periods.length === 0) return null;
+  // 주말엔 조용히 비켜 준다. 평일에 비어 있는 것은 다르다 — 아래에서 밝힌다.
+  if (weekday === 0) return null;
+
+  if (periods.length === 0) {
+    return (
+      <section>
+        <SectionTitle>오늘 시간표</SectionTitle>
+        {/* 수업이 없는 건지 시간표를 아직 안 짠 건지, 화면이 말해 줘야 한다. */}
+        <p className="text-board-sm text-slate-400">오늘 시간표가 비어 있습니다</p>
+      </section>
+    );
+  }
 
   return (
     <section>

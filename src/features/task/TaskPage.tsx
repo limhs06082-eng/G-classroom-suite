@@ -83,7 +83,8 @@ export default function TaskPage() {
         value={quickTitle}
         onChange={(event) => setQuickTitle(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key !== 'Enter' || quickTitle.trim() === '') return;
+          // 한글 조합을 마치는 Enter(IME)에 제출되면 마지막 글자가 잘린다.
+          if (event.key !== 'Enter' || event.nativeEvent.isComposing || quickTitle.trim() === '') return;
           const title = quickTitle.trim();
           update((current) => ({ ...current, tasks: [...current.tasks, createTask({ title })] }));
           setQuickTitle('');

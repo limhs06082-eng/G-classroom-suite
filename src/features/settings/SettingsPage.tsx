@@ -1,6 +1,6 @@
 import { Database, Download, RotateCcw, School, Shield, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 
 import { importLegacyRoster, scanLegacy, type LegacyScanResult } from '../../shared/migration/legacyImport';
 // 도구함 쪽 원본 4개 앱. 같은 이름이라 별칭으로 갈라 둔다.
@@ -14,6 +14,7 @@ import { NeisSource } from '../../shared/external/NeisSource';
 import { TauriHttpClient } from '../../shared/external/TauriHttpClient';
 import { isDesktop } from '../../shared/platform/target';
 import { useSuite } from '../../shared/roster/SuiteDataProvider';
+import { parseSuiteData } from '../../shared/storage/schema';
 import { formatBytes, measureDataSize } from '../../shared/storage/dataSize';
 import type { BackupSummary } from '../../shared/storage/StorageAdapter';
 import { AccountPanel } from '../../shared/account/AccountPanel';
@@ -74,9 +75,15 @@ export default function SettingsPage() {
    * 탭을 누르는 것은 여전히 주소를 안 건드린다(뒤로 가기에 안 쌓이게).
    */
   const urlTab = tabFromUrl(params.get('tab'));
+  /*
+   * location.key도 의존성에 둔다. 같은 ?tab=classes 링크를 두 번째로
+   * 누르면 값은 그대로여도 내비게이션은 일어난다(key가 바뀐다) — 값만
+   * 보면 두 번째 클릭이 조용히 죽는다.
+   */
+  const locationKey = useLocation().key;
   useEffect(() => {
     if (urlTab !== null) setTab(urlTab);
-  }, [urlTab]);
+  }, [urlTab, locationKey]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -402,15 +409,14 @@ function BackupTab() {
 
     let summary = '내용을 미리 읽지 못한 파일입니다.';
     try {
-      const raw: unknown = JSON.parse(text);
-      if (typeof raw === 'object' && raw !== null) {
-        const root = raw as Record<string, unknown>;
-        const profile = root['profile'] as Record<string, unknown> | undefined;
-        const schoolName = typeof profile?.['schoolName'] === 'string' ? profile['schoolName'] : '';
-        const classes = Array.isArray(root['classRooms']) ? root['classRooms'].length : 0;
-        const students = Array.isArray(root['students']) ? root['students'].length : 0;
-        summary = `${schoolName === '' ? '학교 미지정' : schoolName} · 학급 ${classes}개 · 학생 ${students}명`;
-      }
+      /*
+       * 미리보기도 실제 가져오기와 **같은 해석기**(parseSuiteData)를 쓴다.
+       * 필드 이름을 손으로 더듬으면, 옛 판 백업처럼 해석기가 복구해서
+       * 멀쩡히 들어올 파일이 "학급 0개"로 보여 교사를 겁준다.
+       */
+      const { data: parsed } = parseSuiteData(JSON.parse(text));
+      const schoolName = parsed.profile.schoolName;
+      summary = `${schoolName === '' ? '학교 미지정' : schoolName} · 학급 ${parsed.classRooms.length}개 · 학생 ${parsed.students.length}명`;
     } catch {
       // JSON도 아니면 importJson이 거절한다. 미리보기만 포기한다.
     }

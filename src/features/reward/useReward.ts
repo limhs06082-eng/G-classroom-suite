@@ -94,6 +94,12 @@ export interface RewardView {
     targetId: string,
     override?: { points?: number; reason?: string },
   ) => { entryId: string; achieved: ScoreGoal[] } | null;
+  /** 여러 대상에게 한 번의 update()로. 실행 취소는 revokeMany와 짝이다. */
+  awardMany: (
+    preset: BehaviorPreset,
+    targetIds: readonly string[],
+  ) => { entryIds: string[]; achieved: ScoreGoal[] } | null;
+  revokeMany: (entryIds: readonly string[]) => void;
   revoke: (entryId: string) => void;
   restore: (entryId: string) => void;
   addGoal: (input: Pick<ScoreGoal, 'title' | 'targetUnit' | 'targetId' | 'targetPoints' | 'reward'>) => void;
@@ -243,6 +249,62 @@ export function useReward(): RewardView {
     [classId, update],
   );
 
+  /**
+   * 전원에게 한 번에. update() 한 번으로 30건을 넣고 목표 동기화도 한 번만
+   * 돈다 — award()를 학급 인원수만큼 돌리면 상태 복제와 목표 재계산이
+   * 서른 번 반복돼 학기말(기록 수천 건)에는 눈에 띄게 무겁다.
+   */
+  const awardMany = useCallback(
+    (
+      preset: BehaviorPreset,
+      targetIds: readonly string[],
+    ): { entryIds: string[]; achieved: ScoreGoal[] } | null => {
+      if (classId === null || targetIds.length === 0) return null;
+
+      const entries = targetIds.map((targetId) =>
+        createScoreEntry({
+          classId,
+          targetUnit: preset.targetUnit,
+          targetId,
+          points: preset.defaultPoints,
+          reason: preset.name,
+          presetId: preset.id,
+        }),
+      );
+
+      const now = new Date().toISOString();
+      let achieved: ScoreGoal[] = [];
+
+      update((current) => {
+        const withEntries = { ...current, scoreEntries: [...current.scoreEntries, ...entries] };
+        const synced = withGoalSync(withEntries, classId, now);
+        achieved = synced.newlyAchieved;
+        return synced.data;
+      });
+
+      return { entryIds: entries.map((entry) => entry.id), achieved };
+    },
+    [classId, update],
+  );
+
+  /** awardMany의 되돌리기 짝. 역시 update() 한 번이다. */
+  const revokeMany = useCallback(
+    (entryIds: readonly string[]): void => {
+      const ids = new Set(entryIds);
+      const now = new Date().toISOString();
+      update((current) => {
+        const revoked = {
+          ...current,
+          scoreEntries: current.scoreEntries.map((entry) =>
+            ids.has(entry.id) ? { ...entry, revokedAt: now } : entry,
+          ),
+        };
+        return classId === null ? revoked : withGoalSync(revoked, classId, now).data;
+      });
+    },
+    [classId, update],
+  );
+
   const revoke = useCallback(
     (entryId: string): void => {
       const now = new Date().toISOString();
@@ -349,6 +411,8 @@ export function useReward(): RewardView {
     addPreset,
     deletePreset,
     award,
+    awardMany,
+    revokeMany,
     revoke,
     restore,
     addGoal,

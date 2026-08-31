@@ -268,24 +268,37 @@ export function useDuty(): DutyView {
 
     update((current) => {
       /*
-       * 재배정하면 이번 주의 완료·대체 기록도 새 배정에 맞춰 정리한다.
+       * 재배정하면 **오늘부터의** 완료·대체 기록을 새 배정에 맞춰 정리한다.
        *
-       * 안 하면 두 가지가 어긋난다: 빠진 학생의 완료가 유령으로 남고,
-       * 새로 뽑힌 학생이 예전에 그 역할로 체크된 적 있으면 하지도 않은
-       * 당번이 완료로 표시된다. 당번 체크는 이 화면의 신뢰도 그 자체다.
+       * 안 하면 새로 뽑힌 학생이 예전에 그 역할로 체크된 적 있을 때
+       * 하지도 않은 당번이 완료로 표시된다. 당번 체크는 이 화면의
+       * 신뢰도 그 자체다.
+       *
+       * 지난 날짜는 건드리지 않는다 — 월요일에 실제로 한 청소는 수요일에
+       * 재배정했다고 없던 일이 되지 않는다. 대타의 완료도 지키기 위해,
+       * 완료는 "새 배정에 있거나 그날 대타로 지정된 학생"이면 남긴다.
        */
+      const today = todayString();
       const stillAssigned = (roleId: string, studentId: string): boolean =>
         round.assignments.some((a) => a.roleId === roleId && a.studentIds.includes(studentId));
 
       const dutyCompletions = current.dutyCompletions.map((entry) => {
         if (entry.classId !== classId) return entry;
         if (entry.date < week.startDate || entry.date > week.endDate) return entry;
+        if (entry.date < today) return entry; // 지난 일은 역사다.
+
+        const substitutions = entry.substitutions.filter((s) =>
+          stillAssigned(s.roleId, s.originalStudentId),
+        );
+        const isSubstitute = (roleId: string, studentId: string): boolean =>
+          substitutions.some((s) => s.roleId === roleId && s.substituteStudentId === studentId);
+
         return {
           ...entry,
-          completed: entry.completed.filter((c) => stillAssigned(c.roleId, c.studentId)),
-          substitutions: entry.substitutions.filter((s) =>
-            stillAssigned(s.roleId, s.originalStudentId),
+          completed: entry.completed.filter(
+            (c) => stillAssigned(c.roleId, c.studentId) || isSubstitute(c.roleId, c.studentId),
           ),
+          substitutions,
         };
       });
 

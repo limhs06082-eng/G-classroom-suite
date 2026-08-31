@@ -121,6 +121,7 @@ function DailyTab({
   const [paint, setPaint] = useState<AttendanceStatus | 'present' | null>(null);
 
   const summary = summarize(data.attendanceRecords, classId, date, roster.length);
+  const confirmed = isConfirmed(data.attendanceRecords, classId, date);
   const marked = roster.filter(
     (student) => statusOf(data.attendanceRecords, classId, date, student.id) !== null,
   );
@@ -150,7 +151,11 @@ function DailyTab({
         <input
           type="date"
           value={date}
-          onChange={(event) => onDateChange(event.target.value === today ? null : event.target.value)}
+          onChange={(event) => {
+            const value = event.target.value;
+            // 지우면 빈 글자('')가 온다. 그대로 두면 날짜 ''에 기록이 쌓인다.
+            onDateChange(value === '' || value === today ? null : value);
+          }}
           aria-label="출결 날짜"
           className="h-9 rounded-control border border-slate-300 px-2 text-sm"
         />
@@ -170,24 +175,23 @@ function DailyTab({
         */}
         <Button
           size="sm"
-          variant={isConfirmed(data.attendanceRecords, classId, date) ? 'primary' : 'secondary'}
+          variant={confirmed ? 'primary' : 'secondary'}
           icon={CheckCheck}
-          aria-pressed={isConfirmed(data.attendanceRecords, classId, date)}
-          onClick={() => {
-            const next = !isConfirmed(data.attendanceRecords, classId, date);
+          aria-pressed={confirmed}
+          onClick={() =>
             update((suite) => ({
               ...suite,
               attendanceRecords: setConfirmed(
                 suite.attendanceRecords,
                 classId,
                 date,
-                next,
+                !confirmed,
                 new Date().toISOString(),
               ),
-            }));
-          }}
+            }))
+          }
         >
-          {isConfirmed(data.attendanceRecords, classId, date) ? '확인 완료' : '출결 확인'}
+          {confirmed ? '확인 완료' : '출결 확인'}
         </Button>
 
         <div className="ml-auto flex flex-wrap items-center gap-1.5 text-sm">
@@ -230,7 +234,15 @@ function DailyTab({
               size="sm"
               variant="ghost"
               onClick={() => {
-                const previous = data.attendanceRecords;
+                /*
+                 * 되돌리기는 **이 학급·이 날짜의 기록 하나만** 바꾼다.
+                 * 배열 전체를 스냅숏으로 되돌리면, 토스트가 떠 있는 동안
+                 * 다른 날짜·다른 학급에 찍은 것까지 소리 없이 지워진다.
+                 */
+                const previousRecord =
+                  data.attendanceRecords.find(
+                    (record) => record.classId === classId && record.date === date,
+                  ) ?? null;
                 update((suite) => ({
                   ...suite,
                   attendanceRecords: setStatusMany(
@@ -244,7 +256,15 @@ function DailyTab({
                 toast.info(`전원을 ${STATUS_LABELS[paint]}(으)로 찍었습니다.`, {
                   actionLabel: '실행 취소',
                   onAction: () =>
-                    update((suite) => ({ ...suite, attendanceRecords: previous })),
+                    update((suite) => ({
+                      ...suite,
+                      attendanceRecords: [
+                        ...suite.attendanceRecords.filter(
+                          (record) => record.classId !== classId || record.date !== date,
+                        ),
+                        ...(previousRecord === null ? [] : [previousRecord]),
+                      ],
+                    })),
                 });
               }}
             >

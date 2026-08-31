@@ -65,7 +65,13 @@ export function Modal({
     const firstInput = panel?.querySelector<HTMLElement>(
       'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])',
     );
-    (firstInput ?? panel?.querySelector<HTMLElement>(FOCUSABLE))?.focus() ?? panel?.focus();
+    /*
+     * `?.focus() ?? panel?.focus()`처럼 한 줄로 잇으면 안 된다 — focus()가
+     * undefined를 돌려주므로 뒤쪽이 **항상** 실행되어, 방금 준 포커스를
+     * 패널이 도로 뺏는다(고치려던 바로 그 증상이 남는다).
+     */
+    const target = firstInput ?? panel?.querySelector<HTMLElement>(FOCUSABLE) ?? panel;
+    target?.focus();
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';

@@ -18,7 +18,7 @@ import { Link } from 'react-router-dom';
 import { playPop } from '../../shared/fx/sound';
 import { ROLE_CATEGORIES, type DutyRole, type RoleCategory, type RoleCycle } from '../../shared/domain/types';
 import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
-import { statusOf, STATUS_LABELS } from '../attendance/attendanceCore';
+import { isAwayToday, statusOf, STATUS_LABELS } from '../attendance/attendanceCore';
 import {
   Badge,
   Button,
@@ -350,10 +350,9 @@ function TodayTab({
       {duty.todayDuties.map(({ role, students, replaced, doneStudentIds, isDone }) => {
         const locked = duty.currentRound?.lockedRoleIds.includes(role.id) === true;
         // 오늘 교실에 없는 담당이 있는 역할 — 대체 지정으로 가는 길을 드러낸다.
-        const hasAway = students.some((student) => {
-          const status = statusOf(data.attendanceRecords, classId, duty.today, student.id);
-          return status === 'absent' || status === 'fieldTrip';
-        });
+        const hasAway = students.some((student) =>
+          isAwayToday(data.attendanceRecords, classId, duty.today, student.id),
+        );
 
         return (
           <li
@@ -522,11 +521,11 @@ function SubstituteModal({
   // 오늘 이 역할을 맡은 사람은 후보에서 뺀다. 당번이 당번을 대신하는 것은 대체가 아니다.
   // 결석·체험학습인 학생도 뺀다. 없는 사람을 대신 세우는 것은 대체가 아니라 실수다.
   const onDuty = new Set(students.map((student) => student.id));
-  const candidates = duty.roster.filter((student) => {
-    if (onDuty.has(student.id)) return false;
-    const status = statusOf(data.attendanceRecords, classId, duty.today, student.id);
-    return status !== 'absent' && status !== 'fieldTrip';
-  });
+  const candidates = duty.roster.filter(
+    (student) =>
+      !onDuty.has(student.id) &&
+      !isAwayToday(data.attendanceRecords, classId, duty.today, student.id),
+  );
 
   return (
     <Modal

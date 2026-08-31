@@ -22,7 +22,7 @@ import {
   readStudentDetail,
   type StudentDetail,
 } from './studentDetail';
-import { createId } from '../ids';
+import { createStudent } from '../domain/factories';
 import { addObservation, observationsOf, removeObservation } from './observationCore';
 import {
   addStudent,
@@ -176,20 +176,24 @@ export default function RosterPage() {
                * 찾아 → 연필 → 이름 고침"까지 대여섯 클릭이었다. id를 미리
                * 만들어 두는 이유는 모달이 그 학생을 가리켜야 하기 때문이다.
                */
-              const id = createId();
-              const now = new Date().toISOString();
-              update((current) =>
-                addStudent(current, activeClass.id, { id, number: nextNumber, name: '새 학생' }),
-              );
-              setEditing({
-                id,
+              /*
+               * 저장되는 학생과 모달이 여는 학생을 **같은 팩토리 한 번**으로
+               * 만든다. 여기서 리터럴을 손으로 지으면 Student의 기본값이
+               * 바뀌는 날 모달만 옛 모양을 보여 준다.
+               */
+              const student = createStudent({
                 classId: activeClass.id,
                 number: nextNumber,
                 name: '새 학생',
-                status: 'active',
-                createdAt: now,
-                updatedAt: now,
               });
+              update((current) =>
+                addStudent(current, activeClass.id, {
+                  id: student.id,
+                  number: student.number,
+                  name: student.name,
+                }),
+              );
+              setEditing(student);
             }}
           >
             학생 추가

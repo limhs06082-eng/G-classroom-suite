@@ -11,16 +11,17 @@ interface ToolsValue {
   openTool: ToolName | null;
   open: (tool: ToolName) => void;
   close: () => void;
-  /**
-   * 수업 타이머. 모달이 아니라 여기 사는 이유는 **모달을 닫아도 돌아야**
-   * 하기 때문이다. 모달 안에 두면 닫는 순간 화면에 남는 흔적이 없어져,
-   * 5분을 걸어 두고 순회 지도를 나간 교사가 끝난 것을 알 길이 시계뿐이었다.
-   * 이제 툴바 단추가 남은 시간을 보여 주고, 끝나면 사라지지 않는 알림이 뜬다.
-   */
-  timer: Timer;
 }
 
 const ToolsContext = createContext<ToolsValue | null>(null);
+
+/*
+ * 타이머는 **다른 context**에 산다. 한 context에 섞으면 200ms 틱마다
+ * 값이 바뀌어, open/close만 읽는 소비자('지금' 카드)까지 초당 다섯 번
+ * 다시 그린다. 갈라 두면 틱은 타이머를 실제로 그리는 곳(툴바 단추,
+ * 타이머 모달)에만 닿는다.
+ */
+const TimerContext = createContext<Timer | null>(null);
 
 /**
  * 도구를 여는 상태를 `ToolsBar` 바깥으로 올린다.
@@ -58,16 +59,31 @@ export function ToolsProvider({ children }: { children: ReactNode }) {
       openTool,
       open: (tool) => setOpenTool(tool),
       close: () => setOpenTool(null),
-      timer,
     }),
-    [openTool, timer],
+    [openTool],
   );
 
-  return <ToolsContext.Provider value={value}>{children}</ToolsContext.Provider>;
+  return (
+    <ToolsContext.Provider value={value}>
+      <TimerContext.Provider value={timer}>{children}</TimerContext.Provider>
+    </ToolsContext.Provider>
+  );
 }
 
 export function useTools(): ToolsValue {
   const value = useContext(ToolsContext);
   if (value === null) throw new Error('useTools는 ToolsProvider 안에서만 쓸 수 있습니다.');
+  return value;
+}
+
+/**
+ * 수업 타이머. 모달이 아니라 provider에 사는 이유는 **모달을 닫아도
+ * 돌아야** 하기 때문이다 — 툴바 단추가 남은 시간을 보여 주고, 끝나면
+ * 사라지지 않는 알림이 뜬다. 틱마다 다시 그려지므로 타이머를 실제로
+ * 그리는 곳에서만 부를 것.
+ */
+export function useToolsTimer(): Timer {
+  const value = useContext(TimerContext);
+  if (value === null) throw new Error('useToolsTimer는 ToolsProvider 안에서만 쓸 수 있습니다.');
   return value;
 }

@@ -2,26 +2,18 @@ import { Dices, RotateCcw, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { confettiBurst } from '../../shared/fx/confetti';
+import { confettiBurst, prefersReducedMotion } from '../../shared/fx/confetti';
 import { playFanfare, playTick } from '../../shared/fx/sound';
 import { useActiveClass, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { useToday } from '../../shared/state/useToday';
 import { Badge, Button, cx, Modal } from '../../shared/ui';
 import { absentToday } from '../attendance/attendanceCore';
 import { systemRng } from '../seating/rng';
-import { drawMany, remainingPool } from './pickerCore';
+import { drawMany, drawOne, remainingPool } from './pickerCore';
 
 /** 룰렛이 도는 시간과 감속 곡선. 짧으면 김빠지고 길면 수업이 늘어진다. */
 const SPIN_STEPS = 16;
 const SPIN_BASE_MS = 45;
-
-function prefersReducedMotion(): boolean {
-  try {
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * 발표자 뽑기.
@@ -67,8 +59,22 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
     const students = drawMany(pool, count, systemRng);
     if (students.length === 0) return;
     setCurrent(students.map((student) => student.id));
-    setPickedIds((ids) => [...ids, ...students.map((s) => s.id).filter((id) => !ids.includes(id))]);
     setRevealing(true);
+
+    /*
+     * 뽑힌 것으로 **치는** 시점은 이름이 공개되는 순간이다. 룰렛이 도는
+     * 중에 Esc로 나가면 아무도 못 본 이름이 '뽑힌 학생 제외' 목록만
+     * 차지하게 되므로, 확정은 룰렛이 멈출 때 한다.
+     */
+    const commit = (): void => {
+      setPickedIds((ids) => [
+        ...ids,
+        ...students.map((s) => s.id).filter((id) => !ids.includes(id)),
+      ]);
+      setSpinName(null);
+      playFanfare();
+      confettiBurst();
+    };
 
     /*
      * 룰렛. 결과는 이미 정해져 있고(공정성은 위 drawMany가 책임진다)
@@ -77,9 +83,7 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
      * 연출 없이 바로 결과를 보여 준다.
      */
     if (prefersReducedMotion() || roster.length < 2) {
-      setSpinName(null);
-      playFanfare();
-      confettiBurst();
+      commit();
       return;
     }
 
@@ -87,13 +91,12 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
     const spin = (): void => {
       if (step >= SPIN_STEPS) {
         spinTimerRef.current = null;
-        setSpinName(null);
-        playFanfare();
-        confettiBurst();
+        commit();
         return;
       }
-      const name = roster[Math.floor(Math.random() * roster.length)]?.name ?? '';
-      setSpinName(name);
+      // 번쩍이는 이름도 시드 주입 RNG를 거친다(drawOne 재사용). 연출이라도
+      // 이 저장소의 규칙(rng.ts 머리말)을 벗어나지 않는다.
+      setSpinName(drawOne(roster, systemRng)?.name ?? '');
       playTick();
       step += 1;
       // 갈수록 느려진다 — 45ms에서 시작해 마지막엔 200ms쯤.

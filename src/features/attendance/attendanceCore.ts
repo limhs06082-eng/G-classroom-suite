@@ -203,6 +203,22 @@ export function absentToday(
 }
 
 /**
+ * 한 학생이 그날 교실에 없는가 — absentToday와 같은 규칙의 단건 판별.
+ *
+ * "없는 학생" 규칙(결석·체험학습)이 화면마다 인라인으로 복제되면
+ * 규칙이 바뀔 때 한 곳만 고쳐진다. 당번 화면·칠판이 쓴다.
+ */
+export function isAwayToday(
+  records: readonly AttendanceRecord[],
+  classId: string,
+  date: string,
+  studentId: string,
+): boolean {
+  const status = statusOf(records, classId, date, studentId);
+  return status === 'absent' || status === 'fieldTrip';
+}
+
+/**
  * 그 달 학생별 상태 횟수. month는 "2026-08" 꼴이다.
  *
  * 나이스에 월말 출결을 넣을 때 옆에 두고 보는 표라, 기록이 있는 학생만 담는다.

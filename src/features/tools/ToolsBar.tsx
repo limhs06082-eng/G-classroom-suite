@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { isMuted, setMuted, subscribeMuted } from '../../shared/fx/sound';
 import { Button, cx, Modal } from '../../shared/ui';
 import { PickerModal } from './PickerModal';
-import { useTools } from './ToolsContext';
+import { useTools, useToolsTimer } from './ToolsContext';
 import { formatDuration } from './useTimer';
 
 /**
@@ -22,7 +22,8 @@ import { formatDuration } from './useTimer';
 const PRESET_MINUTES = [1, 3, 5, 10, 15];
 
 export function ToolsBar() {
-  const { openTool, open, close, timer } = useTools();
+  const { openTool, open, close } = useTools();
+  const timer = useToolsTimer();
 
   /*
    * 단추가 남은 시간을 짊어진다. 모달을 닫고 순회 지도를 나가도, 화면
@@ -110,7 +111,7 @@ function TimerModal({ open, onClose }: { open: boolean; onClose: () => void }) {
    * 모달을 다시 열 때 지역 finished를 지워 버려, 끝난 건지 리셋된 건지
    * 구별할 수 없는 0:00만 남았다.
    */
-  const { timer } = useTools();
+  const timer = useToolsTimer();
   const [custom, setCustom] = useState('7');
 
   const finished = timer.state === 'finished';
@@ -291,7 +292,10 @@ function NoticeModal({ open, onClose }: { open: boolean; onClose: () => void }) 
             onChange={(event) => setText(event.target.value)}
             onKeyDown={(event) => {
               // 치고 바로 Enter — 급한 안내에 마우스를 찾게 하지 않는다.
-              if (event.key === 'Enter' && text.trim() !== '') setShowing(true);
+              // 한글 조합을 마치는 Enter(IME)는 거른다. 마지막 글자가 잘린다.
+              if (event.key === 'Enter' && !event.nativeEvent.isComposing && text.trim() !== '') {
+                setShowing(true);
+              }
             }}
             placeholder="교과서 42쪽을 펴세요"
             className="mt-1 h-10 w-full rounded-control border border-slate-300 px-3"
