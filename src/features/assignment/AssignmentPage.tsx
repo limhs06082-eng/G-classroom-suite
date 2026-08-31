@@ -1,4 +1,4 @@
-import { Archive, ClipboardCheck, Monitor, Plus, RotateCcw, Trash2, Users } from 'lucide-react';
+import { Archive, ClipboardCheck, Monitor, Pencil, Plus, RotateCcw, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -48,6 +48,7 @@ export default function AssignmentPage() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [editing, setEditing] = useState<Assignment | null>(null);
   const [deleting, setDeleting] = useState<Assignment | null>(null);
 
   if (activeClass === null) {
@@ -123,7 +124,7 @@ export default function AssignmentPage() {
         }
       >
       {tab === 'matrix' ? (
-        <AssignmentMatrix />
+        <AssignmentMatrix onAddAssignment={() => setAddOpen(true)} />
       ) : tab === 'byStudent' ? (
         <StudentAssignments />
       ) : (
@@ -194,6 +195,15 @@ export default function AssignmentPage() {
                       ? '기한 없음'
                       : `기한 ${selected.assignment.dueDate}`}
                   </span>
+                  {/* 기한을 하루 잘못 넣었을 때 지우고 다시 만들면 30명 체크가 날아간다. */}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={Pencil}
+                    iconOnly
+                    aria-label={`${selected.assignment.title} 수정`}
+                    onClick={() => setEditing(selected.assignment)}
+                  />
                   <Button
                     size="sm"
                     variant="secondary"
@@ -206,6 +216,32 @@ export default function AssignmentPage() {
                     }}
                   >
                     전원 제출
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      /*
+                       * 되돌리기를 위해 지금 상태를 학생별로 기억해 둔다.
+                       * setAll('submitted')로 되돌리면 보완·완료였던 학생이
+                       * 전부 제출로 뭉개진다.
+                       */
+                      const snapshot = assignment.roster.map((student) => ({
+                        studentId: student.id,
+                        status: assignment.statusFor(selected.assignment.id, student.id),
+                      }));
+                      assignment.setAll(selected.assignment.id, 'unsubmitted');
+                      toast.info('전원을 미제출로 되돌렸습니다.', {
+                        actionLabel: '실행 취소',
+                        onAction: () => {
+                          for (const { studentId, status } of snapshot) {
+                            assignment.setStatus(selected.assignment.id, studentId, status);
+                          }
+                        },
+                      });
+                    }}
+                  >
+                    모두 미제출로
                   </Button>
 
                   {/*
@@ -384,13 +420,28 @@ export default function AssignmentPage() {
       </Tabs>
 
       {/* 모달과 확인창은 Tabs 밖에 둔다. 탭을 바꿔도 열려 있던 창이 사라지면 안 된다. */}
-      <AddAssignmentModal
+      <AssignmentModal
         open={addOpen}
+        assignment={null}
         onClose={() => setAddOpen(false)}
-        onAdd={(input) => {
+        onSave={(input) => {
           assignment.addAssignment(input);
           setAddOpen(false);
           toast.success(`${input.title} 과제를 만들었습니다.`);
+        }}
+      />
+
+      <AssignmentModal
+        // 대상 학생이 바뀔 때 기본값이 다시 실리도록 과제마다 새로 마운트한다.
+        key={editing?.id ?? 'edit-none'}
+        open={editing !== null}
+        assignment={editing}
+        onClose={() => setEditing(null)}
+        onSave={(input) => {
+          if (editing === null) return;
+          assignment.updateAssignment(editing.id, input);
+          setEditing(null);
+          toast.success(`${input.title} 과제를 고쳤습니다. 제출 기록은 그대로입니다.`);
         }}
       />
 
@@ -415,24 +466,35 @@ export default function AssignmentPage() {
   );
 }
 
-function AddAssignmentModal({
+/**
+ * 과제 만들기·고치기 겸용.
+ *
+ * `assignment`가 null이면 새로 만들고, 있으면 그 값으로 채워 고친다.
+ * 고치기가 없던 시절에는 기한을 하루 잘못 넣으면 지우고 다시 만드는
+ * 수밖에 없었는데, 삭제는 제출 기록까지 지운다 — 30명 체크가 날아갔다.
+ */
+function AssignmentModal({
   open,
+  assignment,
   onClose,
-  onAdd,
+  onSave,
 }: {
   open: boolean;
+  assignment: Assignment | null;
   onClose: () => void;
-  onAdd: (input: { title: string; description: string; dueDate: string }) => void;
+  onSave: (input: { title: string; description: string; dueDate: string }) => void;
 }) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const [title, setTitle] = useState(assignment?.title ?? '');
+  const [description, setDescription] = useState(assignment?.description ?? '');
+  const [dueDate, setDueDate] = useState(assignment?.dueDate ?? '');
+
+  const isEdit = assignment !== null;
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="과제 추가"
+      title={isEdit ? '과제 수정' : '과제 추가'}
       size="sm"
       footer={
         <>
@@ -443,13 +505,15 @@ function AddAssignmentModal({
             variant="primary"
             disabled={title.trim() === ''}
             onClick={() => {
-              onAdd({ title: title.trim(), description: description.trim(), dueDate });
-              setTitle('');
-              setDescription('');
-              setDueDate('');
+              onSave({ title: title.trim(), description: description.trim(), dueDate });
+              if (!isEdit) {
+                setTitle('');
+                setDescription('');
+                setDueDate('');
+              }
             }}
           >
-            추가
+            {isEdit ? '저장' : '추가'}
           </Button>
         </>
       }

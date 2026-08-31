@@ -1,7 +1,7 @@
-import { ClipboardCheck } from 'lucide-react';
+import { ClipboardCheck, Plus } from 'lucide-react';
 
 import type { SubmissionStatus } from '../../shared/domain/types';
-import { Card, cx, EmptyState } from '../../shared/ui';
+import { Button, Card, cx, EmptyState } from '../../shared/ui';
 import { statusFromIndex, SUBMISSION_LABELS, SUBMISSION_SHORT } from './assignmentCore';
 import { useAssignment } from './useAssignment';
 
@@ -21,7 +21,7 @@ const CELL_TONE: Record<SubmissionStatus, string> = {
  * '미제출' 세 글자가 들어갈 자리가 없다. 색만으로 구분하지 않는다 —
  * 색각 이상인 교사가 제출과 보완을 못 가린다.
  */
-export function AssignmentMatrix() {
+export function AssignmentMatrix({ onAddAssignment }: { onAddAssignment?: () => void }) {
   const assignment = useAssignment();
 
   if (assignment.assignments.length === 0 || assignment.roster.length === 0) {
@@ -30,6 +30,14 @@ export function AssignmentMatrix() {
         icon={ClipboardCheck}
         title="표로 볼 것이 아직 없습니다"
         description="명단과 과제가 있어야 학생과 과제를 한 화면에서 볼 수 있습니다."
+        // 표 보기로 먼저 들어온 교사가 막다른 길을 만나면 안 된다.
+        action={
+          onAddAssignment !== undefined && assignment.roster.length > 0 ? (
+            <Button variant="primary" icon={Plus} onClick={onAddAssignment}>
+              과제 추가
+            </Button>
+          ) : undefined
+        }
       />
     );
   }
