@@ -40,6 +40,7 @@ export default function TaskPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [deleting, setDeleting] = useState<TaskItem | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [quickTitle, setQuickTitle] = useState('');
 
   const summary = useMemo(() => summarizeTasks(data.tasks, today), [data.tasks, today]);
 
@@ -72,6 +73,25 @@ export default function TaskPage() {
           업무 추가
         </Button>
       </div>
+
+      {/*
+        빠른 추가. 학기 초에 업무 20개를 넣는 날, 모달을 20번 여닫지 않게
+        한 줄로 받는다 — 세부 단계 입력(아래 TaskDetail)과 같은 조작이다.
+        영역·기한은 나중에 펼쳐서 고치면 된다.
+      */}
+      <input
+        value={quickTitle}
+        onChange={(event) => setQuickTitle(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' || quickTitle.trim() === '') return;
+          const title = quickTitle.trim();
+          update((current) => ({ ...current, tasks: [...current.tasks, createTask({ title })] }));
+          setQuickTitle('');
+        }}
+        placeholder="업무 이름 치고 Enter — 계속 추가됩니다 (영역·기한은 나중에)"
+        aria-label="업무 빠른 추가"
+        className="h-10 w-full rounded-control border border-slate-300 px-3 text-sm"
+      />
 
       <div className="flex flex-wrap gap-1">
         {FILTERS.map((id) => (

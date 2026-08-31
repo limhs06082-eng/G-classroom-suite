@@ -48,7 +48,13 @@ export function ConfirmDialog({
       title={title}
       description={description}
       size="sm"
-      dismissible={!destructive}
+      /*
+       * Esc를 막는 것은 글자를 따라 치게 하는 진짜 위험한 확인(전체 초기화)
+       * 뿐이다. 보통의 삭제 확인창은 [취소]가 멀쩡히 있는데 Esc만 막으면
+       * 나가는 길이 클릭 하나로 좁아진다 — 파괴적이어서 지키는 게 아니라
+       * 성가시기만 하다.
+       */
+      dismissible={confirmPhrase === undefined}
       footer={
         <>
           <Button variant="secondary" onClick={onCancel}>

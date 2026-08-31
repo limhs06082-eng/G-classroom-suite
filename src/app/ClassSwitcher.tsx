@@ -68,7 +68,7 @@ export function ClassSwitcher() {
      */
     return (
       <Link
-        to="/settings"
+        to="/settings?tab=classes"
         title="학급·학기 관리"
         className="hidden min-w-0 items-baseline gap-1.5 rounded-control px-2 py-1 text-sm hover:bg-slate-100 sm:flex"
       >
@@ -133,7 +133,7 @@ export function ClassSwitcher() {
           {/* 학급을 바꾸러 온 교사가 "새 학급은 어디서 만드나"를 묻지 않게 한다. */}
           <li className="mt-1 border-t border-slate-100 pt-1">
             <Link
-              to="/settings"
+              to="/settings?tab=classes"
               onClick={() => setOpen(false)}
               className="block px-3 py-2 text-sm text-brand-700 hover:bg-slate-50 hover:text-brand-700"
             >

@@ -53,10 +53,15 @@ function withProfiles(data: SuiteData, students: Student[]): SuiteData {
 export function addStudent(
   data: SuiteData,
   classId: string,
-  input: { number: number; name: string },
+  // id를 밖에서 정할 수 있다 — 화면이 추가 직후 그 학생의 편집 모달을 열려면
+  // 만들어질 id를 미리 알아야 한다.
+  input: { number: number; name: string; id?: string },
   now: string = nowIso(),
 ): SuiteData {
-  const student = createStudent({ classId, number: input.number, name: input.name }, now);
+  const student = createStudent(
+    { classId, number: input.number, name: input.name, ...(input.id === undefined ? {} : { id: input.id }) },
+    now,
+  );
   return withProfiles({ ...data, students: [...data.students, student] }, [student]);
 }
 

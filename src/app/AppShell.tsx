@@ -1,6 +1,6 @@
 import { Lock, Settings, Users } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 
 import { ToolsBar } from '../features/tools/ToolsBar';
 import { ToolsProvider } from '../features/tools/ToolsContext';
@@ -37,6 +37,13 @@ const HIDDEN_NAV_IDS_ON_DESKTOP: readonly string[] = ['quiz'];
  */
 export function AppShell() {
   const { data, update } = useSuite();
+
+  /*
+   * 처음 설정 마법사에서는 기능 내비를 숨긴다. 아직 학급이 없어 11개
+   * 전부 "학급을 먼저 만드세요"로 떨어지는 죽은 길인데, 처음 여는
+   * 교사에게 그것부터 보여 줄 이유가 없다.
+   */
+  const onSetup = useLocation().pathname === '/setup';
 
   /*
    * update의 콜백은 반환값을 밖으로 낼 수 없다. 맞았는지는 지금 자료로
@@ -82,6 +89,7 @@ export function AppShell() {
 
             <ClassSwitcher />
 
+            {onSetup ? null : (
             <nav
               /*
                * 좁은 창의 안전망으로 overflow-x-auto를 둔다. 항목마다
@@ -99,6 +107,7 @@ export function AppShell() {
                   end={path === '/'}
                   // 좁은 화면에서는 라벨이 숨겨져 아이콘만 남으므로 이름을 따로 준다
                   aria-label={label}
+                  title={label}
                   className={({ isActive }) =>
                     [
                       'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control px-2.5 py-1.5 text-sm font-medium transition-colors',
@@ -113,6 +122,7 @@ export function AppShell() {
                 </NavLink>
               ))}
             </nav>
+            )}
 
             {/*
               오른쪽 끝 묶음. `ml-auto`가 여기 있으므로 **웹에서도 이 묶음은

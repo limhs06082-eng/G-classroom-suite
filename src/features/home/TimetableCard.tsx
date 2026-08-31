@@ -153,13 +153,33 @@ function TodayOverrideModal({
       title="오늘만 바꾸기"
       size="sm"
       footer={
-        <Button variant="primary" onClick={onClose}>
-          닫기
-        </Button>
+        <>
+          {/* 행사로 다섯 교시를 바꾼 날, 하나씩 되돌리지 않게 한 번에. */}
+          {effective.some((slot) => slot.overridden) ? (
+            <Button
+              variant="ghost"
+              onClick={() =>
+                update((suite) => ({
+                  ...suite,
+                  timetableOverrides: suite.timetableOverrides.filter(
+                    (override) => override.classId !== classId || override.date !== date,
+                  ),
+                }))
+              }
+            >
+              오늘 바꾸기 모두 지우기
+            </Button>
+          ) : null}
+          {/* '닫기'는 취소로 읽힌다. 고르는 즉시 저장되므로 '완료'다. */}
+          <Button variant="primary" onClick={onClose}>
+            완료
+          </Button>
+        </>
       }
     >
       <p className="mb-3 text-sm text-slate-500">
-        오늘({date})만 바뀝니다. 주간 시간표는 그대로라 다음 주에는 원래대로 돌아옵니다.
+        오늘({date})만 바뀝니다. 고르는 즉시 저장되고, 주간 시간표는 그대로라 다음 주에는
+        원래대로 돌아옵니다.
       </p>
 
       <ul className="flex flex-col gap-2">

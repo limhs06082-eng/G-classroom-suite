@@ -22,6 +22,7 @@ import {
   readStudentDetail,
   type StudentDetail,
 } from './studentDetail';
+import { createId } from '../ids';
 import { addObservation, observationsOf, removeObservation } from './observationCore';
 import {
   addStudent,
@@ -170,10 +171,25 @@ export default function RosterPage() {
             icon={UserPlus}
             onClick={() => {
               const nextNumber = Math.max(0, ...students.map((s) => s.number)) + 1;
+              /*
+               * 추가하자마자 편집 모달을 연다. 전에는 "표에서 '새 학생' 행을
+               * 찾아 → 연필 → 이름 고침"까지 대여섯 클릭이었다. id를 미리
+               * 만들어 두는 이유는 모달이 그 학생을 가리켜야 하기 때문이다.
+               */
+              const id = createId();
+              const now = new Date().toISOString();
               update((current) =>
-                addStudent(current, activeClass.id, { number: nextNumber, name: '새 학생' }),
+                addStudent(current, activeClass.id, { id, number: nextNumber, name: '새 학생' }),
               );
-              toast.info(`${nextNumber}번에 새 학생을 추가했습니다. 이름을 고쳐 주세요.`);
+              setEditing({
+                id,
+                classId: activeClass.id,
+                number: nextNumber,
+                name: '새 학생',
+                status: 'active',
+                createdAt: now,
+                updatedAt: now,
+              });
             }}
           >
             학생 추가

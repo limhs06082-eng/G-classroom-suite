@@ -65,9 +65,18 @@ function tabFromUrl(value: string | null): SettingsTab | null {
 
 export default function SettingsPage() {
   const [params] = useSearchParams();
-  // 처음 열 때만 본다. 그 뒤 탭을 누르는 것은 주소를 안 건드린다 —
-  // 설정 안을 오가는 것마다 뒤로 가기에 쌓이면 성가시다.
   const [tab, setTab] = useState<SettingsTab>(() => tabFromUrl(params.get('tab')) ?? 'school');
+
+  /*
+   * 주소가 바뀌면 탭도 따라간다. 초기값만 보면, 이미 설정 화면에 있는
+   * 상태에서 홈 카드의 "시간표 짜기" 링크를 눌러도 컴포넌트가 다시
+   * 마운트되지 않아 탭이 안 바뀐다 — 링크가 조용히 죽는다.
+   * 탭을 누르는 것은 여전히 주소를 안 건드린다(뒤로 가기에 안 쌓이게).
+   */
+  const urlTab = tabFromUrl(params.get('tab'));
+  useEffect(() => {
+    if (urlTab !== null) setTab(urlTab);
+  }, [urlTab]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -342,6 +351,12 @@ function BackupTab() {
   const [lastExportedAt, setLastExportedAt] = useState<string | null>(null);
   const [restoring, setRestoring] = useState<BackupSummary | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  /** 골라 둔 백업 파일. 확인을 거쳐야 실제로 덮는다. */
+  const [pendingImport, setPendingImport] = useState<{
+    text: string;
+    summary: string;
+    fileName: string;
+  } | null>(null);
 
   const refresh = async (): Promise<void> => {
     setBackups(await adapter.listBackups());
@@ -375,8 +390,35 @@ function BackupTab() {
     }
   };
 
-  const handleImport = async (file: File): Promise<void> => {
+  /**
+   * 파일을 고른 순간 바로 덮지 않는다. 무엇으로 덮는지 먼저 보여 준다.
+   *
+   * 파일 대화상자에서 한 칸 옆 파일(다른 반, 지난해 백업)을 고르는 실수는
+   * 흔하고, 그 결과는 [전체 초기화] 못지않게 크다 — 초기화는 글자를 따라
+   * 치게 하면서 이쪽만 무사통과였다.
+   */
+  const handlePickImport = async (file: File): Promise<void> => {
     const text = await file.text();
+
+    let summary = '내용을 미리 읽지 못한 파일입니다.';
+    try {
+      const raw: unknown = JSON.parse(text);
+      if (typeof raw === 'object' && raw !== null) {
+        const root = raw as Record<string, unknown>;
+        const profile = root['profile'] as Record<string, unknown> | undefined;
+        const schoolName = typeof profile?.['schoolName'] === 'string' ? profile['schoolName'] : '';
+        const classes = Array.isArray(root['classRooms']) ? root['classRooms'].length : 0;
+        const students = Array.isArray(root['students']) ? root['students'].length : 0;
+        summary = `${schoolName === '' ? '학교 미지정' : schoolName} · 학급 ${classes}개 · 학생 ${students}명`;
+      }
+    } catch {
+      // JSON도 아니면 importJson이 거절한다. 미리보기만 포기한다.
+    }
+
+    setPendingImport({ text, summary, fileName: file.name });
+  };
+
+  const handleImport = async (text: string): Promise<void> => {
     const result = await adapter.importJson(text);
 
     if (!result.ok) {
@@ -440,7 +482,7 @@ function BackupTab() {
                 className="sr-only"
                 onChange={(event) => {
                   const file = event.target.files?.[0];
-                  if (file) void handleImport(file);
+                  if (file) void handlePickImport(file);
                   event.target.value = '';
                 }}
               />
@@ -560,6 +602,21 @@ function BackupTab() {
             toast.warning('전체를 초기화했습니다.');
             window.setTimeout(() => window.location.reload(), 600);
           })();
+        }}
+      />
+
+      <ConfirmDialog
+        open={pendingImport !== null}
+        title="이 파일로 덮어쓸까요?"
+        description={`${pendingImport?.fileName ?? ''} — ${pendingImport?.summary ?? ''}. 지금 자료는 사라지고 이 파일의 내용으로 바뀝니다. 덮기 직전 상태는 자동으로 백업됩니다.`}
+        destructive
+        confirmLabel="덮어쓰기"
+        onCancel={() => setPendingImport(null)}
+        onConfirm={() => {
+          if (pendingImport === null) return;
+          const { text } = pendingImport;
+          setPendingImport(null);
+          void handleImport(text);
         }}
       />
     </div>

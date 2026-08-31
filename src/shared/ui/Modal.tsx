@@ -56,7 +56,16 @@ export function Modal({
     restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
     const panel = panelRef.current;
-    panel?.querySelector<HTMLElement>(FOCUSABLE)?.focus() ?? panel?.focus();
+    /*
+     * 첫 포커스는 입력칸이 먼저다. FOCUSABLE 순서대로 잡으면 헤더의 X
+     * 닫기 버튼이 항상 첫 번째라, '업무 추가'를 열자마자 타이핑이 안 되고
+     * 매번 마우스로 칸을 눌러야 했다. 입력칸이 없는 모달(확인창 등)은
+     * 지금처럼 첫 포커서블로 간다.
+     */
+    const firstInput = panel?.querySelector<HTMLElement>(
+      'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])',
+    );
+    (firstInput ?? panel?.querySelector<HTMLElement>(FOCUSABLE))?.focus() ?? panel?.focus();
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';

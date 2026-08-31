@@ -397,7 +397,7 @@ function BackupBanner({
   studentCount: number;
   getLastExportedAt: () => Promise<string | null>;
 }) {
-  const { adapter } = useSuite();
+  const { adapter, flush } = useSuite();
   const toast = useToast();
   const [reminder, setReminder] = useState<BackupReminder>({ show: false });
   const [dismissed, setDismissed] = useState(false);
@@ -429,6 +429,9 @@ function BackupBanner({
 
   const handleExport = async (): Promise<void> => {
     try {
+      // 설정의 백업 버튼과 같은 순서다. 대기 중인 저장을 먼저 밀어내지
+      // 않으면 방금 바꾼 내용이 백업 파일에서 조용히 빠진다.
+      await flush();
       const json = await adapter.exportJson();
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
