@@ -1,4 +1,4 @@
-import type { Rng } from '../seating/rng';
+import { shuffle, type Rng } from '../seating/rng';
 import type { Student } from '../../shared/domain/types';
 
 /**
@@ -30,4 +30,15 @@ export function remainingPool(
 export function drawOne(pool: readonly Student[], rng: Rng): Student | null {
   if (pool.length === 0) return null;
   return pool[Math.floor(rng() * pool.length)] ?? null;
+}
+
+/**
+ * 풀에서 여러 명, 겹치지 않게. 모둠 대표 둘·발표 셋처럼 한 번에 뽑을 때.
+ *
+ * 섞어서 앞에서 자른다(Fisher-Yates 재사용). 풀보다 많이 달라면 있는
+ * 만큼만 준다 — "3명 뽑기"를 눌렀는데 2명 남았으면 2명이 답이다.
+ */
+export function drawMany(pool: readonly Student[], count: number, rng: Rng): Student[] {
+  if (count <= 0 || pool.length === 0) return [];
+  return shuffle(pool, rng).slice(0, count);
 }

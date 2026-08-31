@@ -66,29 +66,30 @@ export function AppShell() {
       <div className="flex min-h-full flex-col">
         {/* 반투명 헤더는 스크롤할 때 본문 한글이 비쳐 읽기 어려워진다. 불투명으로 둔다. */}
         <header className="no-print sticky top-0 z-20 border-b border-slate-200 bg-surface">
-          <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
+          {/*
+            머리띠는 두 줄이 기본이다. 윗줄: 로고 · 학급 전환 · (날씨) · 아이콘들.
+            아랫줄: 기능 내비게이션을 **왼쪽으로 몰아** 한 줄로.
+
+            처음에는 전부 한 줄이었는데, 기능이 11개가 되자 기본 창(1280px)에서
+            flex가 항목을 쥐어짜 한글 라벨이 세로로 꺾였다 — '출결'이 '출/결'로.
+            글자가 꺾이는 머리띠보다 줄이 하나 더 있는 머리띠가 낫다.
+            아주 넓은 화면(2xl≥1536px)에서만 다시 한 줄로 합친다.
+          */}
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-0.5 px-4 py-2">
             <Link to="/" className="shrink-0 text-base font-bold tracking-tight text-slate-900">
               우리 반
             </Link>
 
             <ClassSwitcher />
 
-            {/*
-              머리띠 오른쪽 끝을 이 감싸개가 잡는다.
-              `ml-auto`가 여기 있으므로 **웹에서도 감싸개는 그린다.** 통째로
-              빼면 남은 자리를 미는 것이 없어져 내비게이션이 학급 전환기에
-              바로 붙는다. 안이 비는 것은 웹뿐 아니라 학교를 안 정한 설치형
-              에서도 늘 있는 일이라, 그때마다 머리띠가 다시 짜이면 안 된다.
-            */}
-            <div className="ml-auto flex items-center">
-              {/*
-                설치형에서만 그린다. 급식과 같은 사정이다 — 학교 주소를
-                NEIS에 물어야 하는데 브라우저는 그 요청을 직접 못 보낸다.
-              */}
-              {isDesktop() ? <TodayWeather /> : null}
-            </div>
-
-            <nav className="flex items-center gap-1">
+            <nav
+              /*
+               * 좁은 창의 안전망으로 overflow-x-auto를 둔다. 항목마다
+               * shrink-0·whitespace-nowrap이라 무슨 일이 있어도 글자는
+               * 안 꺾인다 — 모자라면 꺾이는 대신 넘쳐서 스크롤된다.
+               */
+              className="order-last -mx-1 flex basis-full items-center gap-1 overflow-x-auto px-1 pb-0.5 2xl:order-0 2xl:ml-1 2xl:basis-auto 2xl:pb-0"
+            >
               {FEATURE_NAV.filter(
                 ({ id }) => !(isDesktop() && HIDDEN_NAV_IDS_ON_DESKTOP.includes(id)),
               ).map(({ id, path, label, icon: Icon }) => (
@@ -100,7 +101,7 @@ export function AppShell() {
                   aria-label={label}
                   className={({ isActive }) =>
                     [
-                      'inline-flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-sm font-medium transition-colors',
+                      'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control px-2.5 py-1.5 text-sm font-medium transition-colors',
                       isActive
                         ? 'bg-brand-50 text-brand-700'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
@@ -111,6 +112,18 @@ export function AppShell() {
                   <span className="hidden md:inline">{label}</span>
                 </NavLink>
               ))}
+            </nav>
+
+            {/*
+              오른쪽 끝 묶음. `ml-auto`가 여기 있으므로 **웹에서도 이 묶음은
+              그린다** — 날씨가 비어도 아이콘들이 오른쪽 끝을 잡아야 한다.
+            */}
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+              {/*
+                설치형에서만 그린다. 급식과 같은 사정이다 — 학교 주소를
+                NEIS에 물어야 하는데 브라우저는 그 요청을 직접 못 보낸다.
+              */}
+              {isDesktop() ? <TodayWeather /> : null}
 
               <NavLink
                 to="/roster"
@@ -126,7 +139,6 @@ export function AppShell() {
               >
                 <Users className="size-4" aria-hidden />
               </NavLink>
-
 
               {/* PIN을 만든 교사에게만 보인다. 누를 수 없는 버튼을 보일 이유가 없다. */}
               {data.lockPin === '' ? null : (
@@ -155,7 +167,7 @@ export function AppShell() {
               >
                 <Settings className="size-4" aria-hidden />
               </NavLink>
-            </nav>
+            </div>
           </div>
         </header>
 

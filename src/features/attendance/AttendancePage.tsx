@@ -105,14 +105,35 @@ function DailyTab({
   const roster = useRoster();
   const classId = activeClass?.id ?? '';
 
+  /*
+   * 입력 방식 둘.
+   *
+   * 기본(null)은 이름을 탭할 때마다 상태가 도는 순환이다. 상태 단추를
+   * 먼저 고르면 **그 상태로 찍는 붓**이 된다 — 시간표의 "과목 먼저 고르고
+   * 칸 찍기"와 같은 조작이라 따로 배울 것이 없다. 지각 셋을 찍는 데
+   * 탭 여섯 번(순환 2×3) 대신 넷(붓 1 + 학생 3)이면 된다.
+   * '출석' 붓은 지우개다 — 잘못 찍은 것을 빠르게 되돌린다.
+   */
+  const [paint, setPaint] = useState<AttendanceStatus | 'present' | null>(null);
+
   const summary = summarize(data.attendanceRecords, classId, date, roster.length);
   const marked = roster.filter(
     (student) => statusOf(data.attendanceRecords, classId, date, student.id) !== null,
   );
 
-  const cycle = (studentId: string): void => {
+  const tap = (studentId: string): void => {
     const current = statusOf(data.attendanceRecords, classId, date, studentId);
-    const next = nextStatus(current);
+    const next =
+      paint === null
+        ? nextStatus(current)
+        : paint === 'present'
+          ? null
+          : // 같은 상태를 다시 찍으면 출석으로 되돌린다. 시간표의
+            // "같은 과목을 다시 찍으면 지운다"와 같은 규칙이다.
+            current === paint
+            ? null
+            : paint;
+
     update((suite) => ({
       ...suite,
       attendanceRecords: setStatus(suite.attendanceRecords, classId, date, studentId, next),
@@ -148,8 +169,35 @@ function DailyTab({
       </div>
 
       <Card>
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-sm text-slate-600">한 번에 찍기:</span>
+          {ATTENDANCE_STATUSES.map((status) => (
+            <Button
+              key={status}
+              size="sm"
+              variant={paint === status ? 'primary' : 'secondary'}
+              aria-pressed={paint === status}
+              onClick={() => setPaint(paint === status ? null : status)}
+            >
+              {STATUS_LABELS[status]}
+            </Button>
+          ))}
+          <Button
+            size="sm"
+            variant={paint === 'present' ? 'primary' : 'secondary'}
+            aria-pressed={paint === 'present'}
+            onClick={() => setPaint(paint === 'present' ? null : 'present')}
+          >
+            출석
+          </Button>
+        </div>
+
         <p className="mb-3 text-sm text-slate-500">
-          이름을 누를 때마다 출석 → 결석 → 지각 → 조퇴 → 체험학습 순으로 바뀝니다.
+          {paint === null
+            ? '이름을 누를 때마다 출석 → 결석 → 지각 → 조퇴 → 체험학습 순으로 바뀝니다. 위 단추를 고르면 그 상태로 바로 찍습니다.'
+            : paint === 'present'
+              ? '누르는 학생마다 출석으로 되돌립니다.'
+              : `누르는 학생마다 ${STATUS_LABELS[paint]}(으)로 찍습니다. 같은 학생을 다시 누르면 출석으로 돌아갑니다.`}
         </p>
         <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {roster.map((student) => {
@@ -158,7 +206,7 @@ function DailyTab({
               <li key={student.id}>
                 <button
                   type="button"
-                  onClick={() => cycle(student.id)}
+                  onClick={() => tap(student.id)}
                   aria-label={`${student.name} — ${status === null ? '출석' : STATUS_LABELS[status]}`}
                   className={cx(
                     'flex h-11 w-full items-center gap-2 rounded-control border px-2.5 text-left text-sm',

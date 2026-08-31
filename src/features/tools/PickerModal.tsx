@@ -7,7 +7,7 @@ import { useToday } from '../../shared/state/useToday';
 import { Badge, Button, cx, Modal } from '../../shared/ui';
 import { absentToday } from '../attendance/attendanceCore';
 import { systemRng } from '../seating/rng';
-import { drawOne, remainingPool } from './pickerCore';
+import { drawMany, remainingPool } from './pickerCore';
 
 /**
  * 발표자 뽑기.
@@ -31,7 +31,8 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
 
   const [pickedIds, setPickedIds] = useState<string[]>([]);
   const [excludePicked, setExcludePicked] = useState(true);
-  const [current, setCurrent] = useState<string | null>(null);
+  const [count, setCount] = useState(1);
+  const [current, setCurrent] = useState<string[]>([]);
   const [revealing, setRevealing] = useState(false);
 
   const absentIds = activeClass === null ? [] : absentToday(data.attendanceRecords, activeClass.id, today);
@@ -39,13 +40,15 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
   const pickedStudents = pickedIds
     .map((id) => roster.find((student) => student.id === id))
     .filter((student) => student !== undefined);
-  const currentStudent = roster.find((student) => student.id === current) ?? null;
+  const currentStudents = current
+    .map((id) => roster.find((student) => student.id === id))
+    .filter((student) => student !== undefined);
 
   const draw = (): void => {
-    const student = drawOne(pool, systemRng);
-    if (student === null) return;
-    setCurrent(student.id);
-    setPickedIds((ids) => (ids.includes(student.id) ? ids : [...ids, student.id]));
+    const students = drawMany(pool, count, systemRng);
+    if (students.length === 0) return;
+    setCurrent(students.map((student) => student.id));
+    setPickedIds((ids) => [...ids, ...students.map((s) => s.id).filter((id) => !ids.includes(id))]);
     setRevealing(true);
   };
 
@@ -82,6 +85,36 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
               ) : null}
             </div>
 
+            <div>
+              <p className="mb-1 text-sm text-slate-700">몇 명 뽑을까요</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[1, 2, 3, 4].map((n) => (
+                  <Button
+                    key={n}
+                    size="sm"
+                    variant={count === n ? 'primary' : 'secondary'}
+                    aria-pressed={count === n}
+                    onClick={() => setCount(n)}
+                  >
+                    {n}명
+                  </Button>
+                ))}
+                <input
+                  type="number"
+                  min={1}
+                  max={Math.max(1, roster.length)}
+                  value={count}
+                  onChange={(event) => {
+                    const parsed = Number.parseInt(event.target.value, 10);
+                    if (Number.isFinite(parsed) && parsed >= 1) setCount(parsed);
+                  }}
+                  aria-label="직접 입력 인원"
+                  className="h-9 w-16 rounded-control border border-slate-300 px-2 text-center text-sm"
+                />
+                <span className="text-sm text-slate-500">명</span>
+              </div>
+            </div>
+
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
@@ -109,7 +142,7 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
                 <ol className="flex flex-wrap gap-1">
                   {pickedStudents.map((student, index) => (
                     <li key={student.id}>
-                      <Badge tone={student.id === current ? 'brand' : 'neutral'}>
+                      <Badge tone={current.includes(student.id) ? 'brand' : 'neutral'}>
                         {index + 1}. {student.name}
                       </Badge>
                     </li>
@@ -125,19 +158,35 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
         뽑은 이름의 전체 화면 공개. NoticeModal의 '크게 띄우기'와 같은 이유,
         같은 방식이다 — 뒷자리에서도 읽혀야 한다.
       */}
-      {revealing && currentStudent !== null
+      {revealing && currentStudents.length > 0
         ? createPortal(
             <div
               role="dialog"
               aria-label="뽑힌 학생"
               className="no-print fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-surface p-8"
             >
-              <p className={cx('text-center font-black text-slate-900', 'animate-pick-reveal text-board-xl')}>
-                {currentStudent.name}
-              </p>
+              {/* 여럿을 뽑으면 이름마다 줄을 준다. 한 줄에 이어 붙이면
+                  누가 뽑혔는지 뒷자리에서 세어 읽어야 한다. */}
+              <div className="flex flex-col items-center gap-2">
+                {currentStudents.map((student) => (
+                  <p
+                    key={student.id}
+                    className={cx(
+                      'animate-pick-reveal text-center font-black text-slate-900',
+                      currentStudents.length === 1
+                        ? 'text-board-xl'
+                        : currentStudents.length <= 3
+                          ? 'text-board-lg'
+                          : 'text-board-md',
+                    )}
+                  >
+                    {student.name}
+                  </p>
+                ))}
+              </div>
               <div className="flex flex-wrap justify-center gap-2">
                 <Button size="lg" icon={Dices} variant="primary" disabled={pool.length === 0} onClick={draw}>
-                  한 명 더
+                  {count === 1 ? '한 명 더' : `${count}명 더`}
                 </Button>
                 <Button size="lg" icon={X} onClick={() => setRevealing(false)}>
                   닫기
