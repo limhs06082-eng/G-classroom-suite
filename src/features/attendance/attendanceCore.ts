@@ -79,15 +79,71 @@ export function setStatus(
   const rest = records.filter((record) => record !== existing);
   const entries = existing?.entries ?? [];
   const kept = entries.filter((entry) => entry.studentId !== studentId);
+  const stamp =
+    existing?.confirmedAt === undefined ? {} : { confirmedAt: existing.confirmedAt };
 
   if (status === null) {
-    return kept.length === 0 ? rest : [...rest, { classId, date, entries: kept }];
+    // 확인 도장이 있으면 항목이 다 비어도 기록을 남긴다 — 도장이 곧 내용이다.
+    return kept.length === 0 && existing?.confirmedAt === undefined
+      ? rest
+      : [...rest, { classId, date, entries: kept, ...stamp }];
   }
 
   // 상태만 바뀌는 것이라 메모는 남긴다. "감기로 결석"이 지각으로 바뀌어도
   // 감기라는 사실은 그대로다.
   const note = entries.find((entry) => entry.studentId === studentId)?.note ?? '';
-  return [...rest, { classId, date, entries: [...kept, { studentId, status, note }] }];
+  return [...rest, { classId, date, entries: [...kept, { studentId, status, note }], ...stamp }];
+}
+
+/**
+ * 여러 학생을 한 번에 같은 상태로. 학년 전체 체험학습 같은 날
+ * 30명 × 탭 여러 번 대신 버튼 하나로 끝낸다.
+ */
+export function setStatusMany(
+  records: readonly AttendanceRecord[],
+  classId: string,
+  date: string,
+  studentIds: readonly string[],
+  status: AttendanceStatus | null,
+): AttendanceRecord[] {
+  let next: AttendanceRecord[] = [...records];
+  for (const studentId of studentIds) {
+    next = setStatus(next, classId, date, studentId, status);
+  }
+  return next;
+}
+
+/** 그날 출결을 확인했는가. */
+export function isConfirmed(
+  records: readonly AttendanceRecord[],
+  classId: string,
+  date: string,
+): boolean {
+  return recordOf(records, classId, date)?.confirmedAt !== undefined;
+}
+
+/**
+ * 확인 도장을 찍거나 뗀다.
+ *
+ * 결석 0명인 날에도 "찍었다"를 남기는 수단이다. 떼었을 때 항목도 없으면
+ * 기록째 지운다(빈 껍데기 규칙).
+ */
+export function setConfirmed(
+  records: readonly AttendanceRecord[],
+  classId: string,
+  date: string,
+  confirmed: boolean,
+  now: string,
+): AttendanceRecord[] {
+  const existing = recordOf(records, classId, date);
+  const rest = records.filter((record) => record !== existing);
+  const entries = existing?.entries ?? [];
+
+  if (!confirmed) {
+    return entries.length === 0 ? rest : [...rest, { classId, date, entries }];
+  }
+
+  return [...rest, { classId, date, entries, confirmedAt: now }];
 }
 
 /** 사유 메모를 고친다. 기록이 없는 학생(출석)에게는 아무 일도 하지 않는다. */

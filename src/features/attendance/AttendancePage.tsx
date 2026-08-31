@@ -1,17 +1,20 @@
-import { CalendarCheck, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { CalendarCheck, CheckCheck, ChevronLeft, ChevronRight, Printer, RotateCcw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { ATTENDANCE_STATUSES, type AttendanceStatus, type Student } from '../../shared/domain/types';
 import { useActiveClass, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { useToday } from '../../shared/state/useToday';
-import { Badge, Button, Card, cx, EmptyState, Table, Tabs } from '../../shared/ui';
+import { Badge, Button, Card, cx, EmptyState, PrintLayout, Table, Tabs, usePrint, useToast } from '../../shared/ui';
 import {
+  isConfirmed,
   monthlyCounts,
   nextStatus,
   noteOf,
+  setConfirmed,
   setNote,
   setStatus,
+  setStatusMany,
   statusOf,
   STATUS_LABELS,
   summarize,
@@ -103,6 +106,7 @@ function DailyTab({
   const { data, update } = useSuite();
   const activeClass = useActiveClass();
   const roster = useRoster();
+  const toast = useToast();
   const classId = activeClass?.id ?? '';
 
   /*
@@ -146,16 +150,45 @@ function DailyTab({
         <input
           type="date"
           value={date}
-          max={today}
           onChange={(event) => onDateChange(event.target.value === today ? null : event.target.value)}
           aria-label="출결 날짜"
           className="h-9 rounded-control border border-slate-300 px-2 text-sm"
         />
         {date !== today ? (
-          <Button size="sm" variant="ghost" icon={RotateCcw} onClick={() => onDateChange(null)}>
-            오늘로
-          </Button>
+          <>
+            <Button size="sm" variant="ghost" icon={RotateCcw} onClick={() => onDateChange(null)}>
+              오늘로
+            </Button>
+            {/* 다음 주 체험학습 결석계를 미리 받아 둔 날, 미리 적을 수 있다. */}
+            {date > today ? <Badge tone="info">예정 기록입니다</Badge> : null}
+          </>
         ) : null}
+
+        {/*
+          결석 0명인 날의 "찍었다" 도장. 이것이 없으면 홈 카드가 하루 종일
+          "아직 안 찍었다"고 말하고, 교사는 확인하러 다시 들어온다.
+        */}
+        <Button
+          size="sm"
+          variant={isConfirmed(data.attendanceRecords, classId, date) ? 'primary' : 'secondary'}
+          icon={CheckCheck}
+          aria-pressed={isConfirmed(data.attendanceRecords, classId, date)}
+          onClick={() => {
+            const next = !isConfirmed(data.attendanceRecords, classId, date);
+            update((suite) => ({
+              ...suite,
+              attendanceRecords: setConfirmed(
+                suite.attendanceRecords,
+                classId,
+                date,
+                next,
+                new Date().toISOString(),
+              ),
+            }));
+          }}
+        >
+          {isConfirmed(data.attendanceRecords, classId, date) ? '확인 완료' : '출결 확인'}
+        </Button>
 
         <div className="ml-auto flex flex-wrap items-center gap-1.5 text-sm">
           <Badge tone="success">출석 {summary.present}</Badge>
@@ -190,6 +223,34 @@ function DailyTab({
           >
             출석
           </Button>
+
+          {/* 학년 전체 체험학습 같은 날 — 붓을 고른 채 한 번에 다 찍는다. */}
+          {paint !== null && paint !== 'present' ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                const previous = data.attendanceRecords;
+                update((suite) => ({
+                  ...suite,
+                  attendanceRecords: setStatusMany(
+                    suite.attendanceRecords,
+                    classId,
+                    date,
+                    roster.map((student) => student.id),
+                    paint,
+                  ),
+                }));
+                toast.info(`전원을 ${STATUS_LABELS[paint]}(으)로 찍었습니다.`, {
+                  actionLabel: '실행 취소',
+                  onAction: () =>
+                    update((suite) => ({ ...suite, attendanceRecords: previous })),
+                });
+              }}
+            >
+              전원 {STATUS_LABELS[paint]}
+            </Button>
+          ) : null}
         </div>
 
         <p className="mb-3 text-sm text-slate-500">
@@ -283,6 +344,7 @@ function MonthlyTab({ today }: { today: string }) {
   const classId = activeClass?.id ?? '';
 
   const [month, setMonth] = useState(today.slice(0, 7));
+  const printNow = usePrint();
 
   const counts = useMemo(
     () => monthlyCounts(data.attendanceRecords, classId, month),
@@ -306,8 +368,49 @@ function MonthlyTab({ today }: { today: string }) {
           {year}년 {Number(mon)}월
         </p>
         <Button size="sm" variant="ghost" icon={ChevronRight} iconOnly aria-label="다음 달" onClick={() => shiftMonth(1)} />
+        {/* 나이스는 다른 창(다른 PC)이다. 옆에 두고 보라면 종이로도 나가야 한다. */}
+        <Button size="sm" variant="secondary" icon={Printer} disabled={rows.length === 0} onClick={printNow}>
+          인쇄
+        </Button>
         <p className="ml-auto text-sm text-slate-500">나이스 월말 입력 때 옆에 두고 보는 표입니다.</p>
       </div>
+
+      <PrintLayout
+        title={`${activeClass?.name ?? ''} ${year}년 ${Number(mon)}월 출결`}
+        footer={[data.profile.schoolName, data.profile.teacherName].filter(Boolean).join(' · ')}
+      >
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr>
+              <th className="w-12 border border-black px-2 py-1.5">번호</th>
+              <th className="border border-black px-2 py-1.5 text-left">이름</th>
+              {ATTENDANCE_STATUSES.map((status) => (
+                <th key={status} className="border border-black px-2 py-1.5">
+                  {STATUS_LABELS[status]}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((student) => (
+              <tr key={student.id}>
+                <td data-numeric className="border border-black px-2 py-1 text-center">
+                  {student.number}
+                </td>
+                <td className="border border-black px-2 py-1">{student.name}</td>
+                {ATTENDANCE_STATUSES.map((status) => {
+                  const value = counts.get(student.id)?.[status] ?? 0;
+                  return (
+                    <td key={status} data-numeric className="border border-black px-2 py-1 text-center">
+                      {value === 0 ? '' : value}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </PrintLayout>
 
       <Card>
         <Table<Student>

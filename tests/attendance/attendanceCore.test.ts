@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   absentToday,
+  isConfirmed,
   monthlyCounts,
   nextStatus,
+  setConfirmed,
   setNote,
   setStatus,
+  setStatusMany,
   statusOf,
   summarize,
 } from '../../src/features/attendance/attendanceCore';
@@ -88,6 +91,49 @@ describe('absentToday — 등교하지 않은 학생', () => {
     // 지각은 늦게라도 오고, 조퇴는 아침에는 있다. 뽑기·당번에서 빼야 할
     // 사람은 그날 교실에 아예 없는 결석·체험학습이다.
     expect(absentToday(records, CLASS, DATE)).toEqual(['stu-1', 'stu-3']);
+  });
+});
+
+describe('setConfirmed — 전원 출석 확인', () => {
+  const NOW = '2026-08-29T09:00:00.000Z';
+
+  it('아무 기록이 없어도 확인 도장을 남길 수 있다', () => {
+    const confirmed = setConfirmed([], CLASS, DATE, true, NOW);
+
+    expect(isConfirmed(confirmed, CLASS, DATE)).toBe(true);
+    // 안 찍은 날과 전원 출석을 확인한 날은 다른 상태다.
+    expect(isConfirmed(confirmed, CLASS, '2026-08-30')).toBe(false);
+  });
+
+  it('확인을 되돌리면 빈 기록은 사라진다', () => {
+    const confirmed = setConfirmed([], CLASS, DATE, true, NOW);
+    const undone = setConfirmed(confirmed, CLASS, DATE, false, NOW);
+
+    expect(undone).toEqual([]);
+  });
+
+  it('확인 도장이 있으면 마지막 항목을 지워도 기록이 남는다', () => {
+    let records = setStatus([], CLASS, DATE, 'stu-1', 'absent');
+    records = setConfirmed(records, CLASS, DATE, true, NOW);
+    records = setStatus(records, CLASS, DATE, 'stu-1', null);
+
+    expect(isConfirmed(records, CLASS, DATE)).toBe(true);
+  });
+});
+
+describe('setStatusMany — 전원 일괄', () => {
+  it('여러 학생을 한 번에 같은 상태로 찍는다', () => {
+    const records = setStatusMany([], CLASS, DATE, ['stu-1', 'stu-2', 'stu-3'], 'fieldTrip');
+
+    expect(statusOf(records, CLASS, DATE, 'stu-2')).toBe('fieldTrip');
+    expect(summarize(records, CLASS, DATE, 5).byStatus.fieldTrip).toBe(3);
+  });
+
+  it('null이면 전원 출석으로 되돌린다', () => {
+    const marked = setStatusMany([], CLASS, DATE, ['stu-1', 'stu-2'], 'late');
+    const cleared = setStatusMany(marked, CLASS, DATE, ['stu-1', 'stu-2'], null);
+
+    expect(cleared).toEqual([]);
   });
 });
 

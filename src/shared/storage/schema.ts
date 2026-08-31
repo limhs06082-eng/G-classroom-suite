@@ -821,7 +821,12 @@ function parseAttendanceRecord(raw: unknown): AttendanceRecord | null {
     return [{ studentId, status: status as AttendanceStatus, note: str(entry['note']) }];
   });
 
-  return { classId, date, entries };
+  return {
+    classId,
+    date,
+    entries,
+    ...(typeof raw['confirmedAt'] === 'string' ? { confirmedAt: raw['confirmedAt'] } : {}),
+  };
 }
 
 function parseDailyNotice(raw: unknown): DailyNotice | null {

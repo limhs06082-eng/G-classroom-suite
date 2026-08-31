@@ -1,7 +1,7 @@
 import { useActiveClass, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { useToday } from '../../shared/state/useToday';
 import { BigStat, PendingNote } from '../home/SummaryCard';
-import { statusOf, summarize, STATUS_LABELS } from './attendanceCore';
+import { isConfirmed, statusOf, summarize, STATUS_LABELS } from './attendanceCore';
 
 /**
  * 홈의 '오늘 출결' 카드 본문.
@@ -17,13 +17,20 @@ export function AttendanceSummary() {
   const classId = activeClass?.id ?? '';
 
   if (roster.length === 0) {
-    return <PendingNote>명단을 등록하면 아침 출결을 여기서 바로 찍을 수 있습니다.</PendingNote>;
+    // "여기서 바로"라고 하면 거짓말이다 — 이 카드는 이동만 한다.
+    return <PendingNote>명단을 등록하면 출결 화면에서 이름을 눌러 찍을 수 있습니다.</PendingNote>;
   }
 
   const summary = summarize(data.attendanceRecords, classId, today, roster.length);
+  const confirmed = isConfirmed(data.attendanceRecords, classId, today);
 
   if (summary.marked === 0) {
-    return <PendingNote>아직 오늘 출결을 찍지 않았습니다. 전원 출석이면 그대로 두시면 됩니다.</PendingNote>;
+    // 확인 도장이 있으면 '안 찍음'이 아니라 '전원 출석 확인함'이다.
+    return confirmed ? (
+      <BigStat value={roster.length} unit="명 전원 출석" note="오늘 출결 확인 완료" />
+    ) : (
+      <PendingNote>아직 오늘 출결을 찍지 않았습니다. 전원 출석이면 [출결 확인]만 눌러 주세요.</PendingNote>
+    );
   }
 
   const away = roster.filter((student) => statusOf(data.attendanceRecords, classId, today, student.id) !== null);
