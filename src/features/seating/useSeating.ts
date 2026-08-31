@@ -75,6 +75,8 @@ export interface SeatingView {
   toggleSeatDisabled: (seatId: string) => void;
   toggleLock: (studentId: string) => void;
   shuffleSeats: () => { ok: boolean; message?: string };
+  /** 배치 통째 복원 — 무작위 배치·불러오기의 실행 취소용 */
+  restorePositions: (previous: StudentPosition[]) => void;
   swapSeats: (seatA: string, seatB: string) => void;
   assignStudent: (studentId: string, seatId: string) => void;
   clearSeats: () => Promise<void>;
@@ -195,6 +197,20 @@ export function useSeating(): SeatingView {
     [update],
   );
 
+  /**
+   * 배치를 통째로 되돌린다. 무작위 배치·자리표 불러오기의 실행 취소가 쓴다.
+   *
+   * 시력·교우관계를 30분 걸려 맞춘 배치가 오탭 한 번에 사라지는 것을
+   * 확인창 대신 실행 취소로 막는다 — 무작위 배치는 하루에도 몇 번 누르는
+   * 버튼이라 매번 확인을 물으면 그게 더 성가시다.
+   */
+  const restorePositions = useCallback(
+    (previous: StudentPosition[]): void => {
+      mutate((prev) => ({ ...prev, positions: previous }));
+    },
+    [mutate],
+  );
+
   const shuffleSeats = useCallback((): { ok: boolean; message?: string } => {
     const result = performRandomSeating(
       roster.map((student) => ({ id: student.id, isLocked: lockedStudentIds.has(student.id) })),
@@ -305,6 +321,7 @@ export function useSeating(): SeatingView {
     toggleSeatDisabled,
     toggleLock,
     shuffleSeats,
+    restorePositions,
     swapSeats,
     assignStudent,
     clearSeats,

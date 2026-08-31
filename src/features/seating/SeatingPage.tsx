@@ -85,7 +85,15 @@ export default function SeatingPage() {
 
   const handleSeatClick = (seatId: string): void => {
     if (mode === 'layout') {
+      /*
+       * 자리를 끄면 앉아 있던 학생이 미배치로 빠진다. 미배치 목록은 화면
+       * 아래라 눈치채기 어렵다 — 여기서 이름을 불러 알린다.
+       */
+      const occupant = seating.studentBySeat.get(seatId);
       seating.toggleSeatDisabled(seatId);
+      if (occupant !== undefined) {
+        toast.warning(`${occupant.name} 학생이 자리에서 빠졌습니다. 아래 미배치 목록에 있습니다.`);
+      }
       return;
     }
 
@@ -111,6 +119,9 @@ export default function SeatingPage() {
   };
 
   const handleShuffle = (): void => {
+    // 실행 취소용. 손으로 30분 맞춘 배치가 오탭 한 번에 사라지면 안 된다.
+    const previous = [...seating.positions];
+
     const result = seating.shuffleSeats();
     if (result.ok) {
       const lockedCount = seating.lockedStudentIds.size;
@@ -118,6 +129,9 @@ export default function SeatingPage() {
         lockedCount > 0
           ? `자리를 새로 배치했습니다. 고정한 ${lockedCount}명은 그대로 두었습니다.`
           : '자리를 새로 배치했습니다.',
+        previous.length > 0
+          ? { actionLabel: '실행 취소', onAction: () => seating.restorePositions(previous) }
+          : undefined,
       );
       setSelectedSeatId(null);
       setSelectedStudentId(null);
@@ -136,12 +150,17 @@ export default function SeatingPage() {
   };
 
   const handleLoadLayout = (layout: { id: string; name: string }): void => {
+    // 불러오기도 지금 배치를 덮는다. 되돌릴 길을 함께 준다.
+    const previous = [...seating.positions];
     const { droppedStudents } = seating.loadLayout(layout.id);
 
     toast.success(
       droppedStudents > 0
         ? `'${layout.name}' 자리표를 불러왔습니다. 지금 명단에 없는 ${droppedStudents}명은 자리에서 뺐습니다.`
         : `'${layout.name}' 자리표를 불러왔습니다.`,
+      previous.length > 0
+        ? { actionLabel: '실행 취소', onAction: () => seating.restorePositions(previous) }
+        : undefined,
     );
     setSelectedSeatId(null);
     setSelectedStudentId(null);
@@ -175,6 +194,24 @@ export default function SeatingPage() {
         <div className="ml-auto flex flex-wrap gap-2">
           <Button icon={Shuffle} variant="primary" onClick={handleShuffle}>
             무작위 배치
+          </Button>
+          {/*
+            "돌리고 → 마음에 들면 저장"이 한 흐름인데 저장 칸은 화면 맨
+            아래였다. 여기서 한 번에 저장한다. 이름은 날짜로 자동이고,
+            이름을 붙이고 싶으면 아래 '저장한 자리표' 칸을 그대로 쓰면 된다.
+          */}
+          <Button
+            variant="secondary"
+            icon={Bookmark}
+            disabled={seating.positions.length === 0}
+            onClick={() => {
+              const name = `${new Date().toISOString().slice(0, 10)} 자리`;
+              if (seating.saveCurrentLayout(name)) {
+                toast.success(`'${name}' 이름으로 저장했습니다.`);
+              }
+            }}
+          >
+            지금 배치 저장
           </Button>
           <Button variant="secondary" icon={Monitor} onClick={() => openBoard('/board/seating')}>
             전자칠판

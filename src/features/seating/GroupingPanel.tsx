@@ -145,9 +145,31 @@ export function GroupingPanel() {
       {movingStudentId !== null ? (
         <div className="flex flex-wrap items-center gap-2 rounded-card border border-brand-200 bg-brand-50 p-3">
           <span className="text-sm text-brand-700">
-            <strong>{grouping.studentById.get(movingStudentId)?.name}</strong> 학생을 옮길 모둠을
-            선택해 주세요.
+            <strong>{grouping.studentById.get(movingStudentId)?.name}</strong> 학생을 어디로
+            옮길까요?
           </span>
+          {/*
+            모둠 칩을 배너에 나열한다. 8모둠이면 대상 카드가 화면 밖이라
+            "카드까지 스크롤 → 여기로 옮기기"가 이동 한 번마다 반복됐다.
+            여기서 바로 끝낸다. 카드의 [여기로 옮기기]도 그대로 둔다 —
+            눈앞에 카드가 보이면 그쪽이 더 자연스럽다.
+          */}
+          <div className="flex flex-wrap items-center gap-1">
+            {grouping.groups.map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                onClick={() => handleMove(group.id)}
+                className="inline-flex items-center gap-1.5 rounded-control border border-brand-200 bg-surface px-2 py-1 text-sm text-slate-800 hover:border-brand-500"
+              >
+                <span
+                  className={cx('size-2 rounded-full', groupColorStyle(group.color).dot)}
+                  aria-hidden
+                />
+                {group.name}
+              </button>
+            ))}
+          </div>
           <div className="ml-auto flex gap-2">
             <Button size="sm" variant="secondary" onClick={() => handleMove(null)}>
               모둠에서 빼기
