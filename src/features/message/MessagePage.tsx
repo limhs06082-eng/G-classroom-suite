@@ -114,7 +114,7 @@ export default function MessagePage() {
         ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {(['전체', ...MESSAGE_CATEGORIES] as const).map((value) => (
           <Button
             key={value}
@@ -126,6 +126,26 @@ export default function MessagePage() {
             {value}
           </Button>
         ))}
+
+        {/*
+          숨긴 기본 문구를 되살리는 길. 전에는 messageHidden에 넣기만 하고
+          빼는 코드가 어디에도 없어서, 잘못 숨기면 백업 복원 말고는 방법이
+          없었다.
+        */}
+        {data.messageHidden.length > 0 ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto"
+            onClick={() => {
+              const count = data.messageHidden.length;
+              update((current) => ({ ...current, messageHidden: [] }));
+              toast.success(`숨긴 기본 문구 ${count}개를 되살렸습니다.`);
+            }}
+          >
+            숨긴 기본 문구 {data.messageHidden.length}개 되살리기
+          </Button>
+        ) : null}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
@@ -196,10 +216,28 @@ export default function MessagePage() {
                               },
                         );
                         if (selectedId === template.id) setSelectedId(null);
+                        // 내가 만든 문구의 즉시 삭제는 이 앱에서 여기뿐이었다. 돌아올 길을 준다.
                         toast.info(
                           template.isBuiltIn
                             ? `${template.title}을(를) 목록에서 숨겼습니다.`
                             : `${template.title}을(를) 지웠습니다.`,
+                          {
+                            actionLabel: '실행 취소',
+                            onAction: () =>
+                              update((current) =>
+                                template.isBuiltIn
+                                  ? {
+                                      ...current,
+                                      messageHidden: current.messageHidden.filter(
+                                        (id) => id !== template.id,
+                                      ),
+                                    }
+                                  : {
+                                      ...current,
+                                      messageTemplates: [...current.messageTemplates, template],
+                                    },
+                              ),
+                          },
                         );
                       }}
                     />
@@ -343,6 +381,9 @@ export default function MessagePage() {
       </div>
 
       <SaveTemplateModal
+        // 고른 문구의 분류가 바뀌면 기본값도 따라가야 한다. state 초기값은
+        // 첫 마운트에만 읽히므로 key로 다시 마운트한다.
+        key={selected?.category ?? '기타'}
         open={saveOpen}
         defaultCategory={selected?.category ?? '기타'}
         onClose={() => setSaveOpen(false)}

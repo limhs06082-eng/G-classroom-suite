@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { Button, cx, Modal } from '../../shared/ui';
 import { PickerModal } from './PickerModal';
 import { useTools } from './ToolsContext';
-import { formatDuration, useTimer } from './useTimer';
+import { formatDuration } from './useTimer';
 
 /**
  * 수업 도구 툴바.
@@ -21,14 +21,31 @@ import { formatDuration, useTimer } from './useTimer';
 const PRESET_MINUTES = [1, 3, 5, 10, 15];
 
 export function ToolsBar() {
-  const { openTool, open, close } = useTools();
+  const { openTool, open, close, timer } = useTools();
+
+  /*
+   * 단추가 남은 시간을 짊어진다. 모달을 닫고 순회 지도를 나가도, 화면
+   * 어딘가에는 타이머가 살아 있다는 표시가 남아야 한다. 끝난 뒤에는
+   * 사라지지 않는 토스트(ToolsContext)가 함께 알린다.
+   */
+  const timerLabel =
+    timer.state === 'running' || timer.state === 'paused'
+      ? `타이머 ${formatDuration(timer.remainingMs)}`
+      : timer.state === 'finished'
+        ? '타이머 끝!'
+        : '타이머';
 
   return (
     <>
       <div className="no-print sticky bottom-0 z-20 border-t border-slate-200 bg-surface">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-2">
-          <Button size="sm" icon={TimerIcon} onClick={() => open('timer')}>
-            타이머
+          <Button
+            size="sm"
+            icon={TimerIcon}
+            variant={timer.state === 'finished' ? 'primary' : 'secondary'}
+            onClick={() => open('timer')}
+          >
+            <span data-numeric>{timerLabel}</span>
           </Button>
           <Button size="sm" icon={EyeOff} onClick={() => open('curtain')}>
             화면 가리기
@@ -58,14 +75,17 @@ export function ToolsBar() {
 }
 
 function TimerModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [finished, setFinished] = useState(false);
-  const timer = useTimer(() => setFinished(true));
+  /*
+   * 타이머는 ToolsContext에 산다. 모달 안에 두면 닫는 순간 화면에서
+   * 사라져서, 끝나도 알 길이 시계뿐이었다. 여기는 그리기만 한다.
+   * '끝났다'는 별도 state가 아니라 timer.state가 직접 말한다 — 전에는
+   * 모달을 다시 열 때 지역 finished를 지워 버려, 끝난 건지 리셋된 건지
+   * 구별할 수 없는 0:00만 남았다.
+   */
+  const { timer } = useTools();
   const [custom, setCustom] = useState('7');
 
-  useEffect(() => {
-    if (open) setFinished(false);
-  }, [open]);
-
+  const finished = timer.state === 'finished';
   const running = timer.state === 'running';
 
   return (
@@ -83,7 +103,8 @@ function TimerModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
         {finished ? <p className="text-sm font-medium text-danger-700">시간이 다 되었습니다</p> : null}
 
-        {timer.state === 'idle' ? (
+        {/* 끝난 뒤에는 곧바로 다음 타이머를 걸 수 있어야 한다. */}
+        {timer.state === 'idle' || finished ? (
           <>
             <div className="flex flex-wrap justify-center gap-2">
               {PRESET_MINUTES.map((minutes) => (
@@ -192,6 +213,26 @@ function NoticeModal({ open, onClose }: { open: boolean; onClose: () => void }) 
   const [text, setText] = useState('');
   const [showing, setShowing] = useState(false);
 
+  const dismiss = (): void => {
+    setShowing(false);
+    onClose();
+  };
+
+  /*
+   * 전체 화면일 때 Esc로 닫는다. 화면 가리개는 되는데 이것만 안 되면,
+   * 교실 앞에서 리모컨·키보드로 못 닫고 마우스를 찾아야 한다.
+   */
+  useEffect(() => {
+    if (!showing) return;
+    const handleKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') dismiss();
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+    // dismiss는 렌더마다 새로 만들어지지만 하는 일이 같아 무해하다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showing]);
+
   return (
     <>
       <Modal
@@ -220,6 +261,10 @@ function NoticeModal({ open, onClose }: { open: boolean; onClose: () => void }) 
           <input
             value={text}
             onChange={(event) => setText(event.target.value)}
+            onKeyDown={(event) => {
+              // 치고 바로 Enter — 급한 안내에 마우스를 찾게 하지 않는다.
+              if (event.key === 'Enter' && text.trim() !== '') setShowing(true);
+            }}
             placeholder="교과서 42쪽을 펴세요"
             className="mt-1 h-10 w-full rounded-control border border-slate-300 px-3"
           />
@@ -234,16 +279,10 @@ function NoticeModal({ open, onClose }: { open: boolean; onClose: () => void }) 
               className="no-print fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-surface p-8"
             >
               <p className="text-center text-board-xl font-black text-slate-900">{text}</p>
-              <Button
-                size="lg"
-                icon={X}
-                onClick={() => {
-                  setShowing(false);
-                  onClose();
-                }}
-              >
+              <Button size="lg" icon={X} onClick={dismiss}>
                 닫기
               </Button>
+              <p className="text-sm text-slate-400">Esc 키를 눌러도 닫힙니다</p>
             </div>,
             document.body,
           )

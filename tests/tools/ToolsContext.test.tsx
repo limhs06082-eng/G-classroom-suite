@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ToolsBar } from '../../src/features/tools/ToolsBar';
 import { ToolsProvider, useTools } from '../../src/features/tools/ToolsContext';
+import { ToastProvider } from '../../src/shared/ui';
 
 /*
  * 타이머도 화면 가리개도 이미 있다. 이번 판이 할 일은 **그것들을 '지금'
@@ -21,10 +22,13 @@ function Far() {
 
 function show() {
   return render(
-    <ToolsProvider>
-      <Far />
-      <ToolsBar />
-    </ToolsProvider>,
+    // ToolsProvider가 타이머 종료 토스트를 띄우므로 ToastProvider가 위에 있어야 한다.
+    <ToastProvider>
+      <ToolsProvider>
+        <Far />
+        <ToolsBar />
+      </ToolsProvider>
+    </ToastProvider>,
   );
 }
 

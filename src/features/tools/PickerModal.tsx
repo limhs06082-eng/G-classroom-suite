@@ -1,5 +1,5 @@
 import { Dices, RotateCcw, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { useActiveClass, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
@@ -51,6 +51,28 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
     setPickedIds((ids) => [...ids, ...students.map((s) => s.id).filter((id) => !ids.includes(id))]);
     setRevealing(true);
   };
+
+  /*
+   * 공개 화면의 키보드. 교실을 돌아다니며 연달아 뽑는 도구라 손이
+   * 마우스에 묶이면 안 된다 — Enter/Space는 한 번 더, Esc는 닫기.
+   */
+  const drawRef = useRef(draw);
+  drawRef.current = draw;
+  const poolEmptyRef = useRef(pool.length === 0);
+  poolEmptyRef.current = pool.length === 0;
+
+  useEffect(() => {
+    if (!revealing) return;
+    const handleKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setRevealing(false);
+      if ((event.key === 'Enter' || event.key === ' ') && !poolEmptyRef.current) {
+        event.preventDefault();
+        drawRef.current();
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [revealing]);
 
   return (
     <>
@@ -192,6 +214,7 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
                   닫기
                 </Button>
               </div>
+              <p className="text-sm text-slate-400">Enter는 한 번 더, Esc는 닫기입니다</p>
             </div>,
             document.body,
           )

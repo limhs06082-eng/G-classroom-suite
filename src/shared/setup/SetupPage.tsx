@@ -48,6 +48,41 @@ export default function SetupPage() {
   const stepIndex = STEPS.findIndex((entry) => entry.id === step);
 
   const createClass = (): void => {
+    /*
+     * 이미 만든 적이 있으면(명단 단계에서 [이전]으로 돌아온 경우) 새로
+     * 만들지 않고 그 학급·학기의 값만 고친다. 전에는 매번 새로 만들어서,
+     * 이름 오타를 고치러 돌아갔다 오면 같은 이름의 학급과 학기가 하나 더
+     * 생겼다 — 처음 쓰는 교사가 가장 밟기 쉬운 길에 있던 함정이다.
+     */
+    if (classId !== null) {
+      update((current) => {
+        const room = current.classRooms.find((item) => item.id === classId);
+        const termId = room?.termId;
+        const now = new Date().toISOString();
+        return {
+          ...current,
+          profile: { ...current.profile, schoolName: schoolName.trim(), teacherName: teacherName.trim() },
+          terms: current.terms.map((term) =>
+            term.id === termId
+              ? {
+                  ...term,
+                  schoolYear,
+                  semester,
+                  name: `${schoolYear}학년도 ${semester}`,
+                  startDate: `${schoolYear}-03-02`,
+                  endDate: `${Number(schoolYear) + 1}-02-28`,
+                }
+              : term,
+          ),
+          classRooms: current.classRooms.map((item) =>
+            item.id === classId ? { ...item, name: className.trim(), updatedAt: now } : item,
+          ),
+        };
+      });
+      setStep('roster');
+      return;
+    }
+
     const term = createTerm({
       schoolYear,
       semester,

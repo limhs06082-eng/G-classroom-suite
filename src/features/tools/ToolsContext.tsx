@@ -1,5 +1,8 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 
+import { useToast } from '../../shared/ui';
+import { useTimer, type Timer } from './useTimer';
+
 export type ToolName = 'timer' | 'curtain' | 'notice' | 'picker';
 
 interface ToolsValue {
@@ -7,6 +10,13 @@ interface ToolsValue {
   openTool: ToolName | null;
   open: (tool: ToolName) => void;
   close: () => void;
+  /**
+   * 수업 타이머. 모달이 아니라 여기 사는 이유는 **모달을 닫아도 돌아야**
+   * 하기 때문이다. 모달 안에 두면 닫는 순간 화면에 남는 흔적이 없어져,
+   * 5분을 걸어 두고 순회 지도를 나간 교사가 끝난 것을 알 길이 시계뿐이었다.
+   * 이제 툴바 단추가 남은 시간을 보여 주고, 끝나면 사라지지 않는 알림이 뜬다.
+   */
+  timer: Timer;
 }
 
 const ToolsContext = createContext<ToolsValue | null>(null);
@@ -23,14 +33,29 @@ const ToolsContext = createContext<ToolsValue | null>(null);
  */
 export function ToolsProvider({ children }: { children: ReactNode }) {
   const [openTool, setOpenTool] = useState<ToolName | null>(null);
+  const toast = useToast();
+
+  const timer = useTimer(() => {
+    /*
+     * durationMs: 0 — 저절로 사라지지 않는다. 다른 화면에 있다가 돌아와도
+     * 끝났다는 사실이 남아 있어야 한다. 소리는 내지 않는다(수업 종료
+     * 예고와 같은 판단 — 학교 종이 울리는 교실에서 소리는 잡음이다).
+     */
+    toast.warning('타이머가 끝났습니다.', {
+      durationMs: 0,
+      actionLabel: '타이머 열기',
+      onAction: () => setOpenTool('timer'),
+    });
+  });
 
   const value = useMemo<ToolsValue>(
     () => ({
       openTool,
       open: (tool) => setOpenTool(tool),
       close: () => setOpenTool(null),
+      timer,
     }),
-    [openTool],
+    [openTool, timer],
   );
 
   return <ToolsContext.Provider value={value}>{children}</ToolsContext.Provider>;

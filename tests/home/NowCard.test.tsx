@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { NowCard } from '../../src/features/home/NowCard';
 import type { NowState } from '../../src/features/now/nowCore';
 import { ToolsProvider, useTools } from '../../src/features/tools/ToolsContext';
+import { ToastProvider } from '../../src/shared/ui';
 
 /*
  * 카드는 <Link>를 그린다. react-router 맥락 밖에서 그리면 죽으므로 실제
@@ -31,10 +32,13 @@ function OpenToolProbe() {
 function show(state: NowState, onOpenBoard = vi.fn(), hasMealCard = true) {
   return render(
     <MemoryRouter>
-      <ToolsProvider>
-        <NowCard state={state} onOpenBoard={onOpenBoard} hasMealCard={hasMealCard} />
-        <OpenToolProbe />
-      </ToolsProvider>
+      {/* ToolsProvider가 타이머 종료 토스트를 띄우므로 ToastProvider가 위에 있어야 한다. */}
+      <ToastProvider>
+        <ToolsProvider>
+          <NowCard state={state} onOpenBoard={onOpenBoard} hasMealCard={hasMealCard} />
+          <OpenToolProbe />
+        </ToolsProvider>
+      </ToastProvider>
     </MemoryRouter>,
   );
 }
