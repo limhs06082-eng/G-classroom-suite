@@ -74,7 +74,8 @@ export interface SeatingView {
   setPerspective: (next: SeatingPerspective) => void;
   toggleSeatDisabled: (seatId: string) => void;
   toggleLock: (studentId: string) => void;
-  shuffleSeats: () => { ok: boolean; message?: string };
+  /** warning은 성공했지만 알릴 것(떨어뜨리기 조건 일부 미충족). */
+  shuffleSeats: () => { ok: boolean; message?: string; warning?: string };
   /** 배치 통째 복원 — 무작위 배치·불러오기의 실행 취소용 */
   restorePositions: (previous: StudentPosition[]) => void;
   swapSeats: (seatA: string, seatB: string) => void;
@@ -211,18 +212,39 @@ export function useSeating(): SeatingView {
     [mutate],
   );
 
-  const shuffleSeats = useCallback((): { ok: boolean; message?: string } => {
+  const shuffleSeats = useCallback((): { ok: boolean; message?: string; warning?: string } => {
+    /*
+     * '떨어뜨리기' 짝. 한쪽 프로필에만 적혀 있어도 양쪽에 적용된다 —
+     * 짝은 대칭이라 교사가 두 번 적을 이유가 없다. 명단 밖(전출) 학생은
+     * 불변조건이 이미 걸렀지만, 지금 명단 기준으로 한 번 더 거른다.
+     */
+    const rosterIds = new Set(roster.map((student) => student.id));
+    const seen = new Set<string>();
+    const avoidPairs: Array<readonly [string, string]> = [];
+    for (const profile of data.seatingProfiles) {
+      if (!rosterIds.has(profile.studentId)) continue;
+      for (const other of profile.avoidStudentIds) {
+        if (!rosterIds.has(other)) continue;
+        const key = [profile.studentId, other].sort().join(':');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        avoidPairs.push([profile.studentId, other]);
+      }
+    }
+
     const result = performRandomSeating(
       roster.map((student) => ({ id: student.id, isLocked: lockedStudentIds.has(student.id) })),
       seats,
       positions,
+      undefined,
+      { avoidPairs },
     );
 
     if (!result.ok) return { ok: false, ...(result.message === undefined ? {} : { message: result.message }) };
 
     mutate((prev) => ({ ...prev, positions: result.positions }));
-    return { ok: true };
-  }, [roster, lockedStudentIds, seats, positions, mutate]);
+    return { ok: true, ...(result.warning === undefined ? {} : { warning: result.warning }) };
+  }, [roster, lockedStudentIds, seats, positions, mutate, data.seatingProfiles]);
 
   const swapSeats = useCallback(
     (seatA: string, seatB: string): void => {

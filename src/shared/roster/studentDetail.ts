@@ -14,6 +14,8 @@ export interface StudentDetail {
   gender: Gender;
   /** 자리 배치 조건에 쓰는 특성 태그 */
   tags: string[];
+  /** 이웃에 앉히지 않을 학생 */
+  avoidStudentIds: string[];
   nickname: string;
   fixedRoleId: string | null;
 }
@@ -36,6 +38,7 @@ export function readStudentDetail(data: SuiteData, studentId: string): StudentDe
   return {
     gender: seating?.gender ?? 'none',
     tags: [...(seating?.tags ?? [])],
+    avoidStudentIds: [...(seating?.avoidStudentIds ?? [])],
     nickname: reward?.nickname ?? '',
     fixedRoleId: duty?.fixedRoleId ?? null,
   };
@@ -85,6 +88,14 @@ export function applyStudentDetail(
             ...p,
             gender: patch.gender ?? p.gender,
             tags: patch.tags === undefined ? p.tags : cleanTags(patch.tags),
+            // 자기 자신·다른 반은 여기서 거른다. 불변조건 검사도 한 번 더 본다.
+            avoidStudentIds:
+              patch.avoidStudentIds === undefined
+                ? p.avoidStudentIds
+                : [...new Set(patch.avoidStudentIds)].filter((id) => {
+                    const other = data.students.find((s) => s.id === id);
+                    return id !== studentId && other?.classId === student.classId;
+                  }),
           },
     ),
     rewardProfiles: rewardProfiles.map((p) =>

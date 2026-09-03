@@ -59,3 +59,37 @@ export async function loadTodayMeal(
 
   return { kind: 'ready', meals };
 }
+
+/**
+ * 이번 주 급식 — 날짜마다 loadTodayMeal을 그대로 쓴다.
+ *
+ * 캐시가 7일치라 두 번째부터는 NEIS를 안 두드린다. 차례로 묻는 까닭은
+ * NEIS가 한꺼번에 다섯 요청을 받으면 한도에 걸리는 날이 있어서다 —
+ * 하나 실패해도 나머지는 그대로 보인다.
+ */
+export async function loadWeekMeals(
+  cache: MealCache,
+  source: MealSource,
+  officeCode: string,
+  schoolCode: string,
+  dates: readonly string[],
+): Promise<Array<{ date: string; state: MealState }>> {
+  const out: Array<{ date: string; state: MealState }> = [];
+  for (const date of dates) {
+    out.push({ date, state: await loadTodayMeal(cache, source, officeCode, schoolCode, date) });
+  }
+  return out;
+}
+
+/** 그 날짜가 든 주의 월~금. 주말이면 다음 주다 — 일요일 저녁에 보는 것은 다음 주 급식이다. */
+export function schoolWeekOf(date: string): string[] {
+  const [year = 0, month = 1, day = 1] = date.split('-').map(Number);
+  const base = new Date(year, month - 1, day);
+  const dow = base.getDay(); // 0=일
+  const offsetToMonday = dow === 0 ? 1 : dow === 6 ? 2 : 1 - dow;
+  const monday = new Date(year, month - 1, day + offsetToMonday);
+  return Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+}

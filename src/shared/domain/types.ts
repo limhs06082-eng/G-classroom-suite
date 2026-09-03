@@ -145,6 +145,13 @@ export interface SeatingProfile {
    * 시력 때문에 앞자리로 고정한 학생과, 모둠을 그대로 두고 싶은 학생은 다르다.
    */
   isGroupLocked: boolean;
+  /**
+   * 이웃에 앉히지 않을 학생. 무작위 배치가 이 둘을 앞뒤·옆·대각선에서 떼어 놓는다.
+   *
+   * 교사가 무작위 배치를 몇 번씩 다시 돌리는 가장 큰 이유가 이것이었다.
+   * 한쪽에만 적어도 양쪽에 적용된다(useSeating이 대칭으로 만든다).
+   */
+  avoidStudentIds: string[];
 }
 
 export interface ExclusionPeriod {

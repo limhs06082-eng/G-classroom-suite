@@ -45,7 +45,7 @@ import { NowCard } from './NowCard';
 import { quoteOfDay } from './quotes';
 import { BigStat, PendingNote, SummaryCard } from './SummaryCard';
 import { TimetableCard } from './TimetableCard';
-import { useTodayMeal } from './useTodayMeal';
+import { useTodayMeal, useWeekMeals } from './useTodayMeal';
 
 /**
  * 홈.
@@ -622,5 +622,15 @@ export function TodayNow() {
  * 직접 못 부르고, 그 제약은 우리가 어쩔 수 없다.
  */
 export function TodayMeal() {
-  return <MealCard state={useTodayMeal()} />;
+  // '이번 주'는 펼쳤을 때만 받아 온다. 아침마다 다섯 날을 물을 이유는 없다.
+  const [weekOpen, setWeekOpen] = useState(false);
+  const week = useWeekMeals(weekOpen);
+  return (
+    <MealCard
+      state={useTodayMeal()}
+      week={week}
+      weekOpen={weekOpen}
+      onToggleWeek={() => setWeekOpen((value) => !value)}
+    />
+  );
 }

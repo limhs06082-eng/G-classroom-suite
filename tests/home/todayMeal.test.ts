@@ -131,3 +131,45 @@ describe('loadTodayMeal — 못 받아 왔을 때', () => {
     expect(state).toEqual({ kind: 'ready', meals: menu('기장밥') });
   });
 });
+
+describe('이번 주 급식', () => {
+  it('schoolWeekOf — 그 주 월~금, 주말이면 다음 주', async () => {
+    const { schoolWeekOf } = await import('../../src/features/home/todayMeal');
+    // 2026-06-03은 수요일
+    expect(schoolWeekOf('2026-06-03')).toEqual([
+      '2026-06-01',
+      '2026-06-02',
+      '2026-06-03',
+      '2026-06-04',
+      '2026-06-05',
+    ]);
+    // 일요일 저녁에 보는 것은 다음 주 급식이다.
+    expect(schoolWeekOf('2026-06-07')[0]).toBe('2026-06-08');
+    expect(schoolWeekOf('2026-06-06')[0]).toBe('2026-06-08');
+  });
+
+  it('loadWeekMeals — 캐시에 있는 날은 NEIS를 안 두드리고, 하루 실패해도 나머지는 온다', async () => {
+    const { loadWeekMeals } = await import('../../src/features/home/todayMeal');
+    const store = await cache();
+    await store.putMeals('2026-06-01', menu('월요일밥'));
+
+    let calls = 0;
+    const flaky: MealSource = {
+      fetchMeals(_o, _s, date) {
+        calls += 1;
+        return date === '2026-06-03' ? Promise.reject(new Error('한도')) : Promise.resolve(menu(date));
+      },
+    };
+
+    const week = await loadWeekMeals(store, flaky, OFFICE, SCHOOL, [
+      '2026-06-01',
+      '2026-06-02',
+      '2026-06-03',
+    ]);
+
+    expect(calls).toBe(2); // 월요일은 캐시
+    expect(week[0]?.state.kind).toBe('ready');
+    expect(week[1]?.state.kind).toBe('ready');
+    expect(week[2]?.state.kind).toBe('failed');
+  });
+});

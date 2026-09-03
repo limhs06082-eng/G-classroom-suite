@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createSeededRng, shuffle } from '../../src/features/seating/rng';
-import { performRandomSeating } from '../../src/features/seating/seatingCore';
+import { countAdjacentPairs, performRandomSeating } from '../../src/features/seating/seatingCore';
 import { buildSeats, type SeatingStudent, type StudentPosition } from '../../src/features/seating/types';
 
 function students(count: number, lockedIds: string[] = []): SeatingStudent[] {
@@ -150,5 +150,50 @@ describe('performRandomSeating', () => {
     const b = performRandomSeating(students(12), seats, [], createSeededRng(2));
 
     expect(a.positions).not.toEqual(b.positions);
+  });
+});
+
+describe('떨어뜨리기 — avoidPairs', () => {
+  function seatsOf(rows: number, cols: number) {
+    return buildSeats(rows, cols, []);
+  }
+
+  it('조건을 만족하는 배치가 있으면 두 학생이 이웃에 앉지 않는다', () => {
+    // 2×4 교실에 학생 넷 — A와 B를 떼어 놓을 자리가 충분하다.
+    const students = ['a', 'b', 'c', 'd'].map((id) => ({ id, isLocked: false }));
+    const seats = seatsOf(2, 4);
+
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const result = performRandomSeating(students, seats, [], createSeededRng(seed), {
+        avoidPairs: [['a', 'b']],
+      });
+      expect(result.ok).toBe(true);
+      expect(result.warning).toBeUndefined();
+      expect(countAdjacentPairs(result.positions, seats, [['a', 'b']])).toBe(0);
+    }
+  });
+
+  it('도저히 뗄 수 없으면 배치는 하되 경고를 남긴다', () => {
+    // 1×2 교실에 둘 — 어떻게 앉아도 이웃이다.
+    const students = ['a', 'b'].map((id) => ({ id, isLocked: false }));
+    const seats = seatsOf(1, 2);
+
+    const result = performRandomSeating(students, seats, [], createSeededRng(1), {
+      avoidPairs: [['a', 'b']],
+      attempts: 5,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.positions).toHaveLength(2);
+    expect(result.warning).toContain('1쌍');
+  });
+
+  it('대각선도 이웃이다', () => {
+    const seats = seatsOf(2, 2);
+    const positions = [
+      { studentId: 'a', seatId: 'r1c1' },
+      { studentId: 'b', seatId: 'r2c2' },
+    ];
+    expect(countAdjacentPairs(positions, seats, [['a', 'b']])).toBe(1);
   });
 });

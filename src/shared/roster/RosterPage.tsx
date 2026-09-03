@@ -1,4 +1,4 @@
-import { Pencil, RotateCcw, Trash2, UserMinus, UserPlus, Users } from 'lucide-react';
+import { Pencil, Printer, RotateCcw, Trash2, UserMinus, UserPlus, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -9,11 +9,14 @@ import {
   ConfirmDialog,
   EmptyState,
   Modal,
+  PrintLayout,
   Table,
   Tabs,
+  usePrint,
   useToast,
   type Column,
 } from '../ui';
+import { summarizeStudent } from './studentSummary';
 import type { DutyRole, Gender, Student } from '../domain/types';
 import { RosterImportPanel } from './RosterImportPanel';
 import {
@@ -44,6 +47,7 @@ export default function RosterPage() {
   const { data, update, guard } = useSuite();
   const activeClass = useActiveClass();
   const toast = useToast();
+  const printNow = usePrint();
 
   const [tab, setTab] = useState('list');
   const [editing, setEditing] = useState<Student | null>(null);
@@ -178,6 +182,11 @@ export default function RosterPage() {
         title={`${activeClass.name} 학생 명단`}
         icon={Users}
         action={
+          <div className="flex flex-wrap gap-2">
+          {/* 학기말 '우리 반 한 장' — 학생별 집계를 반 전체로 돌려 종이 한 장에. */}
+          <Button size="sm" variant="ghost" icon={Printer} disabled={active.length === 0} onClick={printNow}>
+            학급 요약 인쇄
+          </Button>
           <Button
             size="sm"
             icon={UserPlus}
@@ -185,13 +194,10 @@ export default function RosterPage() {
               const nextNumber = Math.max(0, ...students.map((s) => s.number)) + 1;
               /*
                * 추가하자마자 편집 모달을 연다. 전에는 "표에서 '새 학생' 행을
-               * 찾아 → 연필 → 이름 고침"까지 대여섯 클릭이었다. id를 미리
-               * 만들어 두는 이유는 모달이 그 학생을 가리켜야 하기 때문이다.
-               */
-              /*
+               * 찾아 → 연필 → 이름 고침"까지 대여섯 클릭이었다.
                * 저장되는 학생과 모달이 여는 학생을 **같은 팩토리 한 번**으로
-               * 만든다. 여기서 리터럴을 손으로 지으면 Student의 기본값이
-               * 바뀌는 날 모달만 옛 모양을 보여 준다.
+               * 만든다 — 리터럴을 손으로 지으면 Student의 기본값이 바뀌는 날
+               * 모달만 옛 모양을 보여 준다.
                */
               const student = createStudent({
                 classId: activeClass.id,
@@ -210,6 +216,7 @@ export default function RosterPage() {
           >
             학생 추가
           </Button>
+          </div>
         }
         bodyClassName="p-0"
       >
@@ -274,6 +281,57 @@ export default function RosterPage() {
         </div>
       </Card>
 
+      {/*
+        학급 요약 한 장. 학생 한눈에의 집계를 반 전체로 돌린다 — 학기말
+        "우리 반은 어땠나"를 종이 한 장으로. 점수는 합계만(개별 지도 기록 없음).
+      */}
+      <PrintLayout
+        title={`${activeClass.name} 학급 요약`}
+        subtitle={new Date().toLocaleDateString('ko-KR')}
+        footer={[data.profile.schoolName, data.profile.teacherName].filter(Boolean).join(' · ')}
+      >
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr>
+              <th className="w-10 border border-black px-1 py-1">번호</th>
+              <th className="border border-black px-2 py-1 text-left">이름</th>
+              <th className="border border-black px-2 py-1">결석</th>
+              <th className="border border-black px-2 py-1">지각</th>
+              <th className="border border-black px-2 py-1">조퇴</th>
+              <th className="border border-black px-2 py-1">체험학습</th>
+              <th className="border border-black px-2 py-1">점수</th>
+              <th className="border border-black px-2 py-1">과제 제출</th>
+              <th className="border border-black px-2 py-1">당번</th>
+            </tr>
+          </thead>
+          <tbody>
+            {active.map((student) => {
+              const summary = summarizeStudent(data, student.id);
+              if (summary === null) return null;
+              const cell = 'border border-black px-2 py-1 text-center';
+              const dash = (n: number): string => (n === 0 ? '' : String(n));
+              return (
+                <tr key={student.id}>
+                  <td data-numeric className={cell}>{student.number}</td>
+                  <td className="border border-black px-2 py-1">{student.name}</td>
+                  <td data-numeric className={cell}>{dash(summary.attendance.byStatus.absent)}</td>
+                  <td data-numeric className={cell}>{dash(summary.attendance.byStatus.late)}</td>
+                  <td data-numeric className={cell}>{dash(summary.attendance.byStatus.early)}</td>
+                  <td data-numeric className={cell}>{dash(summary.attendance.byStatus.fieldTrip)}</td>
+                  <td data-numeric className={cell}>{summary.reward.earned}</td>
+                  <td data-numeric className={cell}>
+                    {summary.assignments.total === 0
+                      ? '—'
+                      : `${summary.assignments.submitted}/${summary.assignments.total}`}
+                  </td>
+                  <td data-numeric className={cell}>{summary.dutyCount}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </PrintLayout>
+
       <EditStudentModal
         student={editing}
         detail={editing === null ? null : readStudentDetail(data, editing.id)}
@@ -283,6 +341,13 @@ export default function RosterPage() {
             : data.dutyRoles.filter((role) => role.classId === editing.classId)
         }
         knownTags={editing === null ? [] : collectTags(data, editing.classId)}
+        classmates={
+          editing === null
+            ? []
+            : data.students.filter(
+                (s) => s.classId === editing.classId && s.status === 'active' && s.id !== editing.id,
+              )
+        }
         onClose={() => setEditing(null)}
         onSave={(patch) => {
           if (editing === null) return;
@@ -337,6 +402,7 @@ function EditStudentModal({
   detail,
   roles,
   knownTags,
+  classmates,
   onClose,
   onSave,
 }: {
@@ -345,6 +411,8 @@ function EditStudentModal({
   /** 이 학생 학급의 역할만. 다른 학급 역할을 고르면 참조가 깨진다. */
   roles: DutyRole[];
   knownTags: string[];
+  /** 떨어뜨리기 후보 — 같은 반의 재학생, 자기 자신 제외 */
+  classmates: Student[];
   onClose: () => void;
   onSave: (patch: { number: number; name: string; detail: Partial<StudentDetail> }) => void;
 }) {
@@ -352,6 +420,7 @@ function EditStudentModal({
   const [number, setNumber] = useState('');
   const [gender, setGender] = useState<Gender>(detail?.gender ?? 'none');
   const [tags, setTags] = useState<string[]>(detail?.tags ?? []);
+  const [avoid, setAvoid] = useState<string[]>(detail?.avoidStudentIds ?? []);
   const [tagDraft, setTagDraft] = useState('');
   const [nickname, setNickname] = useState(detail?.nickname ?? '');
   const [fixedRoleId, setFixedRoleId] = useState(detail?.fixedRoleId ?? '');
@@ -391,6 +460,7 @@ function EditStudentModal({
                 detail: {
                   gender,
                   tags: finalTags,
+                  avoidStudentIds: avoid,
                   nickname: nickname.trim(),
                   fixedRoleId: fixedRoleId === '' ? null : fixedRoleId,
                 },
@@ -489,6 +559,36 @@ function EditStudentModal({
             </div>
           )}
         </div>
+
+        {/*
+          떨어뜨리기. 무작위 배치가 이 학생과 고른 학생을 앞뒤·옆·대각선에서
+          떼어 놓는다. 교사가 배치를 몇 번씩 다시 돌리던 이유가 이것이었다.
+        */}
+        {classmates.length > 0 ? (
+          <div className="border-t border-slate-100 pt-3">
+            <span className="text-sm text-slate-700">떨어져 앉힐 학생</span>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {classmates.map((mate) => {
+                const on = avoid.includes(mate.id);
+                return (
+                  <button
+                    key={mate.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() =>
+                      setAvoid(on ? avoid.filter((id) => id !== mate.id) : [...avoid, mate.id])
+                    }
+                  >
+                    <Badge tone={on ? 'danger' : 'neutral'}>{mate.name}</Badge>
+                  </button>
+                );
+              })}
+            </div>
+            <span className="mt-1 block text-sm text-slate-500">
+              무작위 배치가 이 학생들을 이웃(앞뒤·옆·대각선)에 앉히지 않습니다.
+            </span>
+          </div>
+        ) : null}
 
         <label className="block text-sm">
           <span className="text-slate-700">별명</span>

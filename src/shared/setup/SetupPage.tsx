@@ -2,7 +2,11 @@ import { ArrowLeft, ArrowRight, Check, School } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { SchoolSearch } from '../../features/settings/SchoolSearch';
 import { createClassRoom, createTerm } from '../domain/factories';
+import { NeisSource } from '../external/NeisSource';
+import { TauriHttpClient } from '../external/TauriHttpClient';
+import { isDesktop } from '../platform/target';
 import { RosterImportPanel } from '../roster/RosterImportPanel';
 import { applyRosterImport } from '../roster/rosterOps';
 import { useSuite } from '../roster/SuiteDataProvider';
@@ -44,6 +48,12 @@ export default function SetupPage() {
 
   /** 만든 학급 id. 명단 단계에서 쓴다. */
   const [classId, setClassId] = useState<string | null>(null);
+  /** 학교 검색으로 고른 NEIS 코드·주소. 설치형에서만 채워진다. */
+  const [schoolCodes, setSchoolCodes] = useState<{
+    officeCode: string;
+    schoolCode: string;
+    schoolAddress: string;
+  } | null>(null);
 
   const stepIndex = STEPS.findIndex((entry) => entry.id === step);
 
@@ -61,7 +71,12 @@ export default function SetupPage() {
         const now = new Date().toISOString();
         return {
           ...current,
-          profile: { ...current.profile, schoolName: schoolName.trim(), teacherName: teacherName.trim() },
+          profile: {
+            ...current.profile,
+            schoolName: schoolName.trim(),
+            teacherName: teacherName.trim(),
+            ...(schoolCodes ?? {}),
+          },
           terms: current.terms.map((term) =>
             term.id === termId
               ? {
@@ -94,7 +109,12 @@ export default function SetupPage() {
     setClassId(room.id);
     update((current) => ({
       ...current,
-      profile: { ...current.profile, schoolName: schoolName.trim(), teacherName: teacherName.trim() },
+      profile: {
+        ...current.profile,
+        schoolName: schoolName.trim(),
+        teacherName: teacherName.trim(),
+        ...(schoolCodes ?? {}),
+      },
       terms: [...current.terms, term],
       classRooms: [...current.classRooms, room],
       activeTermId: term.id,
@@ -144,6 +164,36 @@ export default function SetupPage() {
       {step === 'school' ? (
         <Card title="학교와 선생님" icon={School}>
           <div className="flex flex-col gap-3">
+            {/*
+             * 설치형은 학교를 **검색해서** 고른다. 이름만 치고 끝내면 NEIS
+             * 코드·주소가 비어 급식도 날씨도 안 켜지고, 방금 학교를 입력한
+             * 교사가 홈에서 "학교를 정하면…"을 다시 보게 된다. 웹은 NEIS를
+             * 직접 못 불러 이름 입력만 남긴다(설정의 학교 정보 탭과 같다).
+             */}
+            {isDesktop() ? (
+              <div>
+                <span className="text-sm text-slate-700">학교 찾기</span>
+                <div className="mt-1">
+                  <SchoolSearch
+                    source={new NeisSource(new TauriHttpClient())}
+                    onPick={(hit) => {
+                      setSchoolName(hit.schoolName);
+                      setSchoolCodes({
+                        officeCode: hit.officeCode,
+                        schoolCode: hit.schoolCode,
+                        schoolAddress: hit.address,
+                      });
+                    }}
+                  />
+                </div>
+                {schoolCodes === null ? null : (
+                  <p className="mt-1 text-sm text-success-700">
+                    {schoolName} — 급식과 날씨가 함께 켜집니다.
+                  </p>
+                )}
+              </div>
+            ) : null}
+
             <label className="block text-sm">
               <span className="text-slate-700">학교 이름</span>
               <input
@@ -244,8 +294,15 @@ export default function SetupPage() {
             onApply={(rows) => {
               if (classId === null) return;
               update((current) => applyRosterImport(current, classId, rows, 'replace'));
-              toast.success(`${rows.length}명을 등록했습니다. 이제 모든 기능에서 쓸 수 있습니다.`);
-              void navigate('/');
+              /*
+               * 다음 할 일은 시간표다. 홈으로 보내면 가장 큰 카드('지금')가
+               * "시간표를 짜면…"이라 말하는 미완성 첫인상을 준다. 시간표
+               * 탭에 내려놓고 한 줄로 이유를 말한다.
+               */
+              toast.success(
+                `${rows.length}명을 등록했습니다. 이제 시간표를 짜 두면 홈의 '지금' 카드가 켜집니다.`,
+              );
+              void navigate('/settings?tab=timetable');
             }}
           />
 

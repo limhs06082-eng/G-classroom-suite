@@ -70,6 +70,7 @@ describe('applyStudentDetail', () => {
     const next = applyStudentDetail(data, studentId, {
       gender: 'female',
       tags: ['앞자리'],
+      avoidStudentIds: [],
       nickname: '하나',
       fixedRoleId: 'r-mine',
     });
@@ -146,6 +147,7 @@ describe('readStudentDetail', () => {
     expect(readStudentDetail(saved, studentId)).toEqual({
       gender: 'female',
       tags: [],
+      avoidStudentIds: [],
       nickname: '하나',
       fixedRoleId: null,
     });
@@ -158,6 +160,7 @@ describe('readStudentDetail', () => {
     expect(readStudentDetail(bare, studentId)).toEqual({
       gender: 'none',
       tags: [],
+      avoidStudentIds: [],
       nickname: '',
       fixedRoleId: null,
     });

@@ -139,6 +139,7 @@ export default function SeatingPage() {
           ? { actionLabel: '실행 취소', onAction: () => seating.restorePositions(previous) }
           : undefined,
       );
+      if (result.warning !== undefined) toast.warning(result.warning);
       setSelectedSeatId(null);
       setSelectedStudentId(null);
     } else {

@@ -68,3 +68,57 @@ export function useTodayMeal(): MealState {
 
   return state;
 }
+
+/**
+ * 이번 주 급식. 카드에서 '이번 주'를 펼쳤을 때만(enabled) 받아 온다.
+ *
+ * 캐시가 7일치라 대개는 NEIS를 새로 두드리지 않는다. 설치형에서만
+ * 부른다 — useTodayMeal과 같은 약속이다.
+ */
+export function useWeekMeals(
+  enabled: boolean,
+): Array<{ date: string; state: MealState }> | null {
+  const { data } = useSuite();
+  const [week, setWeek] = useState<Array<{ date: string; state: MealState }> | null>(null);
+
+  const officeCode = data.profile.officeCode ?? '';
+  const schoolCode = data.profile.schoolCode ?? '';
+  const date = useToday();
+
+  useEffect(() => {
+    if (!enabled || !hasSchool(officeCode, schoolCode)) {
+      setWeek(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      const [{ NeisSource }, { TauriHttpClient }, { CacheStore }, { TauriFileStore }, meals] =
+        await Promise.all([
+          import('../../shared/external/NeisSource'),
+          import('../../shared/external/TauriHttpClient'),
+          import('../../shared/storage/CacheStore'),
+          import('../../shared/storage/TauriFileStore'),
+          import('./todayMeal'),
+        ]);
+
+      const cache = await CacheStore.open(new TauriFileStore(), `${officeCode}:${schoolCode}`);
+      const next = await meals.loadWeekMeals(
+        cache,
+        new NeisSource(new TauriHttpClient()),
+        officeCode,
+        schoolCode,
+        meals.schoolWeekOf(date),
+      );
+
+      if (!cancelled) setWeek(next);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, officeCode, schoolCode, date]);
+
+  return week;
+}

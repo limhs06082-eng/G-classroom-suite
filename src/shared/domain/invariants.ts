@@ -410,7 +410,21 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
     return { kept, orphanCount, duplicateCount };
   }
 
-  const seatingProfiles = cleanProfiles(input.seatingProfiles, '자리배치').kept;
+  const seatingProfiles = cleanProfiles(input.seatingProfiles, '자리배치').kept.map((profile) => {
+    /*
+     * '떨어뜨리기' 대상은 같은 반의 다른 학생이어야 한다. 전출생·다른 반·
+     * 자기 자신이 남아 있으면 배치 알고리즘이 있지도 않은 짝을 피하느라
+     * 헛돈다. 조용히 걸러도 되는 파생 자료라 알리지 않는다.
+     */
+    const owner = students.find((s) => s.id === profile.studentId);
+    const avoidStudentIds = profile.avoidStudentIds.filter((id) => {
+      const other = students.find((s) => s.id === id);
+      return other !== undefined && id !== profile.studentId && other.classId === owner?.classId;
+    });
+    return avoidStudentIds.length === profile.avoidStudentIds.length
+      ? profile
+      : { ...profile, avoidStudentIds };
+  });
   const dutyProfiles = cleanProfiles(input.dutyProfiles, '당번').kept;
   const rewardProfiles = cleanProfiles(input.rewardProfiles, '보상').kept;
 

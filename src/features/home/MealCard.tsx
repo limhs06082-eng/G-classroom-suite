@@ -19,7 +19,26 @@ export type MealState =
   | { kind: 'ready'; meals: MealMenu[] }
   | { kind: 'failed' };
 
-export function MealCard({ state }: { state: MealState }) {
+const WEEKDAY_SHORT = ['일', '월', '화', '수', '목', '금', '토'];
+
+function weekdayShort(date: string): string {
+  const [year = 0, month = 1, day = 1] = date.split('-').map(Number);
+  return WEEKDAY_SHORT[new Date(year, month - 1, day).getDay()] ?? '';
+}
+
+export function MealCard({
+  state,
+  week = null,
+  weekOpen = false,
+  onToggleWeek,
+}: {
+  state: MealState;
+  /** 이번 주 월~금. 펼쳤을 때만 온다. null이면 아직 안 받았거나 못 받는 환경이다. */
+  week?: Array<{ date: string; state: MealState }> | null;
+  weekOpen?: boolean;
+  /** 없으면 '이번 주' 단추를 그리지 않는다(웹). */
+  onToggleWeek?: () => void;
+}) {
   /*
    * 알레르기 번호는 기본으로 숨긴다. 대부분의 시선은 메뉴 이름을 훑는
    * 것이고, 번호가 늘 붙어 있으면 이름이 안 읽힌다. 알레르기 학생을 둔
@@ -35,21 +54,62 @@ export function MealCard({ state }: { state: MealState }) {
       title="오늘 급식"
       icon={UtensilsCrossed}
       action={
-        hasAllergenInfo ? (
-          <button
-            type="button"
-            onClick={() => setShowAllergens((value) => !value)}
-            aria-pressed={showAllergens}
-            className={cx(
-              'rounded-control px-2 py-1 text-xs font-medium',
-              showAllergens ? 'bg-brand-50 text-brand-700' : 'text-slate-400 hover:text-slate-600',
-            )}
-          >
-            알레르기 표시
-          </button>
-        ) : undefined
+        <div className="flex items-center gap-1">
+          {hasAllergenInfo ? (
+            <button
+              type="button"
+              onClick={() => setShowAllergens((value) => !value)}
+              aria-pressed={showAllergens}
+              className={cx(
+                'rounded-control px-2 py-1 text-xs font-medium',
+                showAllergens ? 'bg-brand-50 text-brand-700' : 'text-slate-400 hover:text-slate-600',
+              )}
+            >
+              알레르기 표시
+            </button>
+          ) : null}
+          {/* 이번 주 펼치기. 캐시가 7일치라 대개 즉시 뜬다. */}
+          {onToggleWeek !== undefined && state.kind !== 'no-school' ? (
+            <button
+              type="button"
+              onClick={onToggleWeek}
+              aria-pressed={weekOpen}
+              className={cx(
+                'rounded-control px-2 py-1 text-xs font-medium',
+                weekOpen ? 'bg-brand-50 text-brand-700' : 'text-slate-400 hover:text-slate-600',
+              )}
+            >
+              이번 주
+            </button>
+          ) : null}
+        </div>
       }
     >
+      {weekOpen ? (
+        week === null ? (
+          <p className="mb-3 text-sm text-slate-500">이번 주 급식을 불러오는 중…</p>
+        ) : (
+          <ul className="mb-3 flex flex-col gap-1 border-b border-slate-100 pb-3">
+            {week.map((day) => (
+              <li key={day.date} className="flex gap-2 text-sm">
+                <span data-numeric className="w-5 shrink-0 font-semibold text-slate-500">
+                  {weekdayShort(day.date)}
+                </span>
+                <span className="min-w-0 flex-1 text-slate-700">
+                  {day.state.kind === 'ready'
+                    ? day.state.meals.length === 0
+                      ? '급식 없음'
+                      : day.state.meals.flatMap((menu) => menu.dishes.map((dish) => dish.name)).join(', ')
+                    : day.state.kind === 'failed'
+                      ? '못 받아 왔습니다'
+                      : '…'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )
+      ) : null}
+
       {state.kind === 'no-school' ? (
         <p className="text-sm text-slate-500">
           학교를 정하면 오늘 급식이 여기 나옵니다.{' '}
