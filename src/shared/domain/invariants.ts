@@ -817,6 +817,12 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       return false;
     });
 
+    const classEvents = input.classEvents.filter((event) => {
+      if (classIds.has(event.classId)) return true;
+      dropped += 1;
+      return false;
+    });
+
     const redemptions = input.redemptions.filter((redemption) => {
       const targetAlive =
         redemption.targetUnit === 'group'
@@ -851,7 +857,15 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       });
     }
 
-    return { attendanceRecords, notices, timetableOverrides, rewardItems, redemptions, observations };
+    return {
+      attendanceRecords,
+      notices,
+      timetableOverrides,
+      rewardItems,
+      redemptions,
+      observations,
+      classEvents,
+    };
   })();
 
   // ── 9. 활성 학기·학급이 실제로 존재하는가 ────────────────────
@@ -909,6 +923,7 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       rewardItems: extra.rewardItems,
       redemptions: extra.redemptions,
       observations: extra.observations,
+      classEvents: extra.classEvents,
       activeTermId,
       activeClassId,
     },

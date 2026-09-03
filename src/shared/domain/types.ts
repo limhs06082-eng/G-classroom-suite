@@ -805,6 +805,25 @@ export interface ObservationEntry {
 }
 
 // ─────────────────────────────────────────────────────────────
+// 학급 일정 (features/notice)
+//
+// 수행평가·현장학습·학부모 상담 주간처럼 날짜가 정해진 일. 홈에 D-day로,
+// 알림장·오늘 보드에 그날 일정으로 나온다. 학교 학사일정을 통째로
+// 받아 오지 않는다 — 학급이 챙길 것만 교사가 적는다.
+// ─────────────────────────────────────────────────────────────
+
+export interface ClassEvent {
+  id: string;
+  classId: string;
+  /** YYYY-MM-DD */
+  date: string;
+  title: string;
+  /** 준비물·장소 같은 한 줄 메모. 비어 있어도 된다. */
+  note: string;
+  createdAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────
 // 전체 데이터 루트
 //
 // 기능별 데이터(좌석 배치, 역할, 과제, 점수 기록)는 각 feature를
@@ -903,4 +922,6 @@ export interface SuiteData {
   rewardItems: RewardItem[];
   redemptions: Redemption[];
   observations: ObservationEntry[];
+  /** 학급 일정. 지난 것도 남긴다 — 학기말에 "언제 뭘 했나"를 돌아본다. */
+  classEvents: ClassEvent[];
 }

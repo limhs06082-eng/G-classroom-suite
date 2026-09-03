@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { createSeededRng } from '../../src/features/seating/rng';
-import { drawMany, drawOne, remainingPool } from '../../src/features/tools/pickerCore';
+import { drawMany, drawOne, drawPerGroup, remainingPool } from '../../src/features/tools/pickerCore';
 import { createStudent } from '../../src/shared/domain/factories';
-import type { Student } from '../../src/shared/domain/types';
+import type { Group, Student } from '../../src/shared/domain/types';
 
 const NOW = '2026-08-29T09:00:00.000Z';
 
@@ -41,6 +41,30 @@ describe('drawOne', () => {
 
   it('빈 풀에서는 null이다', () => {
     expect(drawOne([], createSeededRng(1))).toBeNull();
+  });
+});
+
+describe('drawPerGroup — 모둠마다 한 명', () => {
+  const groups: Group[] = [
+    { id: 'g-1', classId: 'class-1', name: '1모둠', color: 'sky', studentIds: ['stu-1', 'stu-2'], leaderId: null, createdAt: NOW, updatedAt: NOW },
+    { id: 'g-2', classId: 'class-1', name: '2모둠', color: 'teal', studentIds: ['stu-3', 'stu-4'], leaderId: null, createdAt: NOW, updatedAt: NOW },
+    { id: 'g-3', classId: 'class-1', name: '3모둠', color: 'amber', studentIds: ['stu-5'], leaderId: null, createdAt: NOW, updatedAt: NOW },
+  ];
+
+  it('모둠 순서대로 한 명씩, 풀에 없는 학생은 뽑지 않는다', () => {
+    // stu-5는 결석 등으로 풀에서 빠진 상태
+    const pool = roster().filter((s) => s.id !== 'stu-5');
+    const picked = drawPerGroup(groups, pool, createSeededRng(3));
+
+    expect(picked).toHaveLength(2);
+    expect(picked[0]?.group.id).toBe('g-1');
+    expect(['stu-1', 'stu-2']).toContain(picked[0]?.student.id);
+    expect(picked[1]?.group.id).toBe('g-2');
+    expect(['stu-3', 'stu-4']).toContain(picked[1]?.student.id);
+  });
+
+  it('풀이 전부 비어 있으면 빈 목록이다', () => {
+    expect(drawPerGroup(groups, [], createSeededRng(1))).toEqual([]);
   });
 });
 

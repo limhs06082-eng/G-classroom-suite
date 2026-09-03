@@ -96,6 +96,9 @@ function seeded(): { data: SuiteData; mineId: string; otherId: string; studentId
     observations: [
       { id: 'ob-mine', classId: mine.id, studentId: a.id, date: '2026-08-14', text: '발표를 잘했다', createdAt: NOW },
     ],
+    classEvents: [
+      { id: 'ev-mine', classId: mine.id, date: '2026-08-20', title: '현장학습', note: '', createdAt: NOW },
+    ],
     activeTermId: term.id,
     activeClassId: mine.id,
   };
@@ -130,6 +133,7 @@ describe('countClassData', () => {
       rewardItems: 1,
       redemptions: 1,
       observations: 1,
+      classEvents: 1,
     });
   });
 
@@ -144,7 +148,7 @@ describe('countClassData', () => {
 });
 
 describe('deleteClassRoom', () => {
-  it('22개 배열에서 그 학급 것이 함께 사라진다', () => {
+  it('23개 배열에서 그 학급 것이 함께 사라진다', () => {
     const { data, mineId } = seeded();
 
     const next = deleteClassRoom(data, mineId);
@@ -172,6 +176,7 @@ describe('deleteClassRoom', () => {
       rewardItems: 0,
       redemptions: 0,
       observations: 0,
+      classEvents: 0,
     });
     expect(next.classRooms.some((room) => room.id === mineId)).toBe(false);
   });

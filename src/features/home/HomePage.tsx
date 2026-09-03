@@ -1,3 +1,4 @@
+import type { LucideIcon } from 'lucide-react';
 import {
   CalendarCheck,
   CheckSquare,
@@ -27,7 +28,7 @@ import {
 import { isDesktop } from '../../shared/platform/target';
 import { useNow } from '../../shared/state/useNow';
 import { useToday } from '../../shared/state/useToday';
-import { Button, Card, EmptyState, useToast } from '../../shared/ui';
+import { Button, Card, cx, EmptyState, useToast } from '../../shared/ui';
 import { openBoard } from '../../shared/window/openBoard';
 import { AssignmentSummary } from '../assignment/AssignmentSummary';
 import { AttendanceSummary } from '../attendance/AttendanceSummary';
@@ -250,105 +251,116 @@ export default function HomePage() {
         도구함에서 옮겨 온 넷. 학급에 매이지 않아 학급을 안 만들어도 쓸 수 있고,
         그래서 학급 카드와 줄을 나눠 둔다.
       */}
-      <h2 className="mt-2 text-sm font-semibold text-slate-700">수업·업무 도구</h2>
+      {/*
+        도구함에서 옮겨 온 넷은 **한 줄 스트립**이다. 처음에는 큰 카드 넷이었는데,
+        학급 카드 여덟과 합쳐 열셋이 되자 기본 창(1280×800)에서 홈이 스크롤됐다.
+        "아침에 이 화면만 보고 오늘 할 일을 안다"는 설계가 스크롤 아래에서
+        깨진다. 도구는 학급 자료가 아니라 자주 보는 숫자가 없으니, 큰 카드
+        대신 상태 한 줄 달린 칩이면 충분하다.
+      */}
+      <section aria-label="수업·업무 도구" className="flex flex-wrap items-center gap-2">
+        <h2 className="mr-1 text-sm font-semibold text-slate-700">수업·업무 도구</h2>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard
+        <ToolChip
           to="/lesson"
-          label="수업 진행"
           icon={Presentation}
           accentClass="text-lesson-500"
-          tintClass="bg-lesson-50"
-          cta="수업 진행 열기"
-        >
-          <BigStat
-            value={data.lessonTemplates.length}
-            unit="개"
-            note={data.lessonRun === null ? '수업 흐름' : '지금 수업 진행 중'}
-          />
-        </SummaryCard>
+          label="수업 진행"
+          hint={data.lessonRun === null ? `흐름 ${data.lessonTemplates.length}개` : '진행 중'}
+          highlight={data.lessonRun !== null}
+        />
 
         {isDesktop() ? (
           /*
-           * 설치형에는 서버가 없어 학생 폰이 들어올 길이 없다. 화면을
-           * 반쯤 살려 두면 "되는 줄 알았는데 안 되는" 자리가 되므로
-           * 라우트째 뺐다(router.tsx의 quiz 라우트 옆 주석 참고). 여기서는
-           * 사라진 것처럼 보이지 않도록 웹으로 가는 안내만 남긴다.
+           * 설치형에는 서버가 없어 학생 폰이 들어올 길이 없다. 라우트째
+           * 뺐으므로(router.tsx) 여기서는 웹으로 가는 안내만 남긴다.
            */
-          <SummaryCard
+          <ToolChip
             to="/settings"
-            label="형성평가"
             icon={CheckSquare}
             accentClass="text-quiz-500"
-            tintClass="bg-quiz-50"
-            pending
-            cta="웹에서 여는 법 보기"
-          >
-            <PendingNote>
-              학생 폰으로 참여하는 형성평가는 웹에서 쓰실 수 있습니다.
-              g-classroom-suite.vercel.app
-            </PendingNote>
-          </SummaryCard>
+            label="형성평가"
+            hint="웹에서"
+          />
         ) : (
-          <SummaryCard
+          <ToolChip
             to="/quiz"
-            label="형성평가"
             icon={CheckSquare}
             accentClass="text-quiz-500"
-            tintClass="bg-quiz-50"
-            cta="형성평가 열기"
-          >
-            <BigStat
-              value={data.quizSets.length}
-              unit="개"
-              note={
-                data.quizRun !== null
-                  ? '지금 퀴즈 진행 중'
-                  : data.quizResults.length > 0
-                    ? `지난 결과 ${data.quizResults.length}건`
-                    : '문제 세트'
-              }
-            />
-          </SummaryCard>
+            label="형성평가"
+            hint={data.quizRun !== null ? '진행 중' : `세트 ${data.quizSets.length}개`}
+            highlight={data.quizRun !== null}
+          />
         )}
 
-        <SummaryCard
+        <ToolChip
           to="/task"
-          label="업무 체크"
           icon={ListChecks}
           accentClass="text-task-500"
-          tintClass="bg-task-50"
-          cta="업무 체크 열기"
-        >
-          <BigStat
-            value={taskSummary.open}
-            unit="개"
-            note={taskSummary.overdue > 0 ? `기한 지남 ${taskSummary.overdue}개` : '남은 일'}
-          />
-        </SummaryCard>
+          label="업무 체크"
+          hint={
+            taskSummary.overdue > 0
+              ? `기한 지남 ${taskSummary.overdue}`
+              : `남은 일 ${taskSummary.open}`
+          }
+          highlight={taskSummary.overdue > 0}
+        />
 
-        <SummaryCard
+        <ToolChip
           to="/message"
-          label="문구 템플릿"
           icon={MessageSquareText}
           accentClass="text-message-500"
-          tintClass="bg-message-50"
-          cta="문구 템플릿 열기"
-        >
-          <BigStat
-            value={data.messageTemplates.length}
-            unit="개"
-            note={
-              data.messageFavorites.length > 0
-                ? `즐겨찾기 ${data.messageFavorites.length}개`
-                : '가정 통신 문구'
-            }
-          />
-        </SummaryCard>
-      </div>
+          label="문구 템플릿"
+          hint={
+            data.messageFavorites.length > 0
+              ? `즐겨찾기 ${data.messageFavorites.length}`
+              : `${data.messageTemplates.length}개`
+          }
+        />
+      </section>
 
       <QuoteCard />
     </div>
+  );
+}
+
+/**
+ * 도구 칩 — 큰 카드 대신 한 줄. 이름과 상태 한 마디, 그리고 링크.
+ *
+ * `highlight`는 지금 봐야 할 게 있을 때(수업 진행 중, 기한 지난 업무)만
+ * 켠다. 늘 켜 두면 아무것도 도드라지지 않는다.
+ */
+function ToolChip({
+  to,
+  icon: Icon,
+  accentClass,
+  label,
+  hint,
+  highlight = false,
+}: {
+  to: string;
+  icon: LucideIcon;
+  accentClass: string;
+  label: string;
+  hint: string;
+  highlight?: boolean;
+}) {
+  return (
+    <Link
+      to={to}
+      className={cx(
+        'inline-flex h-10 items-center gap-2 rounded-control border px-3 text-sm transition-colors',
+        highlight
+          ? 'border-warning-200 bg-warning-50 text-slate-900'
+          : 'border-slate-200 bg-surface text-slate-800 hover:border-slate-300 hover:bg-slate-50',
+      )}
+    >
+      <Icon className={cx('size-4 shrink-0', accentClass)} aria-hidden />
+      <span className="font-medium">{label}</span>
+      <span data-numeric className="text-xs text-slate-500">
+        {hint}
+      </span>
+    </Link>
   );
 }
 

@@ -1,5 +1,5 @@
 import { shuffle, type Rng } from '../seating/rng';
-import type { Student } from '../../shared/domain/types';
+import type { Group, Student } from '../../shared/domain/types';
 
 /**
  * 발표자 뽑기 판단.
@@ -41,4 +41,27 @@ export function drawOne(pool: readonly Student[], rng: Rng): Student | null {
 export function drawMany(pool: readonly Student[], count: number, rng: Rng): Student[] {
   if (count <= 0 || pool.length === 0) return [];
   return shuffle(pool, rng).slice(0, count);
+}
+
+/**
+ * 모둠마다 한 명. 모둠 발표자·대표를 한 번에 정할 때.
+ *
+ * 모둠 순서를 지키고, 풀(결석·이미 뽑힌 학생 제외)에 없는 학생은 뽑지
+ * 않는다. 풀에 남은 학생이 없는 모둠은 건너뛴다 — 없는 사람을 뽑아
+ * 놓고 "없네요"라고 하는 것보다 그 모둠이 빈 것이 낫다.
+ */
+export function drawPerGroup(
+  groups: readonly Group[],
+  pool: readonly Student[],
+  rng: Rng,
+): Array<{ group: Group; student: Student }> {
+  const poolById = new Map(pool.map((student) => [student.id, student]));
+
+  return groups.flatMap((group) => {
+    const candidates = group.studentIds
+      .map((id) => poolById.get(id))
+      .filter((student): student is Student => student !== undefined);
+    const student = drawOne(candidates, rng);
+    return student === null ? [] : [{ group, student }];
+  });
 }

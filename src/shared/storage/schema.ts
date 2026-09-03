@@ -51,6 +51,7 @@ import {
   ATTENDANCE_STATUSES,
   type AttendanceRecord,
   type AttendanceStatus,
+  type ClassEvent,
   type DailyNotice,
   type ObservationEntry,
   type Redemption,
@@ -914,6 +915,23 @@ function parseObservation(raw: unknown, now: string): ObservationEntry | null {
   };
 }
 
+function parseClassEvent(raw: unknown, now: string): ClassEvent | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  const classId = requiredStr(raw['classId']);
+  const date = requiredStr(raw['date']);
+  if (id === null || classId === null || date === null) return null;
+
+  return {
+    id,
+    classId,
+    date,
+    title: str(raw['title'], '이름 없는 일정'),
+    note: str(raw['note']),
+    createdAt: str(raw['createdAt'], now),
+  };
+}
+
 /**
  * (classId, date)가 자연키인 목록에서 겹치는 것을 버린다.
  *
@@ -1113,6 +1131,7 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     rewardItems: parseList('rewardItems', '쿠폰', (r) => parseRewardItem(r, now)),
     redemptions: parseList('redemptions', '쿠폰 사용 기록', (r) => parseRedemption(r, now)),
     observations: parseList('observations', '관찰 기록', (r) => parseObservation(r, now)),
+    classEvents: parseList('classEvents', '학급 일정', (r) => parseClassEvent(r, now)),
   };
 
   const repaired = validateAndRepair(shaped, now);

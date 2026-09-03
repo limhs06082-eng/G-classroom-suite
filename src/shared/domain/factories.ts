@@ -31,6 +31,7 @@ import {
   type TaskItem,
   // 2판에서 늘어난 것
   type AttendanceRecord,
+  type ClassEvent,
   type DailyNotice,
   type ObservationEntry,
   type Redemption,
@@ -553,6 +554,20 @@ export function createObservation(
   };
 }
 
+export function createClassEvent(
+  input: Pick<ClassEvent, 'classId' | 'date' | 'title'> & Partial<Pick<ClassEvent, 'id' | 'note'>>,
+  now: string = nowIso(),
+): ClassEvent {
+  return {
+    id: input.id ?? createId(),
+    classId: input.classId,
+    date: input.date,
+    title: input.title,
+    note: input.note ?? '',
+    createdAt: now,
+  };
+}
+
 /** 최초 실행 시의 빈 데이터. 설정 마법사를 거치기 전 상태다. */
 export function createEmptySuiteData(): SuiteData {
   return {
@@ -598,5 +613,6 @@ export function createEmptySuiteData(): SuiteData {
     rewardItems: [],
     redemptions: [],
     observations: [],
+    classEvents: [],
   };
 }

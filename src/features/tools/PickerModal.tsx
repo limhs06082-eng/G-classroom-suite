@@ -9,7 +9,7 @@ import { useToday } from '../../shared/state/useToday';
 import { Badge, Button, cx, Modal } from '../../shared/ui';
 import { absentToday } from '../attendance/attendanceCore';
 import { systemRng } from '../seating/rng';
-import { drawMany, drawOne, remainingPool } from './pickerCore';
+import { drawMany, drawOne, drawPerGroup, remainingPool } from './pickerCore';
 
 /** 룰렛이 도는 시간과 감속 곡선. 짧으면 김빠지고 길면 수업이 늘어진다. */
 const SPIN_STEPS = 16;
@@ -38,6 +38,8 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
   const [pickedIds, setPickedIds] = useState<string[]>([]);
   const [excludePicked, setExcludePicked] = useState(true);
   const [count, setCount] = useState(1);
+  /** 'count'는 N명, 'group'은 모둠마다 한 명(모둠 발표자 정하기). */
+  const [mode, setMode] = useState<'count' | 'group'>('count');
   const [current, setCurrent] = useState<string[]>([]);
   const [revealing, setRevealing] = useState(false);
   /** 룰렛이 도는 동안 번쩍이며 지나가는 이름. null이면 결과 공개다. */
@@ -46,6 +48,11 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
 
   const absentIds = activeClass === null ? [] : absentToday(data.attendanceRecords, activeClass.id, today);
   const pool = remainingPool(roster, absentIds, pickedIds, excludePicked);
+  const groups = data.groups.filter((group) => group.classId === activeClass?.id);
+  /** 학생 → 모둠 이름. 모둠 모드의 공개 화면이 "1모둠 — 김하나"로 읽는다. */
+  const groupNameOf = new Map(
+    groups.flatMap((group) => group.studentIds.map((id) => [id, group.name] as const)),
+  );
   const pickedStudents = pickedIds
     .map((id) => roster.find((student) => student.id === id))
     .filter((student) => student !== undefined);
@@ -56,7 +63,11 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
   const draw = (): void => {
     if (spinTimerRef.current !== null) return; // 룰렛이 도는 중에는 또 못 돌린다.
 
-    const students = drawMany(pool, count, systemRng);
+    // 모둠 모드는 자리·모둠의 실제 모둠을 그대로 본다(복사하지 않는다).
+    const students =
+      mode === 'group'
+        ? drawPerGroup(groups, pool, systemRng).map((pick) => pick.student)
+        : drawMany(pool, count, systemRng);
     if (students.length === 0) return;
     setCurrent(students.map((student) => student.id));
     setRevealing(true);
@@ -179,13 +190,27 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
             <div>
               <p className="mb-1 text-sm text-slate-700">몇 명 뽑을까요</p>
               <div className="flex flex-wrap items-center gap-1.5">
+                {/* 모둠 발표자를 한 번에. 모둠이 없으면 단추도 없다. */}
+                {groups.length > 0 ? (
+                  <Button
+                    size="sm"
+                    variant={mode === 'group' ? 'primary' : 'secondary'}
+                    aria-pressed={mode === 'group'}
+                    onClick={() => setMode(mode === 'group' ? 'count' : 'group')}
+                  >
+                    모둠마다 한 명
+                  </Button>
+                ) : null}
                 {[1, 2, 3, 4].map((n) => (
                   <Button
                     key={n}
                     size="sm"
-                    variant={count === n ? 'primary' : 'secondary'}
-                    aria-pressed={count === n}
-                    onClick={() => setCount(n)}
+                    variant={mode === 'count' && count === n ? 'primary' : 'secondary'}
+                    aria-pressed={mode === 'count' && count === n}
+                    onClick={() => {
+                      setMode('count');
+                      setCount(n);
+                    }}
                   >
                     {n}명
                   </Button>
@@ -281,13 +306,19 @@ export function PickerModal({ onClose }: { onClose: () => void }) {
                               : 'text-board-base',
                         )}
                       >
+                        {/* 모둠 모드면 어느 모둠의 대표인지 함께 읽힌다. */}
+                        {mode === 'group' && groupNameOf.has(student.id) ? (
+                          <span className="mr-4 text-board-sm font-bold text-slate-400">
+                            {groupNameOf.get(student.id)}
+                          </span>
+                        ) : null}
                         {student.name}
                       </p>
                     ))}
                   </div>
                   <div className="flex flex-wrap justify-center gap-2">
                     <Button size="lg" icon={Dices} variant="primary" disabled={pool.length === 0} onClick={draw}>
-                      {count === 1 ? '한 명 더' : `${count}명 더`}
+                      {mode === 'group' ? '다시 뽑기' : count === 1 ? '한 명 더' : `${count}명 더`}
                     </Button>
                     <Button size="lg" icon={X} onClick={() => setRevealing(false)}>
                       닫기

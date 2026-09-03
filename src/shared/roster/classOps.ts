@@ -43,6 +43,7 @@ export interface ClassDataCount {
   rewardItems: number;
   redemptions: number;
   observations: number;
+  classEvents: number;
 }
 
 /** 그 학급 학생의 id 집합. 프로필 세 종류가 이것으로 딸려 온다. */
@@ -89,6 +90,7 @@ export function countClassData(data: SuiteData, classId: string): ClassDataCount
     rewardItems: byClass(data.rewardItems),
     redemptions: byClass(data.redemptions),
     observations: byClass(data.observations),
+    classEvents: byClass(data.classEvents),
   };
 }
 
@@ -142,7 +144,7 @@ export function updateClassRoom(
 }
 
 /**
- * 학급과 딸린 자료 22종을 지운다.
+ * 학급과 딸린 자료 23종을 지운다.
  *
  * 불변조건 검사의 고아 정리에 맡기지 않는다. 그쪽에 맡기면 정상 삭제인데도
  * "자료가 깨졌으니 고쳤다"는 복구 경보가 뜨고, 학생은 '복구된 학급'이라는
@@ -198,6 +200,7 @@ export function deleteClassRoom(data: SuiteData, classId: string): SuiteData {
     rewardItems: keepClass(data.rewardItems),
     redemptions: keepClass(data.redemptions),
     observations: keepClass(data.observations),
+    classEvents: keepClass(data.classEvents),
     activeClassId: nextActive,
   };
 }

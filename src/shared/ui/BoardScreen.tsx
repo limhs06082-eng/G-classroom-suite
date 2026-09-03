@@ -1,5 +1,5 @@
 import { Maximize2, Minimize2, X } from 'lucide-react';
-import { useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 import { Button } from './Button';
 import { cx } from './cx';
@@ -31,6 +31,20 @@ interface Props {
 export function BoardScreen({ title, subtitle, actions, onExit, children }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, isSupported, toggle } = useFullscreen(rootRef);
+
+  /*
+   * 칠판 창의 키보드. Esc는 닫기, F는 전체 화면 — 교탁 앞에서 리모컨이나
+   * 키보드로 다루는 화면이라 마우스로 구석의 작은 단추를 찾게 하지 않는다.
+   * 칠판에는 글자 입력칸이 없으므로 타이핑과 부딪힐 일이 없다.
+   */
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape' && onExit !== undefined) onExit();
+      if ((event.key === 'f' || event.key === 'F') && isSupported) void toggle();
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onExit, isSupported, toggle]);
 
   return (
     <div ref={rootRef} className="flex h-dvh w-full flex-col bg-surface text-slate-900">
