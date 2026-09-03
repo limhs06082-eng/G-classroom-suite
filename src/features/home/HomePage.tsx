@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   CalendarCheck,
+  CalendarDays,
   CheckSquare,
   ClipboardCheck,
   Download,
@@ -35,6 +36,7 @@ import { AttendanceSummary } from '../attendance/AttendanceSummary';
 import { DutySummary } from '../duty/DutySummary';
 import { nowState } from '../now/nowCore';
 import { RewardSummary } from '../reward/RewardSummary';
+import { ddayLabel, daysUntil, upcomingEvents } from '../notice/eventsCore';
 import { summarizeTasks } from '../task/taskCore';
 import { effectivePeriods, weekdayOf } from '../timetable/timetableCore';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
@@ -61,10 +63,8 @@ export default function HomePage() {
 
   // 업무는 학급에 매이지 않는다. activeClass가 없어도 셀 수 있다.
   const today = new Date();
-  const taskSummary = summarizeTasks(
-    data.tasks,
-    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
-  );
+  const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const taskSummary = summarizeTasks(data.tasks, todayString);
 
   if (activeClass === null) {
     return (
@@ -227,6 +227,19 @@ export default function HomePage() {
           </SummaryCard>
         )}
 
+        {/* 다가오는 일정 셋. 홈이 아홉 칸이 되어 3×3으로 딱 맞는다. */}
+        <SummaryCard
+          to="/notice"
+          label="다가오는 일정"
+          icon={CalendarDays}
+          accentClass="text-notice-500"
+          tintClass="bg-notice-50"
+          pending={upcomingEvents(data.classEvents, activeClass.id, todayString).length === 0}
+          cta="일정 관리"
+        >
+          <UpcomingEvents classId={activeClass.id} today={todayString} />
+        </SummaryCard>
+
         <SummaryCard
           to="/roster"
           label="학생 명단"
@@ -321,6 +334,38 @@ export default function HomePage() {
 
       <QuoteCard />
     </div>
+  );
+}
+
+/** 홈 '다가오는 일정' 카드 본문. 가까운 셋, D-day 순. */
+function UpcomingEvents({ classId, today }: { classId: string; today: string }) {
+  const { data } = useSuite();
+  const upcoming = upcomingEvents(data.classEvents, classId, today, 3);
+
+  if (upcoming.length === 0) {
+    return <PendingNote>수행평가·현장학습 같은 날짜를 적어 두면 여기 D-day로 나옵니다.</PendingNote>;
+  }
+
+  return (
+    <ul className="flex flex-col gap-1">
+      {upcoming.map((event) => {
+        const days = daysUntil(today, event.date);
+        return (
+          <li key={event.id} className="flex items-center gap-2 text-sm">
+            <span
+              data-numeric
+              className={cx(
+                'w-12 shrink-0 font-semibold',
+                days === 0 ? 'text-danger-700' : days <= 3 ? 'text-warning-700' : 'text-slate-500',
+              )}
+            >
+              {ddayLabel(today, event.date)}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-slate-800">{event.title}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

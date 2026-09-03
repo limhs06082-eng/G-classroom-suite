@@ -1,4 +1,5 @@
 import {
+  CalendarDays,
   ChevronDown,
   ChevronUp,
   ClipboardCheck,
@@ -11,11 +12,13 @@ import {
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { createClassEvent } from '../../shared/domain/factories';
 import { createId } from '../../shared/ids';
 import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { useToday } from '../../shared/state/useToday';
 import { Badge, Button, Card, EmptyState, PrintLayout, usePrint, useToast } from '../../shared/ui';
 import { openBoard } from '../../shared/window/openBoard';
+import { ddayLabel, daysUntil, pastEvents, upcomingEvents } from './eventsCore';
 import { assignmentsDueSoon, itemsFor, setItems } from './noticeCore';
 
 /**
@@ -260,6 +263,8 @@ export default function NoticePage() {
         </Card>
       ) : null}
 
+      <ClassEventsCard classId={classId} today={today} />
+
       {/* 인쇄 전용. 결석한 학생 가정으로 보내거나 교실 뒤에 붙이는 종이다. */}
       <PrintLayout
         title={`${activeClass.name} 알림장`}
@@ -280,5 +285,167 @@ export default function NoticePage() {
         </ol>
       </PrintLayout>
     </div>
+  );
+}
+
+/**
+ * 학급 일정.
+ *
+ * 수행평가·현장학습·상담 주간처럼 날짜가 정해진 일을 적어 두면 홈에
+ * D-day로, 오늘 보드에는 그날 일정으로 나온다. 알림장 화면에 두는
+ * 까닭은 "내일 뭐 있지"를 종례 때 함께 보기 때문이다.
+ *
+ * 지난 일정은 지우지 않고 접어 둔다 — 학기말에 "언제 뭘 했나"를 돌아본다.
+ */
+function ClassEventsCard({ classId, today }: { classId: string; today: string }) {
+  const { data, update } = useSuite();
+  const toast = useToast();
+  const [date, setDate] = useState('');
+  const [title, setTitle] = useState('');
+  const [note, setNote] = useState('');
+  const [showPast, setShowPast] = useState(false);
+
+  const upcoming = upcomingEvents(data.classEvents, classId, today);
+  const past = pastEvents(data.classEvents, classId, today);
+
+  const add = (): void => {
+    const trimmed = title.trim();
+    if (trimmed === '' || date === '') return;
+    update((suite) => ({
+      ...suite,
+      classEvents: [
+        ...suite.classEvents,
+        createClassEvent({ classId, date, title: trimmed, note: note.trim() }),
+      ],
+    }));
+    setTitle('');
+    setNote('');
+  };
+
+  const remove = (id: string): void => {
+    const target = data.classEvents.find((event) => event.id === id);
+    if (target === undefined) return;
+    update((suite) => ({
+      ...suite,
+      classEvents: suite.classEvents.filter((event) => event.id !== id),
+    }));
+    toast.info(`'${target.title}' 일정을 지웠습니다.`, {
+      actionLabel: '실행 취소',
+      onAction: () =>
+        update((suite) =>
+          suite.classEvents.some((event) => event.id === id)
+            ? suite
+            : { ...suite, classEvents: [...suite.classEvents, target] },
+        ),
+    });
+  };
+
+  return (
+    <Card title="학급 일정" icon={CalendarDays}>
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="date"
+          value={date}
+          onChange={(event) => setDate(event.target.value)}
+          aria-label="일정 날짜"
+          className="h-10 rounded-control border border-slate-300 px-2 text-sm"
+        />
+        <input
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) add();
+          }}
+          placeholder="예: 수학 수행평가"
+          aria-label="일정 이름"
+          className="h-10 min-w-40 flex-1 rounded-control border border-slate-300 px-3 text-sm"
+        />
+        <input
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) add();
+          }}
+          placeholder="메모 (선택) — 준비물, 장소"
+          aria-label="일정 메모"
+          className="h-10 min-w-40 flex-1 rounded-control border border-slate-300 px-3 text-sm"
+        />
+        <Button variant="primary" disabled={title.trim() === '' || date === ''} onClick={add}>
+          추가
+        </Button>
+      </div>
+
+      {upcoming.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">
+          다가오는 일정이 없습니다. 적어 두면 홈에 D-day로 나옵니다.
+        </p>
+      ) : (
+        <ul className="mt-3 flex flex-col gap-1">
+          {upcoming.map((event) => {
+            const days = daysUntil(today, event.date);
+            return (
+              <li
+                key={event.id}
+                className="flex items-center gap-2 rounded-control border border-slate-200 px-3 py-1.5"
+              >
+                <Badge tone={days === 0 ? 'danger' : days <= 3 ? 'warning' : 'neutral'}>
+                  {ddayLabel(today, event.date)}
+                </Badge>
+                <span data-numeric className="shrink-0 text-xs text-slate-400">
+                  {event.date}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm text-slate-800">
+                  {event.title}
+                  {event.note === '' ? null : (
+                    <span className="ml-2 text-xs text-slate-500">{event.note}</span>
+                  )}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={Trash2}
+                  iconOnly
+                  aria-label={`${event.title} 일정 삭제`}
+                  onClick={() => remove(event.id)}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {past.length > 0 ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowPast((value) => !value)}
+            aria-expanded={showPast}
+            className="text-sm text-slate-500 hover:text-slate-800"
+          >
+            지난 일정 {past.length}개 {showPast ? '접기' : '보기'}
+          </button>
+          {showPast ? (
+            <ul className="mt-1 flex flex-col gap-0.5">
+              {past.map((event) => (
+                <li key={event.id} className="flex items-center gap-2 px-1 text-sm text-slate-500">
+                  <span data-numeric className="shrink-0 text-xs text-slate-400">
+                    {event.date}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{event.title}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={Trash2}
+                    iconOnly
+                    aria-label={`${event.title} 일정 삭제`}
+                    onClick={() => remove(event.id)}
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+    </Card>
   );
 }

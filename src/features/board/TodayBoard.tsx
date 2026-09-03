@@ -3,6 +3,7 @@ import { isDesktop } from '../../shared/platform/target';
 import { useNow } from '../../shared/state/useNow';
 import { useToday } from '../../shared/state/useToday';
 import { cx } from '../../shared/ui';
+import { daysUntil, ddayLabel, upcomingEvents } from '../notice/eventsCore';
 import { assignmentsDueSoon, itemsFor } from '../notice/noticeCore';
 import { hmOf, nowState } from '../now/nowCore';
 import { useDuty } from '../duty/useDuty';
@@ -70,6 +71,7 @@ export function TodayBoard() {
           {isDesktop() ? <MealSection /> : null}
         </div>
         <div className="flex flex-col gap-8">
+          <EventsSection date={date} />
           <DutySection />
           <NoticeSection date={date} />
         </div>
@@ -155,6 +157,35 @@ function MealSection() {
             </li>
           )),
         )}
+      </ul>
+    </section>
+  );
+}
+
+/** 오늘과 사흘 안 일정. 학급 TV에서 "내일 수행평가"가 제일 먼저 보여야 한다. */
+function EventsSection({ date }: { date: string }) {
+  const { data } = useSuite();
+  const activeClass = useActiveClass();
+  const classId = activeClass?.id ?? '';
+
+  // 사흘 안까지만. 학급 TV에 한 달 뒤 운동회까지 늘어놓으면 오늘 것이 묻힌다.
+  const soon = upcomingEvents(data.classEvents, classId, date).filter(
+    (event) => daysUntil(date, event.date) <= 3,
+  );
+  if (soon.length === 0) return null;
+
+  return (
+    <section>
+      <SectionTitle>다가오는 일정</SectionTitle>
+      <ul className="flex flex-col gap-1.5">
+        {soon.map((event) => (
+          <li key={event.id} className="flex items-baseline gap-4 text-board-base">
+            <span data-numeric className="shrink-0 font-bold text-danger-500">
+              {ddayLabel(date, event.date)}
+            </span>
+            <span className="font-semibold text-slate-900">{event.title}</span>
+          </li>
+        ))}
       </ul>
     </section>
   );

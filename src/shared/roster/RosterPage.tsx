@@ -83,7 +83,19 @@ export default function RosterPage() {
       widthClass: 'w-16',
       render: (student) => <span className="font-mono text-slate-500">{student.number}</span>,
     },
-    { key: 'name', header: '이름', render: (student) => student.name },
+    {
+      key: 'name',
+      header: '이름',
+      // 이름을 누르면 '학생 한눈에'. 출결·점수·과제·관찰이 이 학생 기준으로 모인다.
+      render: (student) => (
+        <Link
+          to={`/roster/${student.id}`}
+          className="font-medium text-slate-900 underline-offset-2 hover:text-brand-700 hover:underline"
+        >
+          {student.name}
+        </Link>
+      ),
+    },
     {
       key: 'status',
       header: '상태',
