@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   absentToday,
   isConfirmed,
+  monthDay,
   monthlyCounts,
   nextStatus,
+  notesInRange,
   rangeCounts,
   setConfirmed,
   setNote,
@@ -168,5 +170,31 @@ describe('rangeCounts — 학기 전체 집계', () => {
 
     expect(counts.get('stu-1')).toEqual({ absent: 1, late: 1, early: 0, fieldTrip: 0 });
     expect(counts.get('stu-2')).toEqual({ absent: 0, late: 0, early: 1, fieldTrip: 0 });
+  });
+});
+
+describe('notesInRange — 학기 사유 모음', () => {
+  it('사유가 적힌 항목만 날짜순으로, 기간 밖은 빼고 모은다', () => {
+    let records: AttendanceRecord[] = [];
+    records = setStatus(records, CLASS, '2026-05-10', 'stu-1', 'late');
+    records = setNote(records, CLASS, '2026-05-10', 'stu-1', '늦잠');
+    records = setStatus(records, CLASS, '2026-03-05', 'stu-1', 'absent');
+    records = setNote(records, CLASS, '2026-03-05', 'stu-1', '병원');
+    records = setStatus(records, CLASS, '2026-03-06', 'stu-1', 'late'); // 사유 없음
+    records = setStatus(records, CLASS, '2026-07-21', 'stu-1', 'absent');
+    records = setNote(records, CLASS, '2026-07-21', 'stu-1', '방학'); // 기간 밖
+
+    const notes = notesInRange(records, CLASS, '2026-03-02', '2026-07-20');
+
+    expect(notes.get('stu-1')).toEqual([
+      { date: '2026-03-05', status: 'absent', note: '병원' },
+      { date: '2026-05-10', status: 'late', note: '늦잠' },
+    ]);
+    expect(notes.has('stu-2')).toBe(false);
+  });
+
+  it('monthDay는 M/D다', () => {
+    expect(monthDay('2026-03-05')).toBe('3/5');
+    expect(monthDay('2026-11-30')).toBe('11/30');
   });
 });

@@ -257,3 +257,44 @@ export function monthlyCounts(
 ): Map<string, Record<AttendanceStatus, number>> {
   return rangeCounts(records, classId, `${month}-01`, `${month}-31`);
 }
+
+export interface AttendanceNote {
+  /** YYYY-MM-DD */
+  date: string;
+  status: AttendanceStatus;
+  note: string;
+}
+
+/**
+ * 기간 안 학생별 사유 메모, 날짜순. 사유가 빈 항목은 담지 않는다.
+ *
+ * 생활기록부 출결에는 횟수만이 아니라 "질병·미인정" 같은 사유가 따라간다.
+ * 학기말에 날짜를 하나씩 열어 보게 하지 않는다.
+ */
+export function notesInRange(
+  records: readonly AttendanceRecord[],
+  classId: string,
+  from: string,
+  to: string,
+): Map<string, AttendanceNote[]> {
+  const notes = new Map<string, AttendanceNote[]>();
+
+  for (const record of [...records].sort((a, b) => a.date.localeCompare(b.date))) {
+    if (record.classId !== classId || record.date < from || record.date > to) continue;
+    for (const entry of record.entries) {
+      const note = entry.note.trim();
+      if (note === '') continue;
+      const list = notes.get(entry.studentId) ?? [];
+      list.push({ date: record.date, status: entry.status, note });
+      notes.set(entry.studentId, list);
+    }
+  }
+
+  return notes;
+}
+
+/** `"2026-03-05"` → `"3/5"`. 표 한 칸에 들어가는 짧은 날짜. */
+export function monthDay(date: string): string {
+  const [, month = '', day = ''] = date.split('-');
+  return `${Number(month)}/${Number(day)}`;
+}

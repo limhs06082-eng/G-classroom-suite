@@ -8,9 +8,11 @@ import { useToday } from '../../shared/state/useToday';
 import { Badge, Button, Card, cx, EmptyState, PrintLayout, Table, Tabs, usePrint, useToast } from '../../shared/ui';
 import {
   isConfirmed,
+  monthDay,
   monthlyCounts,
   nextStatus,
   noteOf,
+  notesInRange,
   rangeCounts,
   setConfirmed,
   setNote,
@@ -384,6 +386,19 @@ function MonthlyTab({ today }: { today: string }) {
     [data.attendanceRecords, classId, month, termMode, term],
   );
 
+  // 사유 열은 학기 모드에만. 나이스 월말 표는 전과 같아야 한다.
+  const notes = useMemo(
+    () =>
+      termMode && term !== null
+        ? notesInRange(data.attendanceRecords, classId, term.startDate, term.endDate)
+        : new Map<string, never[]>(),
+    [data.attendanceRecords, classId, termMode, term],
+  );
+  const noteLines = (studentId: string): string[] =>
+    (notes.get(studentId) ?? []).map(
+      (item) => `${monthDay(item.date)} ${STATUS_LABELS[item.status]}: ${item.note}`,
+    );
+
   const shiftMonth = (delta: number): void => {
     const [year = 0, mon = 1] = month.split('-').map(Number);
     const moved = new Date(year, mon - 1 + delta, 1);
@@ -444,6 +459,7 @@ function MonthlyTab({ today }: { today: string }) {
                   {STATUS_LABELS[status]}
                 </th>
               ))}
+              {termMode ? <th className="border border-black px-2 py-1.5 text-left">사유</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -461,6 +477,15 @@ function MonthlyTab({ today }: { today: string }) {
                     </td>
                   );
                 })}
+                {termMode ? (
+                  <td className="border border-black px-2 py-1 text-xs">
+                    <ul>
+                      {noteLines(student.id).map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>
@@ -488,6 +513,22 @@ function MonthlyTab({ today }: { today: string }) {
                 return value === 0 ? '' : value;
               },
             })),
+            ...(termMode
+              ? [
+                  {
+                    key: 'notes',
+                    header: '사유',
+                    hideOnNarrow: true,
+                    render: (student: Student) => (
+                      <ul className="text-xs text-slate-600">
+                        {noteLines(student.id).map((line) => (
+                          <li key={line}>{line}</li>
+                        ))}
+                      </ul>
+                    ),
+                  },
+                ]
+              : []),
           ]}
           rows={rows}
           rowKey={(student) => student.id}

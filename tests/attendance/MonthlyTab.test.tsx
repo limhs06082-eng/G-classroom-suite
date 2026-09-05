@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import AttendancePage from '../../src/features/attendance/AttendancePage';
-import { setStatus } from '../../src/features/attendance/attendanceCore';
+import { setNote, setStatus } from '../../src/features/attendance/attendanceCore';
 import {
   createClassRoom,
   createEmptySuiteData,
@@ -29,6 +29,7 @@ function seeded(): SuiteData {
   );
   const room = createClassRoom({ id: 'class-1', termId: term.id, name: '우리 반' }, NOW);
   let records = setStatus([], room.id, '2026-03-05', 'stu-1', 'absent');
+  records = setNote(records, room.id, '2026-03-05', 'stu-1', '병원');
   records = setStatus(records, room.id, '2026-07-21', 'stu-1', 'absent');
 
   return {
@@ -82,5 +83,18 @@ describe('출결 집계 — 학기 전체', () => {
     expect(row).not.toBeNull();
     expect(within(row as HTMLElement).getByText('김하나')).toBeInTheDocument();
     expect(within(row as HTMLElement).getByText('1', { selector: 'td' })).toBeInTheDocument();
+  });
+
+  it('학기 전체에는 사유 열이 있고, 달 모드에는 없다', async () => {
+    const user = userEvent.setup();
+    await renderMonthly();
+
+    // 달 모드 — 사유 열이 없다. 나이스 월말 표는 전과 같아야 한다.
+    expect(screen.queryByRole('columnheader', { name: '사유' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '학기 전체' }));
+
+    expect(screen.getAllByRole('columnheader', { name: '사유' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('3/5 결석: 병원').length).toBeGreaterThan(0);
   });
 });
