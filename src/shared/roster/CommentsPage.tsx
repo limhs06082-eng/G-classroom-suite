@@ -1,5 +1,5 @@
 import { ArrowLeft, Copy, KeyRound, Sparkles, Square, WandSparkles } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
@@ -50,6 +50,14 @@ export default function CommentsPage() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const stopRef = useRef(false);
+
+  // 화면을 떠나면 돌던 일괄 작성을 멈춘다 — 보이지도 않는데 돈이 나가면 안 된다.
+  useEffect(
+    () => () => {
+      stopRef.current = true;
+    },
+    [],
+  );
 
   if (activeClass === null) {
     return (
@@ -262,6 +270,8 @@ export default function CommentsPage() {
                     });
                   }}
                   rows={3}
+                  // 일괄 작성 중에는 잠근다. 그 사이 적은 글을 AI 글이 덮으면 "빈 학생만"이 거짓이 된다.
+                  disabled={progress !== null}
                   aria-label={`${student.name} 행동특성 및 종합의견`}
                   placeholder="[초안]이나 [AI]를 누르거나 직접 적어 주세요."
                   className="w-full rounded-control border border-slate-300 p-2 text-sm leading-relaxed"
@@ -350,7 +360,7 @@ function AiSettingsCard({ config, onChange }: { config: AiConfig | null; onChang
           <p className="text-sm text-slate-600">
             선생님 개인의 API 키로 AI가 글을 씁니다. 키는 <strong className="font-semibold">이 컴퓨터에만</strong> 저장되고
             백업에 들어가지 않습니다. AI에는 <strong className="font-semibold">학생 이름·번호를 보내지 않으며</strong>, 관찰 기록
-            원문과 출결·칭찬·과제 숫자만 보냅니다. 비용은 선생님 계정에서 나갑니다(한 명에 몇 원 수준).
+            원문과 칭찬 항목 이름, 출결·당번·과제 숫자만 보냅니다. 비용은 선생님 계정에서 나갑니다(한 명에 몇 원 수준).
           </p>
           <div className="inline-flex flex-wrap gap-0.5 rounded-control border border-slate-200 p-0.5" role="group" aria-label="AI 회사">
             {AI_PROVIDERS.map((item) => (

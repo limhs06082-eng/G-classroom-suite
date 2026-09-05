@@ -272,7 +272,8 @@ export default function StudentDetailPage() {
       </div>
 
       {/* 쌓인 기록의 끝 — 학기말에 나이스로 옮겨 적는 글. 상담 자료 인쇄에는 넣지 않는다. */}
-      <BehaviorCommentCard student={student} {...(range === undefined ? {} : { range })} />
+      {/* key — 학생을 옮기면 카드가 새로 선다. AI 응답을 기다리던 글상자가 다음 학생에게 남으면 안 된다. */}
+      <BehaviorCommentCard key={student.id} student={student} {...(range === undefined ? {} : { range })} />
 
       {/*
         상담 자료 인쇄. 숫자·출결·관찰·미제출을 한 장에. 점수 개별 기록은

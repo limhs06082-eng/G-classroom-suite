@@ -60,13 +60,17 @@ export interface AiRequest {
   body: unknown;
 }
 
-const MAX_OUTPUT_TOKENS = 800;
+/*
+ * 500자 한국어 한 단락은 토큰으로 500~800이고, 최신 모델들은 "생각" 토큰을
+ * 같은 한도에서 쓴다. 넉넉히 둔다 — 실제 비용은 실제 출력만큼만 든다.
+ */
+const MAX_OUTPUT_TOKENS = 2500;
 
 export function requestFor(config: AiConfig, prompt: AiPrompt): AiRequest {
   switch (config.provider) {
     case 'gemini':
       return {
-        url: `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent`,
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(config.model)}:generateContent`,
         headers: { 'x-goog-api-key': config.apiKey },
         body: {
           systemInstruction: { parts: [{ text: prompt.system }] },
@@ -85,7 +89,8 @@ export function requestFor(config: AiConfig, prompt: AiPrompt): AiRequest {
             { role: 'user', content: prompt.user },
           ],
           temperature: 0.5,
-          max_tokens: MAX_OUTPUT_TOKENS,
+          // max_tokens는 새 모델(gpt-5·o 계열)이 거절한다. 이쪽은 전부 받는다.
+          max_completion_tokens: MAX_OUTPUT_TOKENS,
         },
       };
     case 'anthropic':
@@ -94,7 +99,8 @@ export function requestFor(config: AiConfig, prompt: AiPrompt): AiRequest {
         headers: {
           'x-api-key': config.apiKey,
           'anthropic-version': '2023-06-01',
-          // 브라우저(웹 판)에서 직접 부를 때 Anthropic이 요구하는 머리. 키는 교사 개인 것이다.
+          // Anthropic이 브라우저 직접 호출에 요구하는 머리. 설치형도 Origin을 붙여 보내므로
+          // (tauri.localhost) 둘 다 필요하다. 키는 교사 개인 것이다.
           'anthropic-dangerous-direct-browser-access': 'true',
         },
         body: {

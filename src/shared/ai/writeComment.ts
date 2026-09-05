@@ -9,7 +9,9 @@ export type WriteResult = { ok: true; text: string } | { ok: false; error: strin
 /** 상태 코드를 사람 말로. 회사가 준 문구가 있으면 뒤에 붙인다. */
 function describeFailure(status: number, json: unknown): string {
   const detail = errorMessageFrom(json);
-  const tail = detail === null ? '' : ` (${detail.slice(0, 120)})`;
+  // 회사가 오류 문구에 키 조각을 되돌려 줄 때가 있다. 화면에 띄우는 글이니 가린다.
+  const masked = detail === null ? null : detail.replace(/\b(sk-|AIza)\S+/g, '$1…');
+  const tail = masked === null ? '' : ` (${masked.slice(0, 120)})`;
   if (status === 401 || status === 403) return `API 키가 맞지 않거나 권한이 없습니다. 설정에서 키를 확인해 주세요.${tail}`;
   if (status === 404) return `모델 이름을 찾을 수 없습니다. 설정에서 모델을 확인해 주세요.${tail}`;
   if (status === 429) return `요청이 너무 잦거나 사용량이 찼습니다. 잠시 뒤 다시 해 주세요.${tail}`;

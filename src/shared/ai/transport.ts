@@ -21,6 +21,8 @@ export async function postJson(
     method: 'POST',
     headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body),
+    // 한 학생에 1분. 매달린 요청 하나가 서른 명 일괄 작성을 영영 세우면 안 된다.
+    signal: AbortSignal.timeout(60_000),
   };
 
   const response = isDesktop()
