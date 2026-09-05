@@ -1,9 +1,11 @@
-import { Maximize2, Minimize2, X } from 'lucide-react';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { CircleQuestionMark, Maximize2, Minimize2, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { Button } from './Button';
 import { cx } from './cx';
+import { ShortcutsModal } from './ShortcutsModal';
 import { useFullscreen } from './useFullscreen';
+import { useHelpKey } from './useHelpKey';
 
 interface Props {
   /** 화면 상단에 크게 뜨는 제목. 예: '오늘의 당번' */
@@ -31,14 +33,20 @@ interface Props {
 export function BoardScreen({ title, subtitle, actions, onExit, children }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, isSupported, toggle } = useFullscreen(rootRef);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const openHelp = useCallback(() => setHelpOpen(true), []);
 
   /*
-   * 칠판 창의 키보드. Esc는 닫기, F는 전체 화면 — 교탁 앞에서 리모컨이나
-   * 키보드로 다루는 화면이라 마우스로 구석의 작은 단추를 찾게 하지 않는다.
-   * 칠판에는 글자 입력칸이 없으므로 타이핑과 부딪힐 일이 없다.
+   * 칠판 창의 키보드. Esc는 닫기, F는 전체 화면, ?는 단축키 도움 — 교탁
+   * 앞에서 리모컨이나 키보드로 다루는 화면이라 마우스로 구석의 작은 단추를
+   * 찾게 하지 않는다. 칠판에는 글자 입력칸이 없으므로 타이핑과 부딪힐 일이
+   * 없다. 대화상자(도움 등)가 열려 있으면 Esc는 그것을 닫는 것이지 칠판을
+   * 닫는 것이 아니다.
    */
+  useHelpKey(openHelp);
   useEffect(() => {
     const handleKey = (event: KeyboardEvent): void => {
+      if (document.querySelector('[role="dialog"]') !== null) return;
       if (event.key === 'Escape' && onExit !== undefined) onExit();
       if ((event.key === 'f' || event.key === 'F') && isSupported) void toggle();
     };
@@ -58,6 +66,15 @@ export function BoardScreen({ title, subtitle, actions, onExit, children }: Prop
 
         <div className="flex shrink-0 items-center gap-2">
           {actions}
+
+          <Button
+            size="lg"
+            variant="secondary"
+            icon={CircleQuestionMark}
+            iconOnly
+            aria-label="키보드 단축키"
+            onClick={openHelp}
+          />
 
           {isSupported ? (
             <Button
@@ -79,6 +96,8 @@ export function BoardScreen({ title, subtitle, actions, onExit, children }: Prop
       <main className={cx('min-h-0 flex-1 overflow-auto px-8 py-6', 'text-board-base')}>
         {children}
       </main>
+
+      <ShortcutsModal open={helpOpen} onClose={() => setHelpOpen(false)} scope="board" />
     </div>
   );
 }

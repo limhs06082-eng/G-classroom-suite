@@ -1,4 +1,4 @@
-import { Lock, Settings, Users } from 'lucide-react';
+import { CircleQuestionMark, Lock, Settings, Users } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 
@@ -13,7 +13,7 @@ import { engageLock, tryUnlock } from '../shared/lock/lockOps';
 import { isDesktop } from '../shared/platform/target';
 import { useSuite } from '../shared/roster/SuiteDataProvider';
 import { useNow } from '../shared/state/useNow';
-import { useToast } from '../shared/ui';
+import { ShortcutsModal, useHelpKey, useToast } from '../shared/ui';
 import { ClassSwitcher } from './ClassSwitcher';
 import { ErrorBoundary } from './ErrorBoundary';
 import { FEATURE_NAV } from './navigation';
@@ -45,6 +45,11 @@ export function AppShell() {
    * 교사에게 그것부터 보여 줄 이유가 없다.
    */
   const onSetup = useLocation().pathname === '/setup';
+
+  // 단축키 도움. 잠금 중에는 열지 않는다 — 잠금 화면은 아무것도 안 새는 것이 목적이다.
+  const [helpOpen, setHelpOpen] = useState(false);
+  const openHelp = useCallback(() => setHelpOpen(true), []);
+  useHelpKey(openHelp, !data.isLocked);
 
   /*
    * update의 콜백은 반환값을 밖으로 낼 수 없다. 맞았는지는 지금 자료로
@@ -166,6 +171,16 @@ export function AppShell() {
                 </button>
               )}
 
+              <button
+                type="button"
+                onClick={openHelp}
+                aria-label="키보드 단축키"
+                title="키보드 단축키 (?)"
+                className="ml-1 rounded-control p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              >
+                <CircleQuestionMark className="size-4" aria-hidden />
+              </button>
+
               <NavLink
                 to="/settings"
                 aria-label="설정"
@@ -197,6 +212,7 @@ export function AppShell() {
 
         {/* 전자칠판(/board/*)은 이 껍데기를 쓰지 않는다. 보여 주려고 띄운 화면이라 덮지 않는다. */}
         {data.isLocked ? <LockScreen onSubmit={handleUnlock} /> : null}
+        <ShortcutsModal open={helpOpen} onClose={() => setHelpOpen(false)} scope="app" />
       </div>
     </ToolsProvider>
   );
