@@ -77,6 +77,23 @@ describe('collectCommentFacts — 이름 없는 사실 모음', () => {
     expect(JSON.stringify(facts)).not.toContain('떠들기');
   });
 
+  it('상담 기록은 AI에 보내지 않는다', () => {
+    const data = seeded();
+    const withCounsel = {
+      ...data,
+      observations: [
+        ...data.observations,
+        createObservation(
+          { classId: CLASS, studentId: 'stu-1', text: '가정 형편 상담', date: '2026-05-01', kind: 'counsel' },
+          NOW,
+        ),
+      ],
+    };
+    const facts = collectCommentFacts(withCounsel, 'stu-1', RANGE);
+    expect(JSON.stringify(facts)).not.toContain('가정 형편');
+    expect(facts?.observations).toHaveLength(1);
+  });
+
   it('출결을 안 쓰는 학급은 unknown, 결석이 있으면 absent', () => {
     expect(collectCommentFacts({ ...seeded(), attendanceRecords: [] }, 'stu-1', RANGE)?.attendance).toBe('unknown');
     expect(collectCommentFacts(seeded(), 'stu-2', RANGE)?.attendance).toBe('absent');

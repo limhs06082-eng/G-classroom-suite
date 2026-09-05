@@ -50,8 +50,10 @@ export function collectCommentFacts(
     praise: praiseCounts(data, studentId, inRange).slice(0, 5),
     dutyCount: summary.dutyCount,
     assignments: { total: summary.assignments.total, submitted: summary.assignments.submitted },
+    // 상담 기록은 보내지 않는다 — 가정 사정이 섞이는 글이고, 행동특성의 재료는 관찰이다.
     observations: [...summary.observations]
       .reverse()
+      .filter((entry) => entry.kind !== 'counsel')
       .map((entry) => ({ date: entry.date, text: entry.text.trim() }))
       .filter((entry) => entry.text !== ''),
   };

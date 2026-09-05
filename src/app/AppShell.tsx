@@ -2,6 +2,7 @@ import { CircleQuestionMark, Lock, Settings, Users } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 
+import { PeriodChime } from '../features/home/PeriodChime';
 import { ToolsBar } from '../features/tools/ToolsBar';
 import { ToolsProvider } from '../features/tools/ToolsContext';
 import { WeatherBadge } from '../features/home/WeatherBadge';
@@ -78,6 +79,8 @@ export function AppShell() {
     <ToolsProvider>
       {/* 새 판 확인. 설치형에서만, 켜고 잠시 뒤 한 번. 설치는 교사가 누른다. */}
       {isDesktop() ? <UpdateChecker /> : null}
+      {/* 수업 끝 알림음(설정에서 켠 경우). 어느 화면이든 이 창에서 한 번. 칠판 창은 셸 밖이라 조용하다. */}
+      <PeriodChime />
       <div className="flex min-h-full flex-col">
         {/* 반투명 헤더는 스크롤할 때 본문 한글이 비쳐 읽기 어려워진다. 불투명으로 둔다. */}
         <header className="no-print sticky top-0 z-20 border-b border-slate-200 bg-surface">

@@ -32,6 +32,11 @@ export function VoteModal({ open, onClose }: { open: boolean; onClose: () => voi
     setShowing(true);
   };
 
+  // 도구가 닫히면(다른 도구를 열었을 때) 큰 화면도 내린다. 화면만 남고 설정 창이 안 돌아오면 안 된다.
+  useEffect(() => {
+    if (!open) setShowing(false);
+  }, [open]);
+
   // 큰 화면일 때 Esc로 내린다. 교탁에서 리모컨·키보드로 다룬다.
   useEffect(() => {
     if (!showing) return;

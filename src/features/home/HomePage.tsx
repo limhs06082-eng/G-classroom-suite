@@ -52,7 +52,6 @@ import { removeSampleClass } from '../../shared/sample/sampleClass';
 import { shortDate } from '../notice/eventsCore';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
 import { HomeTips } from './HomeTips';
-import { usePeriodChime } from './usePeriodChime';
 import {
   clearLegacyLayout,
   isEmptyLayout,
@@ -803,21 +802,6 @@ export function TodayNow() {
    */
   const [year = 0, month = 0, day = 0] = date.split('-').map(Number);
   const weekday = weekdayOf(new Date(year, month - 1, day));
-
-  /*
-   * 교시 끝 알림음(설정에서 켠 경우). 훅이라 아래 이른 return보다 먼저 부른다.
-   * 학급이 없거나 주말이면 시간표가 비어 조용하다.
-   */
-  usePeriodChime(
-    nowState(
-      data.periodTimes,
-      activeClass === null || weekday === 0
-        ? []
-        : effectivePeriods(data.timetableEntries, data.timetableOverrides, activeClass.id, date, weekday),
-      minutes,
-    ),
-    date,
-  );
 
   /*
    * 우리 반이 없으면 볼 시간표가 없다. 홈이 이 경우를 먼저 막지만 그 사정이

@@ -10,10 +10,19 @@ import { playChime } from '../../shared/fx/sound';
 import type { NowState } from '../now/nowCore';
 
 /*
- * 모듈 전역 표식. 홈의 '지금' 카드와 오늘 보드가 같이 떠 있어도(교사 화면 +
- * 학급 TV가 같은 창일 때) 같은 교시에 두 번 울리지 않는다.
+ * 모듈 전역 표식. 같은 창에서 같은 교시에 두 번 울리지 않는다. 칠판 창은 딴
+ * 창(딴 모듈)이라 이 표식을 못 나눈다 — 그래서 알림음은 셸(PeriodChime) 하나에만 둔다.
  */
 let lastMark: ChimeMark | null = null;
+
+/**
+ * 손 한 번 안 댄 창의 오디오는 브라우저가 멈춰 둔다. 그 상태에서 소리를
+ * 쌓아 두면 나중에 한꺼번에 터진다. 그런 창에서는 울리지 않는다.
+ */
+function audioAllowed(): boolean {
+  const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+  return activation === undefined || activation.hasBeenActive;
+}
 
 /** 시험용. */
 export function resetPeriodChimeMark(): void {
@@ -29,6 +38,6 @@ export function usePeriodChime(state: NowState, today: string): void {
     const mark = shouldChime(state, today, lastMark);
     if (mark === null) return;
     lastMark = mark;
-    playChime();
+    if (audioAllowed()) playChime();
   }, [on, state, today]);
 }
