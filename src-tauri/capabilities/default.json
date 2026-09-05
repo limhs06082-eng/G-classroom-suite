@@ -26,7 +26,10 @@
       "identifier": "http:default",
       "allow": [
         { "url": "https://open.neis.go.kr/*" },
-        { "url": "https://api.open-meteo.com/*" }
+        { "url": "https://api.open-meteo.com/*" },
+        { "url": "https://generativelanguage.googleapis.com/*" },
+        { "url": "https://api.openai.com/*" },
+        { "url": "https://api.anthropic.com/*" }
       ]
     }
   ]

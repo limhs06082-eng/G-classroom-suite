@@ -193,7 +193,14 @@ for (const name of capFiles) {
  * XSS든 그 문으로 학생 이름을 실어 보낼 수 있다. 늘리려면 여기도 함께
  * 고쳐라 — 손이 한 번 더 가는 것이 이 검사의 값어치다.
  */
-const EXPECTED_HOSTS = ['https://open.neis.go.kr/*', 'https://api.open-meteo.com/*'];
+// 뒤의 셋은 행동특성 AI 작성 — 교사 개인 키로 부른다. 학생 이름은 안 나간다(src/shared/ai/commentPrompt.ts).
+const EXPECTED_HOSTS = [
+  'https://open.neis.go.kr/*',
+  'https://api.open-meteo.com/*',
+  'https://generativelanguage.googleapis.com/*',
+  'https://api.openai.com/*',
+  'https://api.anthropic.com/*',
+];
 
 const unexpectedHosts = allowed.filter((url) => !EXPECTED_HOSTS.includes(url));
 const missingHosts = EXPECTED_HOSTS.filter((url) => !allowed.includes(url));
