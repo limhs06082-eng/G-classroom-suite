@@ -200,7 +200,7 @@ export default function CommentsPage() {
           <span>
             쓰는 중 {progress.done} / {progress.total}
           </span>
-          <div className="h-1.5 flex-1 overflow-hidden rounded bg-white">
+          <div className="h-1.5 flex-1 overflow-hidden rounded bg-surface">
             <div className="h-full bg-brand-500 transition-all" style={{ width: `${(progress.done / progress.total) * 100}%` }} />
           </div>
           <Button size="sm" variant="ghost" icon={Square} onClick={() => { stopRef.current = true; }}>
