@@ -126,6 +126,12 @@ export default function HomePage() {
   useEffect(() => {
     // 자료를 다 읽기 전에 들여오면 읽기가 끝나는 순간 덮여 사라진다. 다 읽은 뒤 한 번.
     if (isLoading || migratedRef.current) return;
+    /*
+     * 읽기가 실패하면 provider는 빈 자료로 떠 있다. 거기에 배치를 들여오면
+     * 빈 자료가 저장되어 진짜 자료를 덮는다. 학급 하나 없는 자료에 배치는
+     * 뜻이 없으니 건너뛴다 — 기기 배치는 남겨 두고 다음에 다시 본다.
+     */
+    if (data.classRooms.length === 0) return;
     migratedRef.current = true;
 
     const legacy = readLegacyLayout();
