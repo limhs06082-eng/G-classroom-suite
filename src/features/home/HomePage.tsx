@@ -3,8 +3,11 @@ import {
   CalendarCheck,
   CalendarDays,
   CheckSquare,
+  ChevronDown,
+  ChevronUp,
   ClipboardCheck,
   Download,
+  EyeOff,
   ListChecks,
   MessageSquareText,
   Monitor,
@@ -17,7 +20,7 @@ import {
   UtensilsCrossed,
   Wand2,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
@@ -40,6 +43,14 @@ import { ddayLabel, daysUntil, upcomingEvents } from '../notice/eventsCore';
 import { summarizeTasks } from '../task/taskCore';
 import { effectivePeriods, weekdayOf } from '../timetable/timetableCore';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
+import {
+  loadLayout,
+  moveCard,
+  resolveOrder,
+  saveLayout,
+  setHidden,
+  type HomeLayout,
+} from './homeLayout';
 import { MealCard } from './MealCard';
 import { NowCard } from './NowCard';
 import { quoteOfDay } from './quotes';
@@ -53,11 +64,59 @@ import { useTodayMeal, useWeekMeals } from './useTodayMeal';
  * 원본 dashboard를 그대로 홈으로 쓰지 않고, 5개 기능 요약을 얹은 새 화면을 만든다.
  * 7~10단계에서 각 기능을 이식하며 '준비 중' 카드가 실제 요약으로 바뀐다.
  */
+/** 홈 학급 카드. 순서·숨김의 열쇠이자 기본 순서다. */
+const HOME_CARD_IDS = [
+  'now',
+  'attendance',
+  'duty',
+  'seating',
+  'reward',
+  'assignment',
+  'timetable',
+  'meal',
+  'events',
+  'roster',
+] as const;
+type HomeCardId = (typeof HOME_CARD_IDS)[number];
+
+const HOME_CARD_LABELS: Record<HomeCardId, string> = {
+  now: '지금',
+  attendance: '오늘 출결',
+  duty: '오늘의 당번',
+  seating: '자리·모둠',
+  reward: '학급 점수',
+  assignment: '마감 임박 과제',
+  timetable: '오늘 시간표',
+  meal: '급식',
+  events: '다가오는 일정',
+  roster: '학생 명단',
+};
+
 export default function HomePage() {
   const { data, adapter } = useSuite();
   const term = useActiveTerm();
   const activeClass = useActiveClass();
   const roster = useRoster();
+
+  /*
+   * 카드 배치(순서·숨김)는 이 기기의 취향이다 — 테마처럼 localStorage에.
+   * 그리는 쪽은 CSS `order`만 바꾼다. JSX 순서는 기본 순서 그대로라
+   * 카드를 옮겨도 코드에서 카드를 찾는 자리는 그대로다.
+   */
+  const [layout, setLayout] = useState<HomeLayout>(loadLayout);
+  const applyLayout = (next: HomeLayout): void => {
+    setLayout(next);
+    saveLayout(next);
+  };
+  const orderOf = new Map(resolveOrder(HOME_CARD_IDS, layout).map((id, index) => [id, index]));
+  const slot = (id: HomeCardId) => ({
+    id,
+    label: HOME_CARD_LABELS[id],
+    order: orderOf.get(id) ?? HOME_CARD_IDS.length,
+    hidden: layout.hidden.includes(id),
+    onMove: (delta: -1 | 1) => applyLayout(moveCard(HOME_CARD_IDS, layout, id, delta)),
+    onHide: () => applyLayout(setHidden(layout, id, true)),
+  });
 
   const groups = data.groups.filter((group) => group.classId === activeClass?.id);
 
@@ -137,9 +196,12 @@ export default function HomePage() {
           자리는 고정이고 내용만 바뀐다 — 때마다 카드가 옮겨 다니면 흘긋
           보는 것 자체가 안 된다.
         */}
-        <TodayNow />
+        <HomeSlot {...slot('now')}>
+          <TodayNow />
+        </HomeSlot>
 
         {/* '지금' 바로 다음. 아침에 홈을 열면 출결부터 찍는 것이 하루의 순서다. */}
+        <HomeSlot {...slot('attendance')}>
         <SummaryCard
           to="/attendance"
           label="오늘 출결"
@@ -150,7 +212,9 @@ export default function HomePage() {
         >
           <AttendanceSummary />
         </SummaryCard>
+        </HomeSlot>
 
+        <HomeSlot {...slot('duty')}>
         <SummaryCard
           to="/duty"
           label="오늘의 당번"
@@ -161,7 +225,9 @@ export default function HomePage() {
         >
           <DutySummary />
         </SummaryCard>
+        </HomeSlot>
 
+        <HomeSlot {...slot('seating')}>
         <SummaryCard
           to="/seating"
           label="자리·모둠"
@@ -177,7 +243,9 @@ export default function HomePage() {
             <PendingNote>아직 모둠을 만들지 않았습니다. 명단으로 바로 편성할 수 있습니다.</PendingNote>
           )}
         </SummaryCard>
+        </HomeSlot>
 
+        <HomeSlot {...slot('reward')}>
         <SummaryCard
           to="/reward"
           label="학급 점수"
@@ -188,7 +256,9 @@ export default function HomePage() {
         >
           <RewardSummary />
         </SummaryCard>
+        </HomeSlot>
 
+        <HomeSlot {...slot('assignment')}>
         <SummaryCard
           to="/assignment"
           label="마감 임박 과제"
@@ -199,14 +269,18 @@ export default function HomePage() {
         >
           <AssignmentSummary />
         </SummaryCard>
+        </HomeSlot>
 
         {/*
           isDesktop() 분기가 없다. 급식은 NEIS가 브라우저의 직접 요청을 막아
           설치형에서만 되지만, 시간표는 선생님이 손으로 짜는 것이라 바깥에
           물을 데가 없다 — 웹에서도 그대로 돈다.
         */}
-        <TimetableCard />
+        <HomeSlot {...slot('timetable')}>
+          <TimetableCard />
+        </HomeSlot>
 
+        <HomeSlot {...slot('meal')}>
         {isDesktop() ? (
           <TodayMeal />
         ) : (
@@ -226,8 +300,10 @@ export default function HomePage() {
             </PendingNote>
           </SummaryCard>
         )}
+        </HomeSlot>
 
-        {/* 다가오는 일정 셋. 홈이 아홉 칸이 되어 3×3으로 딱 맞는다. */}
+        {/* 다가오는 일정 셋. */}
+        <HomeSlot {...slot('events')}>
         <SummaryCard
           to="/notice"
           label="다가오는 일정"
@@ -239,7 +315,9 @@ export default function HomePage() {
         >
           <UpcomingEvents classId={activeClass.id} today={todayString} />
         </SummaryCard>
+        </HomeSlot>
 
+        <HomeSlot {...slot('roster')}>
         <SummaryCard
           to="/roster"
           label="학생 명단"
@@ -258,7 +336,27 @@ export default function HomePage() {
             }
           />
         </SummaryCard>
+        </HomeSlot>
       </div>
+
+      {/* 숨긴 카드는 여기서 되살린다. 없으면 이 줄 자체가 없다. */}
+      {layout.hidden.filter((id): id is HomeCardId => (HOME_CARD_IDS as readonly string[]).includes(id)).length > 0 ? (
+        <div className="flex flex-wrap items-center gap-1 text-xs text-slate-500">
+          <span>숨긴 카드</span>
+          {layout.hidden
+            .filter((id): id is HomeCardId => (HOME_CARD_IDS as readonly string[]).includes(id))
+            .map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => applyLayout(setHidden(layout, id, false))}
+                className="rounded-control border border-slate-200 px-2 py-0.5 hover:border-slate-300 hover:text-slate-800"
+              >
+                {HOME_CARD_LABELS[id]} 다시 보기
+              </button>
+            ))}
+        </div>
+      ) : null}
 
       {/*
         도구함에서 옮겨 온 넷. 학급에 매이지 않아 학급을 안 만들어도 쓸 수 있고,
@@ -632,5 +730,62 @@ export function TodayMeal() {
       weekOpen={weekOpen}
       onToggleWeek={() => setWeekOpen((value) => !value)}
     />
+  );
+}
+
+/**
+ * 홈 카드 자리. 순서는 CSS `order`, 숨김은 `hidden` 속성으로 — 카드 자체는
+ * 모른다. 조작(위·아래·숨기기)은 마우스를 올렸을 때만 오른쪽 위에 드러난다.
+ * 늘 보이면 열 장의 카드에 서른 개의 작은 단추가 깔린다.
+ */
+function HomeSlot({
+  label,
+  order,
+  hidden,
+  onMove,
+  onHide,
+  children,
+}: {
+  id: string;
+  label: string;
+  order: number;
+  hidden: boolean;
+  onMove: (delta: -1 | 1) => void;
+  onHide: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div style={{ order }} hidden={hidden} className="group/slot relative">
+      {children}
+      <div className="absolute top-2 right-2 flex gap-0.5 opacity-0 transition-opacity group-hover/slot:opacity-100 focus-within:opacity-100">
+        <button
+          type="button"
+          onClick={() => onMove(-1)}
+          aria-label={`${label} 카드 앞으로`}
+          title="앞으로"
+          className="rounded bg-surface/90 p-0.5 text-slate-400 hover:text-slate-700"
+        >
+          <ChevronUp className="size-3.5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => onMove(1)}
+          aria-label={`${label} 카드 뒤로`}
+          title="뒤로"
+          className="rounded bg-surface/90 p-0.5 text-slate-400 hover:text-slate-700"
+        >
+          <ChevronDown className="size-3.5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={onHide}
+          aria-label={`${label} 카드 숨기기`}
+          title="숨기기"
+          className="rounded bg-surface/90 p-0.5 text-slate-400 hover:text-slate-700"
+        >
+          <EyeOff className="size-3.5" aria-hidden />
+        </button>
+      </div>
+    </div>
   );
 }

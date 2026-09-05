@@ -64,3 +64,39 @@ export function assignmentsDueSoon(
     )
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 }
+
+/**
+ * 최근 알림장에서 자주 쓴 글줄.
+ *
+ * "우유갑 정리", "독서록"처럼 매주 반복되는 문구를 칩으로 내밀어 다시
+ * 치지 않게 한다. 오늘 것은 빼고(이미 적혀 있으니), 최근 days일 안에서
+ * 두 번 이상 나온 글줄을 많이 쓴 순으로 limit개 준다.
+ */
+export function frequentPhrases(
+  notices: readonly DailyNotice[],
+  classId: string,
+  today: string,
+  options: { days?: number; limit?: number } = {},
+): string[] {
+  const days = options.days ?? 30;
+  const limit = options.limit ?? 6;
+  const [year = 0, month = 1, day = 1] = today.split('-').map(Number);
+  const since = new Date(year, month - 1, day - days);
+  const sinceIso = `${since.getFullYear()}-${String(since.getMonth() + 1).padStart(2, '0')}-${String(since.getDate()).padStart(2, '0')}`;
+
+  const counts = new Map<string, number>();
+  for (const notice of notices) {
+    if (notice.classId !== classId || notice.date === today || notice.date < sinceIso) continue;
+    // 같은 날 두 번 적힌 것은 한 번으로 — "매일 반복됐는가"를 세는 것이다.
+    for (const text of new Set(notice.items.map((item) => item.text.trim()))) {
+      if (text === '') continue;
+      counts.set(text, (counts.get(text) ?? 0) + 1);
+    }
+  }
+
+  return [...counts.entries()]
+    .filter(([, count]) => count >= 2)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'))
+    .slice(0, limit)
+    .map(([text]) => text);
+}

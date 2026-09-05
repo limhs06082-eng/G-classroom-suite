@@ -99,3 +99,23 @@ describe('summarizeStudent', () => {
     expect(summary.observations.map((o) => o.id)).toEqual(['ob-1']);
   });
 });
+
+describe('summarizeStudent — 기간 필터', () => {
+  it('range를 주면 그 기간의 출결·점수·당번·관찰만 센다', () => {
+    const summary = summarizeStudent(seeded(), 'stu-1', {
+      range: { from: '2026-08-11', to: '2026-08-31' },
+    });
+    expect(summary).not.toBeNull();
+    if (summary === null) return;
+
+    // 8/10 결석은 기간 밖, 8/12 지각만 남는다.
+    expect(summary.attendance.byStatus).toEqual({ absent: 0, late: 1, early: 0, fieldTrip: 0 });
+    // 점수 기록은 3월(EARLIER)이라 전부 밖 → 0점, 쿠폰도 밖.
+    expect(summary.reward.earned).toBe(0);
+    expect(summary.reward.spent).toBe(0);
+    // 당번 차수는 8/3 시작(밖)·8/10 시작(밖) → 0
+    expect(summary.dutyCount).toBe(0);
+    // 관찰 8/1은 밖
+    expect(summary.observations).toEqual([]);
+  });
+});

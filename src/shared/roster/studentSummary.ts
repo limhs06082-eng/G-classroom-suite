@@ -53,21 +53,36 @@ export interface StudentSummary {
   observations: ObservationEntry[];
 }
 
+export interface DateRange {
+  /** YYYY-MM-DD, 포함 */
+  from: string;
+  /** YYYY-MM-DD, 포함 */
+  to: string;
+}
+
 export function summarizeStudent(
   data: SuiteData,
   studentId: string,
-  options: { recentLimit?: number } = {},
+  options: { recentLimit?: number; range?: DateRange } = {},
 ): StudentSummary | null {
   const student = data.students.find((item) => item.id === studentId);
   if (student === undefined) return null;
   const classId = student.classId;
   const recentLimit = options.recentLimit ?? 10;
 
+  /*
+   * 기간. 없으면 통산이다. 학기(Term) 기간을 넘기면 "이번 학기만"이 된다 —
+   * ISO 날짜·시각은 사전순이 곧 시간순이라 글자 비교로 충분하다.
+   */
+  const range = options.range;
+  const inRange = (date: string): boolean =>
+    range === undefined || (date.slice(0, 10) >= range.from && date.slice(0, 10) <= range.to);
+
   // ── 출결 ──
   const byStatus: Record<AttendanceStatus, number> = { absent: 0, late: 0, early: 0, fieldTrip: 0 };
   const dates: StudentSummary['attendance']['dates'] = [];
   for (const record of data.attendanceRecords) {
-    if (record.classId !== classId) continue;
+    if (record.classId !== classId || !inRange(record.date)) continue;
     const entry = record.entries.find((item) => item.studentId === studentId);
     if (entry === undefined) continue;
     byStatus[entry.status] += 1;
@@ -77,11 +92,15 @@ export function summarizeStudent(
 
   // ── 점수·쿠폰 ──
   const mine = data.scoreEntries.filter(
-    (entry) => entry.targetUnit === 'student' && entry.targetId === studentId,
+    (entry) =>
+      entry.targetUnit === 'student' && entry.targetId === studentId && inRange(entry.occurredAt),
   );
   const earned = mine.filter(isCounted).reduce((sum, entry) => sum + entry.points, 0);
   const redemptions = data.redemptions
-    .filter((item) => item.targetUnit === 'student' && item.targetId === studentId)
+    .filter(
+      (item) =>
+        item.targetUnit === 'student' && item.targetId === studentId && inRange(item.occurredAt),
+    )
     .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
   const spent = redemptions
     .filter((item) => item.revokedAt === undefined)
@@ -107,15 +126,15 @@ export function summarizeStudent(
 
   // ── 당번 ──
   const dutyCount =
-    countPastAssignments(data.dutyRounds.filter((round) => round.classId === classId)).get(
-      studentId,
-    ) ?? 0;
+    countPastAssignments(
+      data.dutyRounds.filter((round) => round.classId === classId && inRange(round.startDate)),
+    ).get(studentId) ?? 0;
 
   return {
     attendance: { byStatus, marked: dates.length, dates },
     reward: { earned, spent, balance: earned - spent, recent, redemptions },
     assignments: { total: assignments.length, submitted, missing },
     dutyCount,
-    observations: observationsOf(data.observations, studentId),
+    observations: observationsOf(data.observations, studentId).filter((entry) => inRange(entry.date)),
   };
 }

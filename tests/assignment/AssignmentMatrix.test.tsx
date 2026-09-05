@@ -62,7 +62,8 @@ describe('AssignmentMatrix', () => {
   it('학생 수 × 과제 수만큼 칸이 그려진다', async () => {
     await renderMatrix();
 
-    expect(screen.getAllByRole('button')).toHaveLength(4);
+    // 칸 단추만 센다. 머리글(과제·학생 이름)도 일괄 제출 단추라 이름표(쉼표)로 가른다.
+    expect(screen.getAllByRole('button', { name: /, / })).toHaveLength(4);
   });
 
   it('칸의 이름표에 학생·과제·상태가 줄임 없이 들어간다', async () => {

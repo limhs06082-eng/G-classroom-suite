@@ -1,7 +1,7 @@
 import { ClipboardCheck, Plus } from 'lucide-react';
 
 import type { SubmissionStatus } from '../../shared/domain/types';
-import { Button, Card, cx, EmptyState } from '../../shared/ui';
+import { Button, Card, cx, EmptyState, useToast } from '../../shared/ui';
 import { statusFromIndex, SUBMISSION_LABELS, SUBMISSION_SHORT } from './assignmentCore';
 import { useAssignment } from './useAssignment';
 
@@ -23,6 +23,23 @@ const CELL_TONE: Record<SubmissionStatus, string> = {
  */
 export function AssignmentMatrix({ onAddAssignment }: { onAddAssignment?: () => void }) {
   const assignment = useAssignment();
+  const toast = useToast();
+
+  /**
+   * 열(과제) 또는 행(학생) 일괄 제출. 스냅숏을 기억해 두었다가 실행 취소는
+   * setMany 한 번으로 되돌린다 — 보완·완료였던 칸도 그대로 돌아온다.
+   */
+  const bulkSubmit = (cells: Array<{ assignmentId: string; studentId: string }>, label: string): void => {
+    const snapshot = cells.map((cell) => ({
+      ...cell,
+      status: statusFromIndex(assignment.statusIndex, cell.assignmentId, cell.studentId),
+    }));
+    assignment.setMany(cells.map((cell) => ({ ...cell, status: 'submitted' as const })));
+    toast.info(`${label} 전부 제출로 바꿨습니다.`, {
+      actionLabel: '실행 취소',
+      onAction: () => assignment.setMany(snapshot),
+    });
+  };
 
   if (assignment.assignments.length === 0 || assignment.roster.length === 0) {
     return (
@@ -45,7 +62,8 @@ export function AssignmentMatrix({ onAddAssignment }: { onAddAssignment?: () => 
   return (
     <Card title="학생 × 과제" icon={ClipboardCheck} accentClass="text-assignment-500">
       <p className="mb-3 text-sm text-slate-500">
-        칸을 누르면 미제출 → 제출 → 보완 → 완료 순으로 바뀝니다.
+        칸을 누르면 미제출 → 제출 → 보완 → 완료 순으로 바뀝니다. 과제 이름이나 학생 이름을 누르면
+        그 줄 전부가 제출이 됩니다(실행 취소 가능).
       </p>
 
       {/* 가로 스크롤은 표 안에서만 일어난다. 페이지 전체가 옆으로 밀리면 안 된다. */}
@@ -69,7 +87,20 @@ export function AssignmentMatrix({ onAddAssignment }: { onAddAssignment?: () => 
                   scope="col"
                   className="min-w-20 border-b border-slate-200 px-2 py-2 text-center font-medium text-slate-700"
                 >
-                  <span className="block max-w-24 truncate">{item.title}</span>
+                  {/* 머리글을 누르면 그 과제 전원 제출. 밀린 과제를 찾은 자리에서 바로 정리한다. */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      bulkSubmit(
+                        assignment.roster.map((student) => ({ assignmentId: item.id, studentId: student.id })),
+                        item.title,
+                      )
+                    }
+                    title={`${item.title} 전원 제출로`}
+                    className="block max-w-24 truncate rounded px-1 hover:bg-slate-100 hover:text-brand-700"
+                  >
+                    {item.title}
+                  </button>
                   <span className="block text-xs font-normal text-slate-400" data-numeric>
                     {total - counts.unsubmitted}/{total}
                     {/* 마감한 열을 빼지 않는다. 마감한 과제의 미제출자를 확인하는
@@ -97,10 +128,23 @@ export function AssignmentMatrix({ onAddAssignment }: { onAddAssignment?: () => 
                   scope="row"
                   className="sticky left-0 z-10 bg-surface px-3 py-1.5 text-left font-normal whitespace-nowrap"
                 >
-                  <span className="font-mono text-xs text-slate-400" data-numeric>
-                    {student.number}
-                  </span>{' '}
-                  <span className="text-slate-800">{student.name}</span>
+                  {/* 이름을 누르면 그 학생의 진행 중 과제 전부 제출. */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      bulkSubmit(
+                        assignment.assignments.map((item) => ({ assignmentId: item.id, studentId: student.id })),
+                        `${student.name} 학생`,
+                      )
+                    }
+                    title={`${student.name} 전부 제출로`}
+                    className="rounded px-1 hover:bg-slate-100"
+                  >
+                    <span className="font-mono text-xs text-slate-400" data-numeric>
+                      {student.number}
+                    </span>{' '}
+                    <span className="text-slate-800">{student.name}</span>
+                  </button>
                 </th>
 
                 {assignment.assignments.map((item) => {

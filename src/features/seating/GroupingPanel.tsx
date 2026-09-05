@@ -24,6 +24,19 @@ export function GroupingPanel() {
   );
   const [confirmClear, setConfirmClear] = useState(false);
   const [movingStudentId, setMovingStudentId] = useState<string | null>(null);
+  /** 눈금이 모둠 수인가, 모둠당 인원인가. 인원 눈금은 모둠 수를 역산해 넣는다. */
+  const [sizeMode, setSizeMode] = useState<'groupCount' | 'membersPerGroup'>('groupCount');
+  const [membersPerGroup, setMembersPerGroup] = useState(4);
+  const setMembers = (next: number): void => {
+    const clamped = Math.max(2, Math.min(10, next));
+    setMembersPerGroup(clamped);
+    setTargetCount(
+      Math.max(
+        MIN_GROUP_COUNT,
+        Math.min(MAX_GROUP_COUNT, grouping.suggestGroupCount('membersPerGroup', targetCount, clamped)),
+      ),
+    );
+  };
 
   if (grouping.roster.length === 0) {
     return (
@@ -88,34 +101,88 @@ export function GroupingPanel() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex items-center gap-1 rounded-control border border-slate-200 px-1.5 py-1">
-          <span className="text-xs text-slate-500">모둠 수</span>
+        {/*
+          "4명씩"으로 생각하는 교사가 28명을 7모둠으로 암산하지 않게, 모둠 수와
+          모둠당 인원 두 눈금을 둔다. 인원 눈금을 돌리면 모둠 수가 따라 바뀐다
+          (suggestGroupCount) — 편성 함수는 여전히 모둠 수 하나만 받는다.
+        */}
+        <div className="inline-flex gap-0.5 rounded-control border border-slate-200 p-0.5" role="group" aria-label="편성 기준">
           <Button
             size="sm"
-            variant="ghost"
-            aria-label="모둠 수 줄이기"
-            disabled={targetCount <= MIN_GROUP_COUNT}
-            onClick={() => setTargetCount((value) => Math.max(MIN_GROUP_COUNT, value - 1))}
-            className="size-6 p-0"
+            variant={sizeMode === 'groupCount' ? 'primary' : 'ghost'}
+            aria-pressed={sizeMode === 'groupCount'}
+            onClick={() => setSizeMode('groupCount')}
           >
-            −
+            모둠 수
           </Button>
-          <span className="w-5 text-center font-mono text-sm text-slate-800">{targetCount}</span>
           <Button
             size="sm"
-            variant="ghost"
-            aria-label="모둠 수 늘리기"
-            disabled={targetCount >= MAX_GROUP_COUNT}
-            onClick={() => setTargetCount((value) => Math.min(MAX_GROUP_COUNT, value + 1))}
-            className="size-6 p-0"
+            variant={sizeMode === 'membersPerGroup' ? 'primary' : 'ghost'}
+            aria-pressed={sizeMode === 'membersPerGroup'}
+            onClick={() => setSizeMode('membersPerGroup')}
           >
-            +
+            모둠당 인원
           </Button>
         </div>
 
+        {sizeMode === 'groupCount' ? (
+          <div className="inline-flex items-center gap-1 rounded-control border border-slate-200 px-1.5 py-1">
+            <span className="text-xs text-slate-500">모둠 수</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label="모둠 수 줄이기"
+              disabled={targetCount <= MIN_GROUP_COUNT}
+              onClick={() => setTargetCount((value) => Math.max(MIN_GROUP_COUNT, value - 1))}
+              className="size-6 p-0"
+            >
+              −
+            </Button>
+            <span className="w-5 text-center font-mono text-sm text-slate-800">{targetCount}</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label="모둠 수 늘리기"
+              disabled={targetCount >= MAX_GROUP_COUNT}
+              onClick={() => setTargetCount((value) => Math.min(MAX_GROUP_COUNT, value + 1))}
+              className="size-6 p-0"
+            >
+              +
+            </Button>
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-1 rounded-control border border-slate-200 px-1.5 py-1">
+            <span className="text-xs text-slate-500">모둠당</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label="모둠당 인원 줄이기"
+              disabled={membersPerGroup <= 2}
+              onClick={() => setMembers(membersPerGroup - 1)}
+              className="size-6 p-0"
+            >
+              −
+            </Button>
+            <span className="w-5 text-center font-mono text-sm text-slate-800">{membersPerGroup}</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label="모둠당 인원 늘리기"
+              disabled={membersPerGroup >= 10}
+              onClick={() => setMembers(membersPerGroup + 1)}
+              className="size-6 p-0"
+            >
+              +
+            </Button>
+            <span className="text-xs text-slate-500">명</span>
+          </div>
+        )}
+
         <span className="text-sm text-slate-500">
-          학생 {grouping.roster.length}명 · 모둠당 약{' '}
-          {Math.ceil(grouping.roster.length / Math.max(1, targetCount))}명
+          학생 {grouping.roster.length}명 ·{' '}
+          {sizeMode === 'groupCount'
+            ? `모둠당 약 ${Math.ceil(grouping.roster.length / Math.max(1, targetCount))}명`
+            : `${targetCount}모둠`}
         </span>
 
         {grouping.lockedStudentIds.size > 0 ? (

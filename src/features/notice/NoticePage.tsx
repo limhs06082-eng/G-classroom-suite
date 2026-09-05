@@ -19,7 +19,7 @@ import { useToday } from '../../shared/state/useToday';
 import { Badge, Button, Card, EmptyState, PrintLayout, usePrint, useToast } from '../../shared/ui';
 import { openBoard } from '../../shared/window/openBoard';
 import { ddayLabel, daysUntil, pastEvents, upcomingEvents } from './eventsCore';
-import { assignmentsDueSoon, itemsFor, setItems } from './noticeCore';
+import { assignmentsDueSoon, frequentPhrases, itemsFor, setItems } from './noticeCore';
 
 /**
  * 알림장.
@@ -65,6 +65,10 @@ export default function NoticePage() {
   const classId = activeClass.id;
   const items = itemsFor(data.notices, classId, date);
   const dueSoon = assignmentsDueSoon(data.assignments, classId, date);
+  // 최근에 자주 적은 글줄. 오늘 이미 적은 것은 칩에서도 뺀다.
+  const phrases = frequentPhrases(data.notices, classId, date).filter(
+    (text) => !items.some((item) => item.text === text),
+  );
 
   const replaceItems = (next: typeof items): void => {
     update((suite) => ({ ...suite, notices: setItems(suite.notices, classId, date, next) }));
@@ -182,6 +186,30 @@ export default function NoticePage() {
             추가
           </Button>
         </div>
+
+        {/* 자주 쓰는 문구 — 누르면 바로 한 줄 추가. 매주 치던 '우유갑 정리'를 다시 안 친다. */}
+        {phrases.length > 0 ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1">
+            <span className="text-xs text-slate-500">자주 쓰는 문구</span>
+            {phrases.map((phrase) => (
+              <button
+                key={phrase}
+                type="button"
+                onClick={() =>
+                  update((suite) => ({
+                    ...suite,
+                    notices: setItems(suite.notices, classId, date, [
+                      ...itemsFor(suite.notices, classId, date),
+                      { id: createId(), text: phrase },
+                    ]),
+                  }))
+                }
+              >
+                <Badge tone="neutral">+ {phrase}</Badge>
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         {items.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">

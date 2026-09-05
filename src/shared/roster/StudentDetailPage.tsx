@@ -23,8 +23,23 @@ export default function StudentDetailPage() {
   const printNow = usePrint();
   const [text, setText] = useState('');
 
+  /*
+   * 기본은 '이번 학기만'. 상담에서 묻는 것은 대개 이번 학기고, 학년말
+   * 생활기록부는 통산이 필요하니 토글로 둘 다 본다. 학기 정보가 없으면
+   * 통산뿐이다.
+   */
+  const term = data.terms.find((item) => item.id === data.activeTermId) ?? null;
+  const [termOnly, setTermOnly] = useState(true);
+  const range =
+    termOnly && term !== null && term.startDate !== '' && term.endDate !== ''
+      ? { from: term.startDate, to: term.endDate }
+      : undefined;
+
   const student = data.students.find((item) => item.id === studentId) ?? null;
-  const summary = student === null ? null : summarizeStudent(data, student.id);
+  const summary =
+    student === null
+      ? null
+      : summarizeStudent(data, student.id, range === undefined ? {} : { range });
 
   if (student === null || summary === null) {
     return (
@@ -83,9 +98,31 @@ export default function StudentDetailPage() {
         {room === undefined ? null : <p className="text-sm text-slate-500">{room.name}</p>}
         {student.status === 'inactive' ? <Badge tone="neutral">전출·제외</Badge> : null}
 
-        <Button variant="secondary" icon={Printer} className="ml-auto" onClick={printNow}>
-          상담 자료 인쇄
-        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          {term !== null ? (
+            <div className="inline-flex gap-0.5 rounded-control border border-slate-200 p-0.5" role="group" aria-label="집계 기간">
+              <Button
+                size="sm"
+                variant={termOnly ? 'primary' : 'ghost'}
+                aria-pressed={termOnly}
+                onClick={() => setTermOnly(true)}
+              >
+                {term.name}
+              </Button>
+              <Button
+                size="sm"
+                variant={termOnly ? 'ghost' : 'primary'}
+                aria-pressed={!termOnly}
+                onClick={() => setTermOnly(false)}
+              >
+                통산
+              </Button>
+            </div>
+          ) : null}
+          <Button variant="secondary" icon={Printer} onClick={printNow}>
+            상담 자료 인쇄
+          </Button>
+        </div>
       </div>
 
       {/* 숫자 넷. 상담 첫마디가 여기서 나온다. */}

@@ -49,6 +49,10 @@ export interface AssignmentView {
   cycleStatus: (assignmentId: string, studentId: string) => SubmissionStatus;
   setStatus: (assignmentId: string, studentId: string, status: SubmissionStatus) => void;
   setAll: (assignmentId: string, status: SubmissionStatus) => void;
+  /** 여러 칸을 한 번에. 표 보기의 열·행 일괄과 그 실행 취소가 쓴다. */
+  setMany: (
+    entries: ReadonlyArray<{ assignmentId: string; studentId: string; status: SubmissionStatus }>,
+  ) => void;
   setNote: (assignmentId: string, studentId: string, note: string) => void;
 }
 
@@ -248,6 +252,35 @@ export function useAssignment(): AssignmentView {
     [roster, update],
   );
 
+  /**
+   * 여러 (과제, 학생) 칸을 한 번의 update()로. 표 보기의 열·행 일괄과
+   * 그 실행 취소(스냅숏 복원)가 쓴다. setStatus를 30번 돌리면 상태 복제도
+   * 30번이다.
+   */
+  const setMany = useCallback(
+    (entries: ReadonlyArray<{ assignmentId: string; studentId: string; status: SubmissionStatus }>): void => {
+      const now = new Date().toISOString();
+      const wanted = new Map(entries.map((e) => [`${e.assignmentId}:${e.studentId}`, e.status]));
+
+      update((current) => {
+        const untouched = current.submissions.filter(
+          (item) => !wanted.has(`${item.assignmentId}:${item.studentId}`),
+        );
+        const noteOf = new Map(
+          current.submissions.map((item) => [`${item.assignmentId}:${item.studentId}`, item.note]),
+        );
+        const changed = entries.flatMap(({ assignmentId, studentId, status }) => {
+          const note = noteOf.get(`${assignmentId}:${studentId}`) ?? '';
+          // 미제출은 기본값이라 기록을 안 남긴다 — 단, 메모가 있으면 지키려고 남긴다.
+          if (status === 'unsubmitted' && note === '') return [];
+          return [{ assignmentId, studentId, status, note, updatedAt: now }];
+        });
+        return { ...current, submissions: [...untouched, ...changed] };
+      });
+    },
+    [update],
+  );
+
   const setNote = useCallback(
     (assignmentId: string, studentId: string, note: string): void => {
       const now = new Date().toISOString();
@@ -299,6 +332,7 @@ export function useAssignment(): AssignmentView {
     cycleStatus,
     setStatus,
     setAll,
+    setMany,
     setNote,
   };
 }

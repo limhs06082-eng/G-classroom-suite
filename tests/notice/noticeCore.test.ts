@@ -61,3 +61,29 @@ describe('assignmentsDueSoon — 알림장에 자동으로 붙는 과제', () =>
     expect(due.map((a) => a.id)).toEqual(['a-today', 'a-tomorrow']);
   });
 });
+
+describe('frequentPhrases — 자주 쓰는 문구', () => {
+  it('최근 두 번 이상 쓴 글줄을 많이 쓴 순으로, 오늘 것은 빼고 준다', async () => {
+    const { frequentPhrases } = await import('../../src/features/notice/noticeCore');
+    const notices: DailyNotice[] = [
+      { classId: CLASS, date: '2026-08-25', items: [{ id: 'a', text: '우유갑 정리' }, { id: 'b', text: '독서록' }] },
+      { classId: CLASS, date: '2026-08-26', items: [{ id: 'c', text: '우유갑 정리' }, { id: 'd', text: '우유갑 정리' }] },
+      { classId: CLASS, date: '2026-08-27', items: [{ id: 'e', text: '독서록' }, { id: 'f', text: '우유갑 정리' }] },
+      { classId: CLASS, date: '2026-08-28', items: [{ id: 'g', text: '한 번만 쓴 것' }] },
+      { classId: CLASS, date: DATE, items: [{ id: 'h', text: '독서록' }] }, // 오늘 — 안 센다
+      { classId: 'class-2', date: '2026-08-26', items: [{ id: 'i', text: '독서록' }] },
+    ];
+
+    // 우유갑 정리 3일, 독서록 2일(오늘 제외). 한 번만 쓴 것은 안 나온다.
+    expect(frequentPhrases(notices, CLASS, DATE)).toEqual(['우유갑 정리', '독서록']);
+  });
+
+  it('오래된 것은 세지 않는다', async () => {
+    const { frequentPhrases } = await import('../../src/features/notice/noticeCore');
+    const notices: DailyNotice[] = [
+      { classId: CLASS, date: '2026-05-01', items: [{ id: 'a', text: '옛날 것' }] },
+      { classId: CLASS, date: '2026-05-02', items: [{ id: 'b', text: '옛날 것' }] },
+    ];
+    expect(frequentPhrases(notices, CLASS, DATE, { days: 30 })).toEqual([]);
+  });
+});
