@@ -337,7 +337,9 @@ export default function RosterPage() {
         </table>
       </PrintLayout>
 
+      {/* key — 학생이 바뀌면 컴포넌트째 새로 선다. 안 그러면 useState 초기값(생일·성별…)이 첫 학생 것으로 굳는다. */}
       <EditStudentModal
+        key={editing?.id ?? 'none'}
         student={editing}
         detail={editing === null ? null : readStudentDetail(data, editing.id)}
         roles={
@@ -439,12 +441,8 @@ function EditStudentModal({
     setTagDraft('');
   };
 
-  // 열릴 때마다 대상 학생의 값으로 채운다.
-  const key = student?.id ?? 'none';
-
   return (
     <Modal
-      key={key}
       open={student !== null}
       onClose={onClose}
       title="학생 정보 수정"

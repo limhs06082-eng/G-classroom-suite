@@ -24,9 +24,13 @@ function iso(date: Date): string {
 export function nextBirthday(today: string, birthday: string): { date: string; days: number } | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthday);
   if (match === null) return null;
+  const birthYear = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  // 4월 31일처럼 없는 날은 Date가 다음 달로 굴린다. 그런 값은 생일이 아니다.
+  const probe = new Date(birthYear, month - 1, day);
+  if (probe.getMonth() !== month - 1) return null;
 
   const [todayYear = 0] = today.split('-').map(Number);
   const occurrence = (year: number): string => {
