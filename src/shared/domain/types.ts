@@ -844,6 +844,22 @@ export interface ClassEvent {
 // ─────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────
+// 행동특성 및 종합의견 (shared/roster)
+//
+// 관찰·칭찬·당번·과제·출결에서 초안을 만들고 교사가 고쳐 나이스에 붙여
+// 넣는 글. 학급·학생마다 하나다 — 학급이 곧 학기라 termId를 따로 두지
+// 않는다. 초안은 저장하지 않고 그때그때 만든다. 저장하는 것은 교사의 글이다.
+// ─────────────────────────────────────────────────────────────
+
+export interface BehaviorComment {
+  id: string;
+  classId: string;
+  studentId: string;
+  text: string;
+  updatedAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────
 // 홈 카드 배치 (features/home)
 //
 // 순서·숨김·크기. 처음엔 기기 취향이라 localStorage에 두었는데, 교실 PC와
@@ -865,10 +881,11 @@ export interface HomeLayout {
 /**
  * 2판: 출결·알림장·시간표 하루 바꾸기·쿠폰·관찰 기록이 늘었다.
  * 3판: 홈 카드 배치(homeLayout)와 출결 사유 분류가 늘었다.
+ * 4판: 행동특성 및 종합의견(behaviorComments)이 늘었다.
  * 이전 판 앱이 새 판 백업을 열면 이 필드들을 잃으므로, 버전을 올려
  * SCHEMA_VERSION_AHEAD 경고가 뜨게 한다.
  */
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export interface SuiteData {
   schemaVersion: number;
@@ -962,4 +979,9 @@ export interface SuiteData {
 
   /** 홈 카드 배치. 학급이 아니라 교사(자료 파일)에 매인다. */
   homeLayout: HomeLayout;
+
+  // ── 4판에서 늘어난 것 ──────────────────────────────────────
+
+  /** 행동특성 및 종합의견. 학급·학생마다 최대 하나. */
+  behaviorComments: BehaviorComment[];
 }

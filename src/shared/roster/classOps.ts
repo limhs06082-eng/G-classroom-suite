@@ -43,6 +43,7 @@ export interface ClassDataCount {
   rewardItems: number;
   redemptions: number;
   observations: number;
+  behaviorComments: number;
   classEvents: number;
 }
 
@@ -90,6 +91,7 @@ export function countClassData(data: SuiteData, classId: string): ClassDataCount
     rewardItems: byClass(data.rewardItems),
     redemptions: byClass(data.redemptions),
     observations: byClass(data.observations),
+    behaviorComments: byClass(data.behaviorComments),
     classEvents: byClass(data.classEvents),
   };
 }
@@ -200,6 +202,7 @@ export function deleteClassRoom(data: SuiteData, classId: string): SuiteData {
     rewardItems: keepClass(data.rewardItems),
     redemptions: keepClass(data.redemptions),
     observations: keepClass(data.observations),
+    behaviorComments: keepClass(data.behaviorComments),
     classEvents: keepClass(data.classEvents),
     activeClassId: nextActive,
   };

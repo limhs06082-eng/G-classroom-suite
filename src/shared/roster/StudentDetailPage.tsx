@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import { STATUS_LABELS } from '../../features/attendance/attendanceCore';
 import { Badge, Button, Card, EmptyState, PrintLayout, usePrint } from '../ui';
+import { BehaviorCommentCard } from './BehaviorCommentCard';
 import { addObservation, removeObservation } from './observationCore';
 import { summarizeStudent } from './studentSummary';
 import { useActiveClass, useSuite } from './SuiteDataProvider';
@@ -269,6 +270,9 @@ export default function StudentDetailPage() {
           )}
         </Card>
       </div>
+
+      {/* 쌓인 기록의 끝 — 학기말에 나이스로 옮겨 적는 글. 상담 자료 인쇄에는 넣지 않는다. */}
+      <BehaviorCommentCard student={student} {...(range === undefined ? {} : { range })} />
 
       {/*
         상담 자료 인쇄. 숫자·출결·관찰·미제출을 한 장에. 점수 개별 기록은

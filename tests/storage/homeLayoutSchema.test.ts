@@ -41,7 +41,7 @@ describe('홈 배치 스키마', () => {
     expect(parsed.homeLayout).toEqual({ order: ['now'], hidden: [], sizes: { meal: 3 } });
   });
 
-  it('3판이다 — 2판 앱이 열면 경고가 뜨도록', () => {
-    expect(CURRENT_SCHEMA_VERSION).toBe(3);
+  it('3판부터다 — 2판 앱이 열면 경고가 뜨도록', () => {
+    expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(3);
   });
 });

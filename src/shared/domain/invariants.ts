@@ -871,6 +871,17 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       });
     }
 
+    // 행동특성 의견도 관찰 기록처럼 학생을 따라간다.
+    const behaviorComments = input.behaviorComments.flatMap((comment) => {
+      const student = studentById.get(comment.studentId);
+      if (student === undefined) {
+        dropped += 1;
+        return [];
+      }
+      if (student.classId === comment.classId) return [comment];
+      return [{ ...comment, classId: student.classId }];
+    });
+
     return {
       attendanceRecords,
       notices,
@@ -879,6 +890,7 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       redemptions,
       observations,
       classEvents,
+      behaviorComments,
     };
   })();
 
@@ -938,6 +950,7 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       redemptions: extra.redemptions,
       observations: extra.observations,
       classEvents: extra.classEvents,
+      behaviorComments: extra.behaviorComments,
       activeTermId,
       activeClassId,
     },

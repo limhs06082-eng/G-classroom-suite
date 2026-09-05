@@ -51,6 +51,7 @@ import {
   ATTENDANCE_REASONS,
   ATTENDANCE_STATUSES,
   type AttendanceReason,
+  type BehaviorComment,
   type HomeCardSize,
   type HomeLayout,
   type AttendanceRecord,
@@ -778,6 +779,16 @@ function parseSubmission(raw: unknown, now: string): Submission | null {
   };
 }
 
+function parseBehaviorComment(raw: unknown, now: string): BehaviorComment | null {
+  if (!isRecord(raw)) return null;
+  const id = requiredStr(raw['id']);
+  const classId = requiredStr(raw['classId']);
+  const studentId = requiredStr(raw['studentId']);
+  if (id === null || classId === null || studentId === null) return null;
+
+  return { id, classId, studentId, text: str(raw['text']), updatedAt: str(raw['updatedAt'], now) };
+}
+
 /**
  * 홈 카드 배치. 칸이 없는 옛 백업은 빈 배치다 — 고칠 것이 아니라 그냥
  * 없는 것이라 repairs에 남기지 않는다. 크기는 2·3만 담는다(1은 기본값).
@@ -1170,6 +1181,9 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     rewardItems: parseList('rewardItems', '쿠폰', (r) => parseRewardItem(r, now)),
     redemptions: parseList('redemptions', '쿠폰 사용 기록', (r) => parseRedemption(r, now)),
     observations: parseList('observations', '관찰 기록', (r) => parseObservation(r, now)),
+    behaviorComments: parseList('behaviorComments', '행동특성 의견', (r) =>
+      parseBehaviorComment(r, now),
+    ),
     classEvents: parseList('classEvents', '학급 일정', (r) => parseClassEvent(r, now)),
   };
 
