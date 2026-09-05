@@ -83,6 +83,7 @@ import { ClassTermTab } from './ClassTermTab';
 import { LockTab } from './LockTab';
 import { SchoolSearch } from './SchoolSearch';
 import { ThemeTab } from './ThemeTab';
+import { ClassboardSettingsTab } from '../classboard/ClassboardSettingsTab';
 
 type SettingsTab =
   | 'school'
@@ -91,6 +92,7 @@ type SettingsTab =
   | 'lock'
   | 'theme'
   | 'sync'
+  | 'classboard'
   | 'backup'
   | 'legacy';
 
@@ -107,6 +109,7 @@ const TAB_IDS: readonly SettingsTab[] = [
   'lock',
   'theme',
   'sync',
+  'classboard',
   'backup',
   'legacy',
 ];
@@ -173,6 +176,11 @@ export default function SettingsPage() {
            * 없는 보통 렌더 분기라 isDesktop()이 맞다.
            */
           ...(isDesktop() ? [] : [{ id: 'sync', label: '계정·동기화' }]),
+          /*
+           * '학급 게시판'은 선생님이 자기 Firebase 설정값을 붙여 넣는 곳이다.
+           * 설정 파일이 아니라 이 컴퓨터(localStorage)에 두므로 설치형에도 있다.
+           */
+          { id: 'classboard', label: '학급 게시판' },
           { id: 'backup', label: '백업·복원' },
           /*
            * '기존 앱에서 가져오기'는 브라우저 localStorage를 뒤진다.
@@ -211,6 +219,7 @@ export default function SettingsPage() {
         ) : null}
         {/* 탭 목록에서 빼는 것만으로는 안 된다 — tab 상태가 무슨 값이든 설치형에서는 이 패널이 렌더되면 안 된다. */}
         {tab === 'sync' && !isDesktop() ? <AccountPanel /> : null}
+        {tab === 'classboard' ? <ClassboardSettingsTab /> : null}
         {tab === 'backup' ? <BackupTab /> : null}
         {tab === 'legacy' && !isDesktop() ? (
           <div className="flex flex-col gap-4">

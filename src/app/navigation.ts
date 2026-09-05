@@ -7,6 +7,7 @@ import {
   ListChecks,
   Megaphone,
   MessageSquareText,
+  MessagesSquare,
   Presentation,
   Sparkles,
   Users,
@@ -23,6 +24,7 @@ export type FeatureId =
   | 'reward'
   | 'assignment'
   | 'notice'
+  | 'classboard'
   // 수업·업무를 돕는 기능. 학급에 매이지 않는다.
   | 'lesson'
   | 'quiz'
@@ -114,6 +116,20 @@ export const FEATURE_NAV: readonly FeatureNavItem[] = [
     icon: Megaphone,
     accentClass: 'text-notice-500',
     tintClass: 'bg-notice-50',
+  },
+  {
+    /*
+     * 알림장 다음. 학급 자료를 다루는 기능의 끝이다. 자료가 SuiteData가 아니라
+     * 선생님의 Firebase에 산다는 점만 다르다. 전자칠판은 없다 — 학생 글을
+     * 교실 화면에 그대로 띄울 것은 아니다(칭찬 릴레이 띄우기는 다음 판).
+     */
+    id: 'classboard',
+    path: '/classboard',
+    label: '학급 게시판',
+    hasBoardView: false,
+    icon: MessagesSquare,
+    accentClass: 'text-classboard-500',
+    tintClass: 'bg-classboard-50',
   },
     {
       id: 'lesson',
