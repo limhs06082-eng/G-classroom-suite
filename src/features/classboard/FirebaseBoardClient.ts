@@ -26,7 +26,12 @@ interface Ready {
   db: Firestore;
 }
 
-const ROWS_LIMIT = 300;
+/*
+ * 한 번 열 때 읽는 상한. 무료 한도(하루 읽기 5만)를 한 반 규모에서 안 부딪히게 —
+ * 가득 찬 게시판(글 100·댓글 300)을 30명이 하루 두 번 열어도 2만 5천쯤이다.
+ */
+const POSTS_LIMIT = 100;
+const COMMENTS_LIMIT = 300;
 
 function str(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
@@ -91,7 +96,14 @@ function parseComment(id: string, raw: Record<string, unknown>): BoardComment {
 export class FirebaseBoardClient implements BoardClient {
   private pending: Promise<Ready> | null = null;
 
-  constructor(private readonly config: BoardFirebaseConfig) {}
+  /**
+   * `suffix`가 있으면 따로 이름 붙인 앱을 쓴다. 로그인 세션은 앱 이름마다 따로 저장되므로,
+   * 설정의 [연결 확인]이 익명으로 들어갔다 나와도 선생님의 세션은 건드리지 않는다.
+   */
+  constructor(
+    private readonly config: BoardFirebaseConfig,
+    private readonly suffix = '',
+  ) {}
 
   private ready(): Promise<Ready> {
     this.pending ??= (async () => {
@@ -100,7 +112,7 @@ export class FirebaseBoardClient implements BoardClient {
         import('firebase/auth'),
         import('firebase/firestore/lite'),
       ]);
-      const name = `classboard:${this.config.projectId}:${this.config.appId}`;
+      const name = `classboard:${this.config.projectId}:${this.config.appId}${this.suffix === '' ? '' : `:${this.suffix}`}`;
       const app = getApps().some((existing) => existing.name === name)
         ? getApp(name)
         : initializeApp(
@@ -113,7 +125,11 @@ export class FirebaseBoardClient implements BoardClient {
             name,
           );
       return { app, auth: getAuth(app), db: getFirestore(app) };
-    })();
+    })().catch((caught: unknown) => {
+      // 꾸러미를 못 받았으면(첫 사용이 오프라인) 다음 시도가 다시 받게 둔다.
+      this.pending = null;
+      throw caught;
+    });
     return this.pending;
   }
 
@@ -188,8 +204,8 @@ export class FirebaseBoardClient implements BoardClient {
      * limit만 걸어도 최신 글이 온다. where + orderBy였다면 복합 색인이 필요했다.
      */
     const rows = includeHidden
-      ? query(posts, limit(ROWS_LIMIT))
-      : query(posts, where('hidden', '==', false), limit(ROWS_LIMIT));
+      ? query(posts, limit(POSTS_LIMIT))
+      : query(posts, where('hidden', '==', false), limit(POSTS_LIMIT));
     const snapshot = await getDocs(rows);
     return snapshot.docs.map((row) => parsePost(row.id, row.data()));
   }
@@ -199,8 +215,8 @@ export class FirebaseBoardClient implements BoardClient {
     const { collection, getDocs, limit, query, where } = await import('firebase/firestore/lite');
     const comments = collection(db, 'boards', code, 'comments');
     const rows = includeHidden
-      ? query(comments, limit(ROWS_LIMIT * 2))
-      : query(comments, where('hidden', '==', false), limit(ROWS_LIMIT * 2));
+      ? query(comments, limit(COMMENTS_LIMIT))
+      : query(comments, where('hidden', '==', false), limit(COMMENTS_LIMIT));
     const snapshot = await getDocs(rows);
     return snapshot.docs.map((row) => parseComment(row.id, row.data()));
   }

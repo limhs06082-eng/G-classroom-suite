@@ -96,7 +96,8 @@ export default function ClassboardJoinPage() {
     );
   }
 
-  if (user === null || (data.loading && data.board === null)) {
+  // 아직 한 번도 못 읽었으면(오류도 없이) 기다린다. loading만 보면 효과가 돌기 전 한 프레임에 '찾지 못했습니다'가 번쩍인다.
+  if (user === null || (!data.loaded && data.error === '')) {
     return (
       <Shell>
         <p className="py-12 text-center text-sm text-slate-500">들어가는 중…</p>
