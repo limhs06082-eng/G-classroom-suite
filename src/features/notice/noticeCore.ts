@@ -1,4 +1,31 @@
 import type { Assignment, DailyNotice, NoticeItem } from '../../shared/domain/types';
+import { shortDate } from './eventsCore';
+
+/**
+ * 알림장을 문자·앱에 붙여 넣을 한 덩어리 글로.
+ *
+ * e알리미·카톡·하이클래스에 매일 붙여 넣는 담임에게 인쇄는 답이 아니다.
+ * 번호는 항목과 과제를 이어 매긴다 — 받는 쪽은 그냥 "오늘 알림장"이다.
+ */
+export function noticeText(input: {
+  className: string;
+  date: string;
+  items: readonly { text: string }[];
+  dueSoon: readonly { title: string; dueDate: string }[];
+  events: readonly string[];
+}): string {
+  const lines: string[] = [`[${input.className} 알림장] ${shortDate(input.date)}`];
+  let n = 0;
+  for (const item of input.items) lines.push(`${(n += 1)}. ${item.text}`);
+  for (const assignment of input.dueSoon) {
+    lines.push(`${(n += 1)}. (${assignment.dueDate === input.date ? '오늘까지' : '내일까지'}) ${assignment.title}`);
+  }
+  if (input.events.length > 0) {
+    lines.push('', '다가오는 일정');
+    for (const event of input.events) lines.push(`· ${event}`);
+  }
+  return lines.join('\n');
+}
 
 /**
  * 알림장 판단.

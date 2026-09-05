@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Cake,
   CalendarCheck,
   CalendarDays,
   CheckSquare,
@@ -45,7 +46,12 @@ import { RewardSummary } from '../reward/RewardSummary';
 import { ddayLabel, daysUntil, upcomingEvents } from '../notice/eventsCore';
 import { summarizeTasks } from '../task/taskCore';
 import { effectivePeriods, weekdayOf } from '../timetable/timetableCore';
+import type { Student } from '../../shared/domain/types';
+import { birthdaysOn, upcomingBirthdays } from '../../shared/roster/birthdayCore';
+import { removeSampleClass } from '../../shared/sample/sampleClass';
+import { shortDate } from '../notice/eventsCore';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
+import { HomeTips } from './HomeTips';
 import {
   clearLegacyLayout,
   isEmptyLayout,
@@ -83,6 +89,7 @@ const HOME_CARD_IDS = [
   'timetable',
   'meal',
   'events',
+  'birthday',
   'roster',
 ] as const;
 type HomeCardId = (typeof HOME_CARD_IDS)[number];
@@ -97,11 +104,15 @@ const HOME_CARD_LABELS: Record<HomeCardId, string> = {
   timetable: '오늘 시간표',
   meal: '급식',
   events: '다가오는 일정',
+  birthday: '생일',
   roster: '학생 명단',
 };
 
 export default function HomePage() {
-  const { data, adapter, update, isLoading } = useSuite();
+  const { data, adapter, update, isLoading, guard } = useSuite();
+  const toast = useToast();
+  // 첫 화면 안내가 가리키는 카드. 안내가 끝나면 null.
+  const [tipCard, setTipCard] = useState<string | null>(null);
   const term = useActiveTerm();
   const activeClass = useActiveClass();
   const roster = useRoster();
@@ -162,6 +173,7 @@ export default function HomePage() {
     order: orderOf.get(id) ?? HOME_CARD_IDS.length,
     hidden: layout.hidden.includes(id),
     size: sizeOf(layout, id),
+    highlighted: tipCard === id,
     dragging: draggingId === id,
     dropTarget: overId === id && draggingId !== null && draggingId !== id,
     onMove: (delta: -1 | 1) => applyLayout(moveCard(HOME_CARD_IDS, layout, id, delta)),
@@ -228,6 +240,31 @@ export default function HomePage() {
           오늘 보드
         </Button>
       </header>
+
+      {activeClass.isSample === true ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-card border border-warning-200 bg-warning-50 p-3 text-sm text-slate-800">
+          <Sparkles className="size-5 shrink-0 text-warning-700" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <strong className="font-semibold">샘플 학급</strong>을 보고 있습니다. 실제 학급을 만들기 전에 마음껏 눌러 보세요. 다 보셨으면
+            지우면 됩니다.
+          </span>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              void (async () => {
+                await guard('샘플 학급 지우기 직전');
+                update((current) => removeSampleClass(current));
+                toast.success('샘플 학급을 지웠습니다.');
+              })();
+            }}
+          >
+            샘플 지우기
+          </Button>
+        </div>
+      ) : null}
+
+      <HomeTips onHighlight={setTipCard} />
 
       <BackupBanner studentCount={roster.length} getLastExportedAt={() => adapter.getLastExportedAt()} />
 
@@ -379,6 +416,21 @@ export default function HomePage() {
         </SummaryCard>
         </HomeSlot>
 
+        {/* 오늘 생일. 교실에서 가장 확실히 "와" 하는 장면이라 카드 하나를 준다. */}
+        <HomeSlot {...slot('birthday')}>
+        <SummaryCard
+          to="/roster"
+          label="생일"
+          icon={Cake}
+          accentClass="text-reward-500"
+          tintClass="bg-reward-50"
+          pending={upcomingBirthdays(roster, todayString, 30).length === 0}
+          cta="명단에서 생일 적기"
+        >
+          <BirthdayCard roster={roster} today={todayString} />
+        </SummaryCard>
+        </HomeSlot>
+
         <HomeSlot {...slot('roster')}>
         <SummaryCard
           to="/roster"
@@ -494,6 +546,41 @@ export default function HomePage() {
 
       <QuoteCard />
     </div>
+  );
+}
+
+/** 홈 '생일' 카드 본문. 오늘 생일이 있으면 크게, 없으면 한 달 안 셋. */
+function BirthdayCard({ roster, today }: { roster: Student[]; today: string }) {
+  const todays = birthdaysOn(roster, today);
+  if (todays.length > 0) {
+    return (
+      <div className="flex flex-col gap-1">
+        {todays.map((student) => (
+          <p key={student.id} className="text-lg font-bold text-slate-900">
+            🎂 {student.name}
+          </p>
+        ))}
+        <p className="text-sm text-slate-500">오늘 생일입니다. 축하해 주세요!</p>
+      </div>
+    );
+  }
+
+  const soon = upcomingBirthdays(roster, today, 30).slice(0, 3);
+  if (soon.length === 0) {
+    return <PendingNote>학생 명단에서 생일을 적어 두면 오늘·이번 달 생일이 여기 뜹니다.</PendingNote>;
+  }
+  return (
+    <ul className="flex flex-col gap-1">
+      {soon.map((item) => (
+        <li key={item.student.id} className="flex items-center gap-2 text-sm">
+          <span data-numeric className={cx('w-12 shrink-0 font-semibold', item.days <= 3 ? 'text-warning-700' : 'text-slate-500')}>
+            D-{item.days}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-slate-800">{item.student.name}</span>
+          <span className="shrink-0 text-xs text-slate-500">{shortDate(item.date)}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -816,6 +903,7 @@ function HomeSlot({
   order,
   hidden,
   size,
+  highlighted,
   dragging,
   dropTarget,
   onMove,
@@ -832,6 +920,8 @@ function HomeSlot({
   order: number;
   hidden: boolean;
   size: 1 | 2 | 3;
+  /** 첫 화면 안내가 가리키는 중 */
+  highlighted: boolean;
   dragging: boolean;
   dropTarget: boolean;
   onMove: (delta: -1 | 1) => void;
@@ -865,7 +955,7 @@ function HomeSlot({
         'group/slot relative rounded-card transition-opacity',
         SIZE_CLASS[size],
         dragging && 'opacity-40',
-        dropTarget && 'ring-2 ring-brand-400 ring-offset-2',
+        (dropTarget || highlighted) && 'ring-2 ring-brand-400 ring-offset-2',
       )}
     >
       {children}

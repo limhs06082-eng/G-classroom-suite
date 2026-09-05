@@ -159,6 +159,18 @@ export function deleteClassRoom(data: SuiteData, classId: string): SuiteData {
   // 마지막 학급은 지우지 않는다. 0개가 되면 모든 화면이 빈 상태가 된다.
   if (data.classRooms.length <= 1) return data;
 
+  return removeClassData(data, classId);
+}
+
+/**
+ * 학급과 딸린 자료를 보호 없이 지운다. 샘플 학급 지우기가 쓴다 — 샘플이
+ * 마지막 학급이어도 지워져야 하고, 빈 화면은 그때 정상이다. 다른 곳에서는
+ * `deleteClassRoom`을 쓴다.
+ */
+export function removeClassData(data: SuiteData, classId: string): SuiteData {
+  const removed = data.classRooms.find((room) => room.id === classId);
+  if (removed === undefined) return data;
+
   const studentIds = studentIdsOf(data, classId);
   const assignmentIds = assignmentIdsOf(data, classId);
 

@@ -20,6 +20,8 @@ export interface ParsedRosterRow {
   name: string;
   /** 여러 학급을 한 번에 붙여넣은 경우 */
   className?: string;
+  /** 생년월일 열이 있었으면 YYYY-MM-DD */
+  birthday?: string;
 }
 
 export interface RosterParseIssue {
@@ -42,7 +44,54 @@ export interface RosterParseResult {
   headerSkipped: boolean;
 }
 
-const HEADER_HINTS = ['번호', '이름', '성명', '반', 'name', 'number', 'no', 'class'];
+const HEADER_HINTS = ['번호', '이름', '성명', '반', 'name', 'number', 'no', 'class', '생년월일', '생일'];
+
+const DATE_FORMS = [
+  /^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/,
+  /^(\d{4})(\d{2})(\d{2})$/,
+  /^(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일$/,
+];
+
+/** 날짜 꼴이면 `{ valid }`, 아니면 null. 꼴은 맞는데 값이 엉뚱하면 `valid: null` — 열은 걷어내되 생일은 없다. */
+function readDate(token: string): { valid: string | null } | null {
+  for (const form of DATE_FORMS) {
+    const match = form.exec(token.trim());
+    if (match === null) continue;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return { valid: null };
+    return { valid: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` };
+  }
+  return null;
+}
+
+/**
+ * 생년월일로 보이는 칸을 떼어낸다. NEIS 명단에 흔한 열이라 번호·이름 해석을
+ * 건드리지 않고 먼저 걷어낸다. 공백 분리 줄("1 김하나 2015-09-07")은 이름 칸
+ * 끝에 날짜가 붙어 오므로 마지막 토막도 본다. 값이 엉뚱한 날짜는 열만 걷어낸다.
+ */
+function pickBirthday(fields: string[]): { rest: string[]; birthday?: string } {
+  for (const [index, field] of fields.entries()) {
+    const whole = readDate(field);
+    if (whole !== null) {
+      return {
+        rest: fields.filter((_, i) => i !== index),
+        ...(whole.valid === null ? {} : { birthday: whole.valid }),
+      };
+    }
+    const tokens = field.trim().split(/\s+/);
+    if (tokens.length > 1) {
+      const last = readDate(tokens[tokens.length - 1] ?? '');
+      if (last !== null) {
+        const rest = [...fields];
+        rest[index] = tokens.slice(0, -1).join(' ');
+        return { rest, ...(last.valid === null ? {} : { birthday: last.valid }) };
+      }
+    }
+  }
+  return { rest: fields };
+}
 
 /** 학생 이름으로 쓸 수 없는 길이. 붙여넣기 사고(문단 통째로)를 걸러낸다. */
 const MAX_NAME_LENGTH = 30;
@@ -92,10 +141,12 @@ interface Pending {
   number: number | null;
   name: string;
   className?: string;
+  birthday?: string;
 }
 
 function interpret(line: string, lineNo: number): Pending | RosterParseIssue {
-  const { fields, explicit } = splitFields(line);
+  const { fields: rawFields, explicit } = splitFields(line);
+  const { rest: fields, birthday } = pickBirthday(rawFields);
   const nonEmpty = fields.filter((f) => f !== '');
 
   if (nonEmpty.length === 0) {
@@ -115,6 +166,7 @@ function interpret(line: string, lineNo: number): Pending | RosterParseIssue {
       number,
       name,
       ...(className === undefined || className === '' ? {} : { className }),
+      ...(birthday === undefined ? {} : { birthday }),
     };
   };
 
@@ -208,6 +260,7 @@ export function parseRosterText(text: string): RosterParseResult {
       number,
       name: row.name,
       ...(row.className === undefined ? {} : { className: row.className }),
+      ...(row.birthday === undefined ? {} : { birthday: row.birthday }),
     };
   });
 

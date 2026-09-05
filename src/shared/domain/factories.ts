@@ -56,7 +56,7 @@ function nowIso(): string {
 
 export function createTerm(
   input: Pick<Term, 'schoolYear' | 'semester' | 'startDate' | 'endDate'> &
-    Partial<Pick<Term, 'id' | 'name' | 'status'>>,
+    Partial<Pick<Term, 'id' | 'name' | 'status' | 'isSample'>>,
   now: string = nowIso(),
 ): Term {
   return {
@@ -68,12 +68,13 @@ export function createTerm(
     endDate: input.endDate,
     status: input.status ?? 'active',
     createdAt: now,
+    ...(input.isSample === true ? { isSample: true as const } : {}),
   };
 }
 
 export function createClassRoom(
   input: Pick<ClassRoom, 'termId' | 'name'> &
-    Partial<Pick<ClassRoom, 'id' | 'grade' | 'classNo'>>,
+    Partial<Pick<ClassRoom, 'id' | 'grade' | 'classNo' | 'isSample'>>,
   now: string = nowIso(),
 ): ClassRoom {
   return {
@@ -82,6 +83,7 @@ export function createClassRoom(
     name: input.name,
     ...(input.grade === undefined ? {} : { grade: input.grade }),
     ...(input.classNo === undefined ? {} : { classNo: input.classNo }),
+    ...(input.isSample === true ? { isSample: true as const } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -89,7 +91,7 @@ export function createClassRoom(
 
 export function createStudent(
   input: Pick<Student, 'classId' | 'number' | 'name'> &
-    Partial<Pick<Student, 'id' | 'status'>>,
+    Partial<Pick<Student, 'id' | 'status' | 'birthday'>>,
   now: string = nowIso(),
 ): Student {
   return {
@@ -98,6 +100,7 @@ export function createStudent(
     number: input.number,
     name: input.name,
     status: input.status ?? 'active',
+    ...(input.birthday === undefined || input.birthday === '' ? {} : { birthday: input.birthday }),
     createdAt: now,
     updatedAt: now,
   };

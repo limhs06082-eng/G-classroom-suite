@@ -360,6 +360,7 @@ export default function RosterPage() {
             const renamed = updateStudent(current, editing.id, {
               number: patch.number,
               name: patch.name,
+              birthday: patch.birthday,
             });
             // 두 번 나눠 쓰지 않는다. 중간에 실패하면 학생 정보가 반쪽이 된다.
             return applyStudentDetail(renamed, editing.id, patch.detail);
@@ -419,10 +420,11 @@ function EditStudentModal({
   /** 떨어뜨리기 후보 — 같은 반의 재학생, 자기 자신 제외 */
   classmates: Student[];
   onClose: () => void;
-  onSave: (patch: { number: number; name: string; detail: Partial<StudentDetail> }) => void;
+  onSave: (patch: { number: number; name: string; birthday: string; detail: Partial<StudentDetail> }) => void;
 }) {
   const [name, setName] = useState('');
   const [number, setNumber] = useState('');
+  const [birthday, setBirthday] = useState(student?.birthday ?? '');
   const [gender, setGender] = useState<Gender>(detail?.gender ?? 'none');
   const [tags, setTags] = useState<string[]>(detail?.tags ?? []);
   const [avoid, setAvoid] = useState<string[]>(detail?.avoidStudentIds ?? []);
@@ -462,6 +464,7 @@ function EditStudentModal({
               onSave({
                 number: Number.isFinite(parsedNumber) ? parsedNumber : (student?.number ?? 0),
                 name: name.trim() === '' ? (student?.name ?? '') : name.trim(),
+                birthday,
                 detail: {
                   gender,
                   tags: finalTags,
@@ -496,6 +499,19 @@ function EditStudentModal({
             onChange={(event) => setName(event.target.value)}
             className="mt-1 h-10 w-full rounded-control border border-slate-300 px-3"
           />
+        </label>
+        <label className="block text-sm">
+          <span className="text-slate-700">생일</span>
+          <input
+            type="date"
+            aria-label="생일"
+            value={birthday}
+            onChange={(event) => setBirthday(event.target.value)}
+            className="mt-1 h-10 w-full rounded-control border border-slate-300 px-3"
+          />
+          <span className="mt-1 block text-slate-500">
+            홈과 오늘 보드에 "오늘 생일"로 뜹니다. 명단 붙여넣기에 생년월일 열이 있으면 저절로 들어옵니다.
+          </span>
         </label>
         <p className="text-sm text-slate-500">
           번호가 이미 쓰이고 있으면 저장할 때 비어 있는 번호로 자동 조정됩니다.

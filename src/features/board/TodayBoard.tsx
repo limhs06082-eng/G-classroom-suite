@@ -1,3 +1,4 @@
+import { birthdaysOn } from '../../shared/roster/birthdayCore';
 import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { isDesktop } from '../../shared/platform/target';
 import { useNow } from '../../shared/state/useNow';
@@ -71,6 +72,7 @@ export function TodayBoard() {
           {isDesktop() ? <MealSection /> : null}
         </div>
         <div className="flex flex-col gap-8">
+          <BirthdaySection date={date} />
           <EventsSection date={date} />
           <DutySection />
           <NoticeSection date={date} />
@@ -158,6 +160,28 @@ function MealSection() {
           )),
         )}
       </ul>
+    </section>
+  );
+}
+
+/** 오늘 생일. 있는 날에만, 맨 위에 — 이날 교실에서 제일 먼저 보여야 할 것이다. */
+function BirthdaySection({ date }: { date: string }) {
+  const { data } = useSuite();
+  const activeClass = useActiveClass();
+  const classId = activeClass?.id ?? '';
+  const todays = birthdaysOn(
+    data.students.filter((student) => student.classId === classId && student.status === 'active'),
+    date,
+  );
+  if (todays.length === 0) return null;
+
+  return (
+    <section>
+      <SectionTitle>오늘 생일</SectionTitle>
+      <p className="text-board-lg font-black text-slate-900">
+        🎂 {todays.map((student) => student.name).join(', ')}
+      </p>
+      <p className="mt-1 text-board-base text-slate-600">생일 축하합니다!</p>
     </section>
   );
 }

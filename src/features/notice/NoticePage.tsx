@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   ChevronDown,
+  Copy,
   ChevronUp,
   ClipboardCheck,
   Megaphone,
@@ -19,7 +20,7 @@ import { useToday } from '../../shared/state/useToday';
 import { Badge, Button, Card, EmptyState, PrintLayout, usePrint, useToast } from '../../shared/ui';
 import { openBoard } from '../../shared/window/openBoard';
 import { ddayLabel, daysUntil, eventPhrase, eventsSoon, pastEvents, upcomingEvents } from './eventsCore';
-import { assignmentsDueSoon, frequentPhrases, itemsFor, setItems } from './noticeCore';
+import { assignmentsDueSoon, frequentPhrases, itemsFor, noticeText, setItems } from './noticeCore';
 
 /**
  * 알림장.
@@ -171,6 +172,32 @@ export default function NoticePage() {
         <div className="ml-auto flex flex-wrap gap-2">
           <Button icon={Monitor} variant="secondary" onClick={() => openBoard('/board/notice')}>
             전자칠판에 띄우기
+          </Button>
+          {/* e알리미·카톡·하이클래스에 붙여 넣는 담임에게 인쇄는 답이 아니다. */}
+          <Button
+            icon={Copy}
+            variant="secondary"
+            disabled={items.length === 0 && dueSoon.length === 0}
+            onClick={() => {
+              void (async () => {
+                try {
+                  await navigator.clipboard.writeText(
+                    noticeText({
+                      className: activeClass.name,
+                      date,
+                      items,
+                      dueSoon,
+                      events: eventPhrases.map((event) => event.text),
+                    }),
+                  );
+                  toast.success('복사했습니다. 문자·앱에 붙여 넣으세요.');
+                } catch {
+                  toast.error('복사하지 못했습니다. 글을 직접 선택해 복사해 주세요.');
+                }
+              })();
+            }}
+          >
+            문자로 복사
           </Button>
           <Button icon={Printer} variant="secondary" disabled={items.length === 0 && dueSoon.length === 0} onClick={printNow}>
             인쇄

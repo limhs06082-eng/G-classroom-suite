@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, CalendarRange, Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { Archive, ArchiveRestore, CalendarRange, Pencil, Plus, Sparkles, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
 
 import type { ClassRoom, Term } from '../../shared/domain/types';
@@ -14,7 +14,59 @@ import {
   type ClassDataCount,
 } from '../../shared/roster/classOps';
 import { useSuite } from '../../shared/roster/SuiteDataProvider';
+import { createSampleClass, hasSampleClass, removeSampleClass } from '../../shared/sample/sampleClass';
 import { Badge, Button, Card, ConfirmDialog, EmptyState, Modal, useToast } from '../../shared/ui';
+
+/** 샘플 학급 만들기·지우기. 연수에서 30초 만에 "우리 반"이 서게 한다. */
+function SampleClassCard() {
+  const { data, update, guard } = useSuite();
+  const toast = useToast();
+  const exists = hasSampleClass(data);
+
+  return (
+    <Card title="샘플 학급" icon={Sparkles}>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="min-w-0 flex-1 text-sm text-slate-600">
+          가짜 학생 24명과 시간표·일정·칭찬·관찰·출결·과제·모둠·자리·당번·알림장이 든 학급입니다. 둘러보기와
+          연수용이고, 지우면 딸린 자료가 모두 사라집니다.
+        </p>
+        {exists ? (
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={Trash2}
+            onClick={() => {
+              void (async () => {
+                await guard('샘플 학급 지우기 직전');
+                update((current) => removeSampleClass(current));
+                toast.success('샘플 학급을 지웠습니다.');
+              })();
+            }}
+          >
+            샘플 지우기
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="primary"
+            icon={Sparkles}
+            onClick={() => {
+              void (async () => {
+                await guard('샘플 학급 만들기 직전');
+                const now = new Date();
+                const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                update((current) => createSampleClass(current, today, now.toISOString()));
+                toast.success('샘플 학급을 만들고 그 학급을 보고 있습니다.');
+              })();
+            }}
+          >
+            샘플 학급 만들기
+          </Button>
+        )}
+      </div>
+    </Card>
+  );
+}
 
 /**
  * 학급·학기 관리.
@@ -78,6 +130,8 @@ export function ClassTermTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      <SampleClassCard />
+
       <Card
         title="학급"
         icon={Users}

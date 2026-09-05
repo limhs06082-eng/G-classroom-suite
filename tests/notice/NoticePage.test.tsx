@@ -102,4 +102,16 @@ describe('알림장 — 학급 일정 문구', () => {
     );
     expect(within(printRoot()).getByText(/1\. 내일 현장학습 — 도시락/)).toBeInTheDocument();
   });
+
+  it('[문자로 복사]는 항목과 일정을 한 덩어리 글로 복사한다', async () => {
+    const user = userEvent.setup();
+    await renderPage();
+
+    await user.click(screen.getByRole('button', { name: '+ 내일 현장학습 — 도시락' }));
+    await user.click(screen.getByRole('button', { name: '문자로 복사' }));
+
+    const text = await navigator.clipboard.readText();
+    expect(text).toContain('[우리 반 알림장]');
+    expect(text).toContain('1. 내일 현장학습 — 도시락');
+  });
 });

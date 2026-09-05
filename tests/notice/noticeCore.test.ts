@@ -3,8 +3,31 @@ import { describe, expect, it } from 'vitest';
 import {
   assignmentsDueSoon,
   itemsFor,
+  noticeText,
   setItems,
 } from '../../src/features/notice/noticeCore';
+
+describe('noticeText — 문자로 붙여 넣을 한 덩어리', () => {
+  it('머리·번호 매긴 항목·과제·일정 순으로 잇는다', () => {
+    expect(
+      noticeText({
+        className: '3학년 2반',
+        date: '2026-09-05',
+        items: [{ text: '우유갑 정리' }, { text: '독서록' }],
+        dueSoon: [{ title: '일기', dueDate: '2026-09-06' }],
+        events: ['내일 현장학습 — 도시락'],
+      }),
+    ).toBe(
+      ['[3학년 2반 알림장] 9/5(토)', '1. 우유갑 정리', '2. 독서록', '3. (내일까지) 일기', '', '다가오는 일정', '· 내일 현장학습 — 도시락'].join('\n'),
+    );
+  });
+
+  it('일정이 없으면 일정 묶음이 없다', () => {
+    expect(noticeText({ className: '반', date: '2026-09-05', items: [{ text: 'a' }], dueSoon: [], events: [] })).toBe(
+      '[반 알림장] 9/5(토)\n1. a',
+    );
+  });
+});
 import { createAssignment } from '../../src/shared/domain/factories';
 import type { DailyNotice } from '../../src/shared/domain/types';
 

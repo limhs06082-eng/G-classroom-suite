@@ -57,6 +57,8 @@ export interface Term {
   status: TermStatus;
   createdAt: string;
   archivedAt?: string;
+  /** 샘플 학급을 위해 만든 학기. [샘플 지우기]가 같이 지운다. */
+  isSample?: true;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -75,6 +77,8 @@ export interface ClassRoom {
   name: string;
   grade?: number;
   classNo?: number;
+  /** 연수·둘러보기용 샘플 학급. 마지막 학급 보호를 우회해 지울 수 있다. */
+  isSample?: true;
   createdAt: string;
   updatedAt: string;
 }
@@ -99,6 +103,8 @@ export interface Student {
   statusChangedAt?: string;
   /** 전출·장기결석 사유 메모 */
   statusMemo?: string;
+  /** 생일 YYYY-MM-DD. 홈·오늘 보드에 "오늘 생일"로 뜬다. 없어도 된다. */
+  birthday?: string;
   createdAt: string;
   updatedAt: string;
 }

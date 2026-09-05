@@ -68,14 +68,18 @@ export function addStudent(
 export function updateStudent(
   data: SuiteData,
   studentId: string,
-  patch: Partial<Pick<Student, 'number' | 'name'>>,
+  patch: Partial<Pick<Student, 'number' | 'name' | 'birthday'>>,
   now: string = nowIso(),
 ): SuiteData {
   return {
     ...data,
-    students: data.students.map((student) =>
-      student.id === studentId ? { ...student, ...patch, updatedAt: now } : student,
-    ),
+    students: data.students.map((student) => {
+      if (student.id !== studentId) return student;
+      const next = { ...student, ...patch, updatedAt: now };
+      // 생일을 비우면 키를 지운다. undefined를 남기면 백업 JSON에는 안 실리지만 자료 모양이 흐트러진다.
+      if (patch.birthday === undefined || patch.birthday === '') delete next.birthday;
+      return next;
+    }),
   };
 }
 
@@ -226,7 +230,14 @@ export function applyRosterImport(
     let next = student;
 
     if (row !== undefined) {
-      next = { ...next, number: row.number, name: row.name, updatedAt: now };
+      next = {
+        ...next,
+        number: row.number,
+        name: row.name,
+        // 붙여넣기에 생일 열이 있으면 같이 고치고, 없으면 있던 생일을 지우지 않는다.
+        ...(row.birthday === undefined ? {} : { birthday: row.birthday }),
+        updatedAt: now,
+      };
     }
     if (deactivatedIds.has(student.id)) {
       next = {
@@ -244,7 +255,15 @@ export function applyRosterImport(
   });
 
   const created = plan.added.map((row) =>
-    createStudent({ classId, number: row.number, name: row.name }, now),
+    createStudent(
+      {
+        classId,
+        number: row.number,
+        name: row.name,
+        ...(row.birthday === undefined ? {} : { birthday: row.birthday }),
+      },
+      now,
+    ),
   );
 
   return withProfiles({ ...data, students: [...students, ...created] }, created);

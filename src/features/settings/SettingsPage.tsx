@@ -16,6 +16,30 @@ import { isDesktop } from '../../shared/platform/target';
 import { useSuite } from '../../shared/roster/SuiteDataProvider';
 import { parseSuiteData } from '../../shared/storage/schema';
 import { isEmptyLayout } from '../home/homeLayout';
+import { setTipsSeen } from '../home/tipsStore';
+import { useNavigate } from 'react-router-dom';
+
+/** 첫 화면 안내 다시 보기. 연수에서 옆 사람에게 보여 줄 때 쓴다. */
+function TipsResetCard() {
+  const navigate = useNavigate();
+  return (
+    <Card title="처음 안내">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="min-w-0 flex-1 text-sm text-slate-600">홈 위에 뜨던 네 걸음 안내를 다시 봅니다.</p>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            setTipsSeen(false);
+            void navigate('/');
+          }}
+        >
+          처음 안내 다시 보기
+        </Button>
+      </div>
+    </Card>
+  );
+}
 import { formatBytes, measureDataSize } from '../../shared/storage/dataSize';
 import type { BackupSummary } from '../../shared/storage/StorageAdapter';
 import { AccountPanel } from '../../shared/account/AccountPanel';
@@ -145,7 +169,12 @@ export default function SettingsPage() {
         ) : null}
         {tab === 'lock' ? <LockTab /> : null}
         {/* 탭 목록과 그리는 곳이 따로 논다. 목록에만 더하면 눌러도 빈 화면이다. */}
-        {tab === 'theme' ? <ThemeTab /> : null}
+        {tab === 'theme' ? (
+          <>
+            <ThemeTab />
+            <TipsResetCard />
+          </>
+        ) : null}
         {/* 탭 목록에서 빼는 것만으로는 안 된다 — tab 상태가 무슨 값이든 설치형에서는 이 패널이 렌더되면 안 된다. */}
         {tab === 'sync' && !isDesktop() ? <AccountPanel /> : null}
         {tab === 'backup' ? <BackupTab /> : null}

@@ -10,6 +10,7 @@ import { isDesktop } from '../platform/target';
 import { RosterImportPanel } from '../roster/RosterImportPanel';
 import { applyRosterImport } from '../roster/rosterOps';
 import { useSuite } from '../roster/SuiteDataProvider';
+import { createSampleClass } from '../sample/sampleClass';
 import { Button, Card, cx, useToast } from '../ui';
 
 /**
@@ -268,6 +269,24 @@ export default function SetupPage() {
                 여러 반을 맡으신다면 나머지는 나중에 설정에서 추가할 수 있습니다.
               </span>
             </label>
+
+            {/* 연수·둘러보기. 명단 없이도 모든 화면이 차야 눌러 볼 수 있다. */}
+            <div className="flex flex-wrap items-center gap-2 rounded-control border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-600">
+              <span className="min-w-0 flex-1">처음 써 보시나요? 가짜 학생 24명이 든 샘플 학급으로 먼저 둘러볼 수 있습니다.</span>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  const now = new Date();
+                  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                  update((current) => createSampleClass(current, today, now.toISOString()));
+                  toast.success('샘플 학급을 만들었습니다. 홈에서 [샘플 지우기]로 되돌릴 수 있습니다.');
+                  void navigate('/');
+                }}
+              >
+                샘플 학급으로 둘러보기
+              </Button>
+            </div>
 
             <div className="flex justify-between">
               <Button icon={ArrowLeft} onClick={() => setStep('school')}>

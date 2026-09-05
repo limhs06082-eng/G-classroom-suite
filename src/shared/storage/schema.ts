@@ -374,6 +374,7 @@ function parseTerm(raw: unknown, now: string): Term | null {
     status: oneOf(raw['status'], TERM_STATUSES, 'active'),
     createdAt: str(raw['createdAt'], now),
     ...(typeof raw['archivedAt'] === 'string' ? { archivedAt: raw['archivedAt'] } : {}),
+    ...(raw['isSample'] === true ? { isSample: true as const } : {}),
   };
 }
 
@@ -389,6 +390,7 @@ function parseClassRoom(raw: unknown, now: string): ClassRoom | null {
     name: str(raw['name'], '이름 없는 학급'),
     ...(typeof raw['grade'] === 'number' ? { grade: raw['grade'] } : {}),
     ...(typeof raw['classNo'] === 'number' ? { classNo: raw['classNo'] } : {}),
+    ...(raw['isSample'] === true ? { isSample: true as const } : {}),
     createdAt: str(raw['createdAt'], now),
     updatedAt: str(raw['updatedAt'], now),
   };
@@ -409,6 +411,10 @@ function parseStudent(raw: unknown, now: string): Student | null {
     status: oneOf(raw['status'], STUDENT_STATUSES, 'active'),
     ...(typeof raw['statusChangedAt'] === 'string' ? { statusChangedAt: raw['statusChangedAt'] } : {}),
     ...(typeof raw['statusMemo'] === 'string' ? { statusMemo: raw['statusMemo'] } : {}),
+    // 생일은 YYYY-MM-DD만. "9월 7일" 같은 글은 버린다 — 날짜 계산이 못 읽는다.
+    ...(typeof raw['birthday'] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw['birthday'])
+      ? { birthday: raw['birthday'] }
+      : {}),
     createdAt: str(raw['createdAt'], now),
     updatedAt: str(raw['updatedAt'], now),
   };
