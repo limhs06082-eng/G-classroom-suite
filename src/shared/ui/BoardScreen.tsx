@@ -31,8 +31,16 @@ interface Props {
  * 조작 버튼은 손가락으로 눌리도록 크게 둔다.
  */
 export function BoardScreen({ title, subtitle, actions, onExit, children }: Props) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const { isFullscreen, isSupported, toggle } = useFullscreen(rootRef);
+  /*
+   * 전체 화면은 문서 전체로 건다. 이 div를 걸면 body에 포털로 붙는
+   * 대화상자(단축키 도움)가 전체 화면 요소 **아래**에 깔려 안 보이고, 그
+   * 보이지 않는 대화상자 때문에 Esc·F까지 죽는다. 칠판은 h-dvh라 보이는
+   * 것은 같다.
+   */
+  const docRef = useRef<HTMLElement | null>(
+    typeof document === 'undefined' ? null : document.documentElement,
+  );
+  const { isFullscreen, isSupported, toggle } = useFullscreen(docRef);
   const [helpOpen, setHelpOpen] = useState(false);
   const openHelp = useCallback(() => setHelpOpen(true), []);
 
@@ -55,7 +63,7 @@ export function BoardScreen({ title, subtitle, actions, onExit, children }: Prop
   }, [onExit, isSupported, toggle]);
 
   return (
-    <div ref={rootRef} className="flex h-dvh w-full flex-col bg-surface text-slate-900">
+    <div className="flex h-dvh w-full flex-col bg-surface text-slate-900">
       <header className="flex items-center gap-4 border-b-4 border-slate-900 px-8 py-5">
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-board-lg font-black tracking-tight">{title}</h1>

@@ -132,6 +132,10 @@ try {
   );
 }
 if (notes !== '') {
+  // 메모장이 붙이는 BOM은 trim()이 지워 검사를 통과하고, 릴리스 제목 맨 앞에 남는다.
+  if (notes.charCodeAt(0) === 0xfeff) {
+    fail('릴리스 노트에 BOM이 있다', `  ${notesPath}: "UTF-8(BOM 없음)"으로 다시 저장한다.`);
+  }
   const [summary = '', blank = '', ...body] = notes.split(/\r?\n/);
   if (summary.trim() === '' || summary.startsWith('#')) {
     fail(
