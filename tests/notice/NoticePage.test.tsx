@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -61,7 +61,8 @@ async function renderPage(): Promise<void> {
     </MemoryRouter>,
   );
 
-  await screen.findByText('다가오는 일정');
+  // 칩 단추로 기다린다. '다가오는 일정' 글자는 인쇄 포털에도 있어 둘이 될 수 있다.
+  await screen.findByRole('button', { name: '+ 내일 현장학습 — 도시락' });
 }
 
 describe('알림장 — 학급 일정 문구', () => {
@@ -89,13 +90,16 @@ describe('알림장 — 학급 일정 문구', () => {
       return root;
     };
 
-    expect(within(printRoot()).getByText('다가오는 일정')).toBeInTheDocument();
+    // 인쇄 포털은 PrintLayout이 마운트된 뒤 한 박자 늦게 채워진다. 기다려서 본다.
+    expect(await within(printRoot()).findByText('다가오는 일정')).toBeInTheDocument();
     expect(within(printRoot()).getByText(/내일 현장학습 — 도시락/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '+ 내일 현장학습 — 도시락' }));
 
     // 항목으로 찍히니 일정 묶음 자체가 사라진다 — 두 번 찍지 않는다.
-    expect(within(printRoot()).queryByText('다가오는 일정')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(printRoot()).queryByText('다가오는 일정')).not.toBeInTheDocument(),
+    );
     expect(within(printRoot()).getByText(/1\. 내일 현장학습 — 도시락/)).toBeInTheDocument();
   });
 });
