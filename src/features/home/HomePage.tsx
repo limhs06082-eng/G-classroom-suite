@@ -820,6 +820,7 @@ function HomeSlot({
       ref={slotRef}
       style={{ order }}
       hidden={hidden}
+      role="group"
       aria-label={`${label} 카드 자리`}
       onDragOver={(event) => {
         event.preventDefault();

@@ -394,10 +394,11 @@ function MonthlyTab({ today }: { today: string }) {
         : new Map<string, never[]>(),
     [data.attendanceRecords, classId, termMode, term],
   );
-  const noteLines = (studentId: string): string[] =>
-    (notes.get(studentId) ?? []).map(
-      (item) => `${monthDay(item.date)} ${STATUS_LABELS[item.status]}: ${item.note}`,
-    );
+  const noteLines = (studentId: string): { key: string; text: string }[] =>
+    (notes.get(studentId) ?? []).map((item) => ({
+      key: `${item.date}-${item.status}`,
+      text: `${monthDay(item.date)} ${STATUS_LABELS[item.status]}: ${item.note}`,
+    }));
 
   const shiftMonth = (delta: number): void => {
     const [year = 0, mon = 1] = month.split('-').map(Number);
@@ -481,7 +482,7 @@ function MonthlyTab({ today }: { today: string }) {
                   <td className="border border-black px-2 py-1 text-xs">
                     <ul>
                       {noteLines(student.id).map((line) => (
-                        <li key={line}>{line}</li>
+                        <li key={line.key}>{line.text}</li>
                       ))}
                     </ul>
                   </td>
@@ -522,7 +523,7 @@ function MonthlyTab({ today }: { today: string }) {
                     render: (student: Student) => (
                       <ul className="text-xs text-slate-600">
                         {noteLines(student.id).map((line) => (
-                          <li key={line}>{line}</li>
+                          <li key={line.key}>{line.text}</li>
                         ))}
                       </ul>
                     ),

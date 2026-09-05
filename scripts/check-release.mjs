@@ -116,6 +116,19 @@ if (tag !== '' && tag.replace(/^v/, '') !== String(conf.version)) {
 }
 
 /*
+ * 홈 카드 끌어 옮기기는 HTML5 드래그다. Windows의 Tauri 창은 기본으로
+ * 파일 끌어놓기를 창이 가로채서, 이 값이 false가 아니면 설치판에서만
+ * 드래그가 죽는다 — 브라우저(dev)에서는 멀쩡해서 손으로는 못 잡는다.
+ */
+const mainWindow = conf.app?.windows?.[0];
+if (mainWindow?.dragDropEnabled !== false) {
+  fail(
+    '창의 dragDropEnabled가 false가 아니다',
+    '  tauri.conf.json app.windows[0]에 "dragDropEnabled": false — 없으면 Windows 설치판에서 홈 카드 끌기가 안 된다.',
+  );
+}
+
+/*
  * 릴리스 노트. `docs/releases/v<판>.md` 한 파일이 GitHub 릴리스 본문과
  * 앱의 "새 판" 알림 문구가 된다. 1행은 한 줄 별명(마크다운 기호 없이),
  * 2행은 빈 줄, 3행부터 본문. 파일이 없으면 태그를 밀어도 빈 릴리스가
