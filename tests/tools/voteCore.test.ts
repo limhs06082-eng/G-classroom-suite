@@ -5,6 +5,7 @@ import { bump, createVote, leaders, resetCounts, total } from '../../src/feature
 describe('거수 투표', () => {
   it('빈 선택지는 버리고 둘~넷만 받는다', () => {
     const vote = createVote(' 급식 어땠나요? ', ['좋았어요', ' ', '별로였어요', '보통', '그냥', '하나 더']);
+    if (vote === null) throw new Error('vote');
     expect(vote.question).toBe('급식 어땠나요?');
     expect(vote.options).toEqual(['좋았어요', '별로였어요', '보통', '그냥']);
     expect(vote.counts).toEqual([0, 0, 0, 0]);

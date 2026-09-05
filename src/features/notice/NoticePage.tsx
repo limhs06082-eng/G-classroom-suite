@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  CalendarRange,
   ChevronDown,
   Copy,
   ChevronUp,
@@ -17,10 +18,12 @@ import { createClassEvent } from '../../shared/domain/factories';
 import { createId } from '../../shared/ids';
 import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { useToday } from '../../shared/state/useToday';
-import { Badge, Button, Card, EmptyState, PrintLayout, usePrint, useToast } from '../../shared/ui';
+import { Badge, Button, Card, EmptyState, Modal, PrintLayout, usePrint, useToast } from '../../shared/ui';
 import { openBoard } from '../../shared/window/openBoard';
-import { ddayLabel, daysUntil, eventPhrase, eventsSoon, pastEvents, upcomingEvents } from './eventsCore';
+import { ddayLabel, daysUntil, eventPhrase, eventsSoon, pastEvents, shortDate, upcomingEvents } from './eventsCore';
 import { assignmentsDueSoon, frequentPhrases, itemsFor, noticeText, setItems } from './noticeCore';
+import { schoolWeek } from './weekCore';
+import { WeeklySheet } from './WeeklySheet';
 
 /**
  * 알림장.
@@ -39,6 +42,19 @@ export default function NoticePage() {
   const printNow = usePrint();
   const [text, setText] = useState('');
   const [pickedDate, setPickedDate] = useState<string | null>(null);
+
+  /*
+   * 주간 안내문. 인쇄 포털은 마운트된 것을 전부 찍으므로, 주간 것을 찍는 동안은
+   * 하루 알림장 포털을 내리고 주간 포털만 올린다. 창을 닫으면 되돌린다.
+   */
+  const [weeklyOpen, setWeeklyOpen] = useState(false);
+  const [weeklyWhich, setWeeklyWhich] = useState<'this' | 'next'>('this');
+  const [weeklyMessage, setWeeklyMessage] = useState('');
+  const [weeklyPrint, setWeeklyPrint] = useState<{ week: string[]; message: string } | null>(null);
+  const closeWeekly = (): void => {
+    setWeeklyOpen(false);
+    setWeeklyPrint(null);
+  };
 
   // 날짜를 안 골랐으면 오늘. 자정이 지나면 저절로 다음 날로 넘어간다.
   const date = pickedDate ?? today;
@@ -172,6 +188,10 @@ export default function NoticePage() {
         <div className="ml-auto flex flex-wrap gap-2">
           <Button icon={Monitor} variant="secondary" onClick={() => openBoard('/board/notice')}>
             전자칠판에 띄우기
+          </Button>
+          {/* 금요일마다 손으로 만들던 주간 학습 안내 — 있는 자료를 모아 한 장으로. */}
+          <Button icon={CalendarRange} variant="secondary" onClick={() => setWeeklyOpen(true)}>
+            주간 안내문
           </Button>
           {/* e알리미·카톡·하이클래스에 붙여 넣는 담임에게 인쇄는 답이 아니다. */}
           <Button
@@ -329,7 +349,60 @@ export default function NoticePage() {
 
       <ClassEventsCard classId={classId} today={today} />
 
-      {/* 인쇄 전용. 결석한 학생 가정으로 보내거나 교실 뒤에 붙이는 종이다. */}
+      <Modal
+        open={weeklyOpen}
+        onClose={closeWeekly}
+        title="주간 안내문"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeWeekly}>
+              닫기
+            </Button>
+            <Button
+              variant="primary"
+              icon={Printer}
+              onClick={() => {
+                setWeeklyPrint({ week: schoolWeek(today, weeklyWhich), message: weeklyMessage });
+                // 주간 포털이 그려진 다음에 인쇄 창을 연다.
+                window.setTimeout(printNow, 80);
+              }}
+            >
+              인쇄
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <div className="inline-flex gap-0.5 self-start rounded-control border border-slate-200 p-0.5" role="group" aria-label="어느 주">
+            <Button size="sm" variant={weeklyWhich === 'this' ? 'primary' : 'ghost'} aria-pressed={weeklyWhich === 'this'} onClick={() => setWeeklyWhich('this')}>
+              이번 주
+            </Button>
+            <Button size="sm" variant={weeklyWhich === 'next' ? 'primary' : 'ghost'} aria-pressed={weeklyWhich === 'next'} onClick={() => setWeeklyWhich('next')}>
+              다음 주
+            </Button>
+          </div>
+          <p className="text-xs text-slate-500">
+            {shortDate(schoolWeek(today, weeklyWhich)[0] ?? today)} ~ {shortDate(schoolWeek(today, weeklyWhich)[4] ?? today)} · 시간표(하루
+            바꾸기 반영)·학급 일정·자주 쓴 알림장 문구가 A4 한 장으로 나갑니다.
+          </p>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-slate-700">학부모님께 한마디</span>
+            <textarea
+              rows={4}
+              value={weeklyMessage}
+              onChange={(event) => setWeeklyMessage(event.target.value)}
+              aria-label="학부모님께 한마디"
+              placeholder="예: 다음 주 수요일은 현장체험학습입니다. 도시락과 물을 챙겨 주세요."
+              className="rounded-control border border-slate-300 p-2 text-sm leading-relaxed"
+            />
+          </label>
+        </div>
+      </Modal>
+      {weeklyPrint !== null ? <WeeklySheet week={weeklyPrint.week} message={weeklyPrint.message} /> : null}
+
+      {/* 인쇄 전용. 결석한 학생 가정으로 보내거나 교실 뒤에 붙이는 종이다. 주간 안내문을 찍는 동안은 내린다. */}
+      {weeklyPrint === null ? (
       <PrintLayout
         title={`${activeClass.name} 알림장`}
         subtitle={date}
@@ -359,6 +432,7 @@ export default function NoticePage() {
           </section>
         ) : null}
       </PrintLayout>
+      ) : null}
     </div>
   );
 }

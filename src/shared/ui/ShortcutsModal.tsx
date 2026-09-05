@@ -47,6 +47,11 @@ const GROUPS: readonly Group[] = [
     ],
   },
   {
+    title: '거수 투표 (결과 화면)',
+    scope: ['app'],
+    items: [{ keys: ['Esc'], what: '결과 화면 내리기 (수는 남는다)' }],
+  },
+  {
     title: '입력칸',
     scope: ['app'],
     items: [

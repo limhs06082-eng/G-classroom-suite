@@ -114,4 +114,23 @@ describe('알림장 — 학급 일정 문구', () => {
     expect(text).toContain('[우리 반 알림장]');
     expect(text).toContain('1. 내일 현장학습 — 도시락');
   });
+
+  it('[주간 안내문]은 주와 한마디를 받아 시간표 표와 일정을 인쇄 포털에 그린다', async () => {
+    const user = userEvent.setup();
+    window.print = () => undefined;
+    await renderPage();
+
+    await user.click(screen.getByRole('button', { name: '주간 안내문' }));
+    const dialog = await screen.findByRole('dialog', { name: '주간 안내문' });
+    await user.type(within(dialog).getByRole('textbox', { name: '학부모님께 한마디' }), '이번 주도 건강하게 보내요.');
+    await user.click(within(dialog).getByRole('button', { name: '인쇄' }));
+
+    const root = document.getElementById('print-root');
+    if (root === null) throw new Error('print-root 없음');
+    await waitFor(() => expect(within(root).getByText(/주간 안내/)).toBeInTheDocument());
+    expect(within(root).getByText('이번 주도 건강하게 보내요.')).toBeInTheDocument();
+    expect(within(root).getByRole('columnheader', { name: /^월/ })).toBeInTheDocument();
+    // 내일 현장학습은 이번 주 안(오늘이 금·토·일이면 다음 주)일 수 있다 — 어느 쪽이든 하루 알림장은 내려가 있다.
+    expect(within(root).queryByText(/알림장$/)).not.toBeInTheDocument();
+  });
 });
