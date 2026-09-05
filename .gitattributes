@@ -1,0 +1,3 @@
+# 릴리스 노트는 latest.json의 notes로 앱 알림에 들어간다. Windows 체크아웃의
+# CRLF가 섞이면 첫 줄 끝에 \r이 붙는다 — 앱이 걷어내긴 하지만 애초에 안 섞는다.
+docs/releases/*.md text eol=lf

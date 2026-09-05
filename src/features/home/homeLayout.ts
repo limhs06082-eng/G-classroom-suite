@@ -1,5 +1,5 @@
 /**
- * 홈 카드 배치 — 순서와 숨김.
+ * 홈 카드 배치 — 순서·숨김·크기.
  *
  * 교사마다 아침에 먼저 보는 카드가 다르다. 담임은 출결, 전담은 시간표.
  * 배치는 학급 자료가 아니라 **이 기기의 취향**이라 테마처럼 localStorage에
@@ -10,15 +10,20 @@
  * 판이 바뀌어 카드가 늘고 줄어도 저장된 배치가 깨지지 않는다.
  */
 
+/** 그리드 칸 수. 1이 기본, 3이면 한 줄 전부(큰 화면 기준). */
+export type HomeCardSize = 1 | 2 | 3;
+
 export interface HomeLayout {
   /** 보이는 순서. 여기 없는 카드는 기본 순서대로 뒤에 붙는다. */
   order: string[];
   hidden: string[];
+  /** 카드별 칸 수. 없으면 1이라 1은 저장하지 않는다. */
+  sizes: Record<string, HomeCardSize>;
 }
 
 const STORAGE_KEY = 'gboard:home-layout';
 
-export const EMPTY_LAYOUT: HomeLayout = { order: [], hidden: [] };
+export const EMPTY_LAYOUT: HomeLayout = { order: [], hidden: [], sizes: {} };
 
 /** 기본 순서(defaults)에 저장된 순서(layout.order)를 얹어 실제 순서를 만든다. */
 export function resolveOrder(defaults: readonly string[], layout: HomeLayout): string[] {
@@ -60,9 +65,50 @@ export function moveCard(
   return { ...layout, order: next };
 }
 
+/**
+ * 끌어서 놓기 — `id`를 `targetId` 자리로.
+ *
+ * 앞으로 끌면 그 카드 **앞**에, 뒤로 끌면 그 카드 **뒤**에 선다. 정렬 목록의
+ * 흔한 규칙이고, 그래야 "저 카드 자리에 놓는다"는 손의 느낌과 맞는다.
+ */
+export function moveCardTo(
+  defaults: readonly string[],
+  layout: HomeLayout,
+  id: string,
+  targetId: string,
+): HomeLayout {
+  if (id === targetId) return layout;
+  const order = resolveOrder(defaults, layout);
+  const from = order.indexOf(id);
+  const to = order.indexOf(targetId);
+  if (from === -1 || to === -1) return layout;
+
+  const without = order.filter((item) => item !== id);
+  const targetIndex = without.indexOf(targetId);
+  const insertAt = from < to ? targetIndex + 1 : targetIndex;
+  return { ...layout, order: [...without.slice(0, insertAt), id, ...without.slice(insertAt)] };
+}
+
 export function setHidden(layout: HomeLayout, id: string, hidden: boolean): HomeLayout {
   const without = layout.hidden.filter((item) => item !== id);
   return { ...layout, hidden: hidden ? [...without, id] : without };
+}
+
+export function sizeOf(layout: HomeLayout, id: string): HomeCardSize {
+  return layout.sizes[id] ?? 1;
+}
+
+/** 한 칸 넓히거나 좁힌다. 1~3 밖이면 그대로. 1로 돌아오면 키를 지운다. */
+export function resize(layout: HomeLayout, id: string, delta: -1 | 1): HomeLayout {
+  const next = sizeOf(layout, id) + delta;
+  if (next < 1 || next > 3) return layout;
+
+  const { [id]: _dropped, ...rest } = layout.sizes;
+  return { ...layout, sizes: next === 1 ? rest : { ...rest, [id]: next as HomeCardSize } };
+}
+
+function isSize(value: unknown): value is HomeCardSize {
+  return value === 1 || value === 2 || value === 3;
 }
 
 export function loadLayout(): HomeLayout {
@@ -74,7 +120,16 @@ export function loadLayout(): HomeLayout {
     const record = parsed as Record<string, unknown>;
     const strings = (value: unknown): string[] =>
       Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
-    return { order: strings(record['order']), hidden: strings(record['hidden']) };
+
+    const sizes: Record<string, HomeCardSize> = {};
+    const rawSizes = record['sizes'];
+    if (typeof rawSizes === 'object' && rawSizes !== null) {
+      for (const [id, value] of Object.entries(rawSizes as Record<string, unknown>)) {
+        if (isSize(value) && value !== 1) sizes[id] = value;
+      }
+    }
+
+    return { order: strings(record['order']), hidden: strings(record['hidden']), sizes };
   } catch {
     return EMPTY_LAYOUT;
   }

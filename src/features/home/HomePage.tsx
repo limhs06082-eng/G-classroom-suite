@@ -8,8 +8,11 @@ import {
   ClipboardCheck,
   Download,
   EyeOff,
+  GripVertical,
   ListChecks,
+  Maximize2,
   MessageSquareText,
+  Minimize2,
   Monitor,
   Presentation,
   Quote,
@@ -20,7 +23,7 @@ import {
   UtensilsCrossed,
   Wand2,
 } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
@@ -46,9 +49,12 @@ import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
 import {
   loadLayout,
   moveCard,
+  moveCardTo,
+  resize,
   resolveOrder,
   saveLayout,
   setHidden,
+  sizeOf,
   type HomeLayout,
 } from './homeLayout';
 import { MealCard } from './MealCard';
@@ -109,13 +115,39 @@ export default function HomePage() {
     saveLayout(next);
   };
   const orderOf = new Map(resolveOrder(HOME_CARD_IDS, layout).map((id, index) => [id, index]));
+
+  /*
+   * 끌어서 옮기기. 손잡이에서만 시작한다 — 카드 전체를 끌 수 있게 하면
+   * 급식 카드의 글자를 긁어 고르거나 링크를 누르는 손과 부딪힌다. 위·아래
+   * 단추는 그대로 둔다. 터치 화면과 키보드에는 HTML 끌기가 없다.
+   */
+  const [draggingId, setDraggingId] = useState<HomeCardId | null>(null);
+  const [overId, setOverId] = useState<HomeCardId | null>(null);
+  const endDrag = (): void => {
+    setDraggingId(null);
+    setOverId(null);
+  };
+
   const slot = (id: HomeCardId) => ({
     id,
     label: HOME_CARD_LABELS[id],
     order: orderOf.get(id) ?? HOME_CARD_IDS.length,
     hidden: layout.hidden.includes(id),
+    size: sizeOf(layout, id),
+    dragging: draggingId === id,
+    dropTarget: overId === id && draggingId !== null && draggingId !== id,
     onMove: (delta: -1 | 1) => applyLayout(moveCard(HOME_CARD_IDS, layout, id, delta)),
+    onResize: (delta: -1 | 1) => applyLayout(resize(layout, id, delta)),
     onHide: () => applyLayout(setHidden(layout, id, true)),
+    onDragStart: () => setDraggingId(id),
+    onDragEnd: endDrag,
+    onDragOver: () => setOverId((current) => (current === id ? current : id)),
+    onDropOn: () => {
+      if (draggingId !== null && draggingId !== id) {
+        applyLayout(moveCardTo(HOME_CARD_IDS, layout, draggingId, id));
+      }
+      endDrag();
+    },
   });
 
   const groups = data.groups.filter((group) => group.classId === activeClass?.id);
@@ -733,37 +765,103 @@ export function TodayMeal() {
   );
 }
 
+/** 칸 수 → 그리드 클래스. 그리드는 sm 2칸·lg 3칸이라 그 위에서만 넓어진다. */
+const SIZE_CLASS: Record<1 | 2 | 3, string> = {
+  1: '',
+  2: 'sm:col-span-2',
+  3: 'sm:col-span-2 lg:col-span-3',
+};
+
+const SLOT_BUTTON = 'rounded bg-surface/90 p-0.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400';
+
 /**
- * 홈 카드 자리. 순서는 CSS `order`, 숨김은 `hidden` 속성으로 — 카드 자체는
- * 모른다. 조작(위·아래·숨기기)은 마우스를 올렸을 때만 오른쪽 위에 드러난다.
- * 늘 보이면 열 장의 카드에 서른 개의 작은 단추가 깔린다.
+ * 홈 카드 자리. 순서는 CSS `order`, 숨김은 `hidden` 속성, 크기는 col-span으로 —
+ * 카드 자체는 모른다. 조작(끌기·위·아래·좁히기·넓히기·숨기기)은 마우스를
+ * 올렸을 때만 오른쪽 위에 드러난다. 늘 보이면 열 장의 카드에 예순 개의
+ * 작은 단추가 깔린다.
  */
 function HomeSlot({
+  id,
   label,
   order,
   hidden,
+  size,
+  dragging,
+  dropTarget,
   onMove,
+  onResize,
   onHide,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDropOn,
   children,
 }: {
   id: string;
   label: string;
   order: number;
   hidden: boolean;
+  size: 1 | 2 | 3;
+  dragging: boolean;
+  dropTarget: boolean;
   onMove: (delta: -1 | 1) => void;
+  onResize: (delta: -1 | 1) => void;
   onHide: () => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onDragOver: () => void;
+  onDropOn: () => void;
   children: ReactNode;
 }) {
+  const slotRef = useRef<HTMLDivElement>(null);
+
   return (
-    <div style={{ order }} hidden={hidden} className="group/slot relative">
+    <div
+      ref={slotRef}
+      style={{ order }}
+      hidden={hidden}
+      aria-label={`${label} 카드 자리`}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        onDragOver();
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        onDropOn();
+      }}
+      className={cx(
+        'group/slot relative rounded-card transition-opacity',
+        SIZE_CLASS[size],
+        dragging && 'opacity-40',
+        dropTarget && 'ring-2 ring-brand-400 ring-offset-2',
+      )}
+    >
       {children}
       <div className="absolute top-2 right-2 flex gap-0.5 opacity-0 transition-opacity group-hover/slot:opacity-100 focus-within:opacity-100">
+        <button
+          type="button"
+          draggable
+          onDragStart={(event) => {
+            event.dataTransfer.setData('text/plain', id);
+            event.dataTransfer.effectAllowed = 'move';
+            // 끌리는 그림은 손잡이가 아니라 카드 전체다.
+            if (slotRef.current !== null) event.dataTransfer.setDragImage(slotRef.current, 24, 24);
+            onDragStart();
+          }}
+          onDragEnd={onDragEnd}
+          aria-label={`${label} 카드 끌기`}
+          title="끌어서 옮기기"
+          className={cx(SLOT_BUTTON, 'cursor-grab active:cursor-grabbing')}
+        >
+          <GripVertical className="size-3.5" aria-hidden />
+        </button>
         <button
           type="button"
           onClick={() => onMove(-1)}
           aria-label={`${label} 카드 앞으로`}
           title="앞으로"
-          className="rounded bg-surface/90 p-0.5 text-slate-400 hover:text-slate-700"
+          className={SLOT_BUTTON}
         >
           <ChevronUp className="size-3.5" aria-hidden />
         </button>
@@ -772,16 +870,36 @@ function HomeSlot({
           onClick={() => onMove(1)}
           aria-label={`${label} 카드 뒤로`}
           title="뒤로"
-          className="rounded bg-surface/90 p-0.5 text-slate-400 hover:text-slate-700"
+          className={SLOT_BUTTON}
         >
           <ChevronDown className="size-3.5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => onResize(-1)}
+          disabled={size === 1}
+          aria-label={`${label} 카드 좁히기`}
+          title="좁히기"
+          className={SLOT_BUTTON}
+        >
+          <Minimize2 className="size-3.5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => onResize(1)}
+          disabled={size === 3}
+          aria-label={`${label} 카드 넓히기`}
+          title="넓히기"
+          className={SLOT_BUTTON}
+        >
+          <Maximize2 className="size-3.5" aria-hidden />
         </button>
         <button
           type="button"
           onClick={onHide}
           aria-label={`${label} 카드 숨기기`}
           title="숨기기"
-          className="rounded bg-surface/90 p-0.5 text-slate-400 hover:text-slate-700"
+          className={SLOT_BUTTON}
         >
           <EyeOff className="size-3.5" aria-hidden />
         </button>
