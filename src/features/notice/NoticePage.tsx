@@ -320,6 +320,17 @@ export default function NoticePage() {
             </li>
           ))}
         </ol>
+        {/* 항목으로 넣지 않은 일정도 종이에는 나간다. 넣은 것은 위에 이미 있으니 두 번 찍지 않는다. */}
+        {eventPhrases.length > 0 ? (
+          <section className="print-keep mt-4">
+            <h2 className="mb-1 text-sm font-semibold">다가오는 일정</h2>
+            <ul className="flex flex-col gap-1 text-base">
+              {eventPhrases.map(({ id, text: phrase }) => (
+                <li key={id}>· {phrase}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </PrintLayout>
     </div>
   );

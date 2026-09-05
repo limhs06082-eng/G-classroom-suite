@@ -78,4 +78,24 @@ describe('알림장 — 학급 일정 문구', () => {
       screen.queryByRole('button', { name: '+ 내일 현장학습 — 도시락' }),
     ).not.toBeInTheDocument();
   });
+
+  it('인쇄에는 다가오는 일정이 같이 찍히고, 항목이 되면 일정 묶음에서는 빠진다', async () => {
+    const user = userEvent.setup();
+    await renderPage();
+
+    const printRoot = (): HTMLElement => {
+      const root = document.getElementById('print-root');
+      if (root === null) throw new Error('print-root 없음');
+      return root;
+    };
+
+    expect(within(printRoot()).getByText('다가오는 일정')).toBeInTheDocument();
+    expect(within(printRoot()).getByText(/내일 현장학습 — 도시락/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '+ 내일 현장학습 — 도시락' }));
+
+    // 항목으로 찍히니 일정 묶음 자체가 사라진다 — 두 번 찍지 않는다.
+    expect(within(printRoot()).queryByText('다가오는 일정')).not.toBeInTheDocument();
+    expect(within(printRoot()).getByText(/1\. 내일 현장학습 — 도시락/)).toBeInTheDocument();
+  });
 });
