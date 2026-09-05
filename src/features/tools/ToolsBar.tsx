@@ -1,12 +1,18 @@
 import { Bell, Dices, EyeOff, Hand, Maximize2, Pause, Play, RotateCcw, Timer as TimerIcon, Volume2, VolumeX, X } from 'lucide-react';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 
 import { isMuted, setMuted, subscribeMuted } from '../../shared/fx/sound';
 import { Button, cx, Modal } from '../../shared/ui';
 import { PickerModal } from './PickerModal';
 import { useTools, useToolsTimer } from './ToolsContext';
-import { VoteModal } from './VoteModal';
+
+/*
+ * 투표 창은 따로 실어 온다. 툴바는 첫 청크에 들어가는데, 큰 화면 하나가
+ * 더 붙으면 웹 첫 청크가 한도(400KB)를 넘는다. lazy라도 늘 마운트해 두면
+ * 집계는 남는다 — 처음 그릴 때 한 번 받아 오고 그 뒤로는 같은 컴포넌트다.
+ */
+const VoteModal = lazy(() => import('./VoteModal').then((m) => ({ default: m.VoteModal })));
 import { formatDuration } from './useTimer';
 
 /**
@@ -78,7 +84,9 @@ export function ToolsBar() {
       */}
       {openTool === 'picker' ? <PickerModal onClose={close} /> : null}
       {/* 투표는 늘 마운트 — 명단을 안 읽고, 집계가 닫았다 열어도 남아야 한다. */}
-      <VoteModal open={openTool === 'vote'} onClose={close} />
+      <Suspense fallback={null}>
+        <VoteModal open={openTool === 'vote'} onClose={close} />
+      </Suspense>
     </>
   );
 }

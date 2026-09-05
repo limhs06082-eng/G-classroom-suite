@@ -132,5 +132,7 @@ describe('알림장 — 학급 일정 문구', () => {
     expect(within(root).getByRole('columnheader', { name: /^월/ })).toBeInTheDocument();
     // 내일 현장학습은 이번 주 안(오늘이 금·토·일이면 다음 주)일 수 있다 — 어느 쪽이든 하루 알림장은 내려가 있다.
     expect(within(root).queryByText(/알림장$/)).not.toBeInTheDocument();
+    // 인쇄 창은 80ms 뒤 두 프레임 뒤에 열린다. 시험이 끝난 뒤에 window.print가 불리면 안 된다.
+    await new Promise((resolve) => setTimeout(resolve, 250));
   });
 });
