@@ -18,7 +18,7 @@ import { useActiveClass, useSuite } from '../../shared/roster/SuiteDataProvider'
 import { useToday } from '../../shared/state/useToday';
 import { Badge, Button, Card, EmptyState, PrintLayout, usePrint, useToast } from '../../shared/ui';
 import { openBoard } from '../../shared/window/openBoard';
-import { ddayLabel, daysUntil, pastEvents, upcomingEvents } from './eventsCore';
+import { ddayLabel, daysUntil, eventPhrase, eventsSoon, pastEvents, upcomingEvents } from './eventsCore';
 import { assignmentsDueSoon, frequentPhrases, itemsFor, setItems } from './noticeCore';
 
 /**
@@ -69,21 +69,30 @@ export default function NoticePage() {
   const phrases = frequentPhrases(data.notices, classId, date).filter(
     (text) => !items.some((item) => item.text === text),
   );
+  // 이레 안 학급 일정. 종례에서 "내일 현장학습, 도시락"을 빠뜨리지 않게 칩으로 내민다.
+  const eventPhrases = eventsSoon(data.classEvents, classId, date, 7)
+    .map((event) => ({ id: event.id, text: eventPhrase(date, event) }))
+    .filter(({ text: phrase }) => !items.some((item) => item.text === phrase));
 
   const replaceItems = (next: typeof items): void => {
     update((suite) => ({ ...suite, notices: setItems(suite.notices, classId, date, next) }));
   };
 
-  const addItem = (): void => {
-    const trimmed = text.trim();
-    if (trimmed === '') return;
+  /** 한 줄 덧붙이기. 목록은 suite에서 다시 읽는다 — 칩을 연달아 눌러도 한 줄이 안 사라진다. */
+  const appendItem = (value: string): void => {
     update((suite) => ({
       ...suite,
       notices: setItems(suite.notices, classId, date, [
         ...itemsFor(suite.notices, classId, date),
-        { id: createId(), text: trimmed },
+        { id: createId(), text: value },
       ]),
     }));
+  };
+
+  const addItem = (): void => {
+    const trimmed = text.trim();
+    if (trimmed === '') return;
+    appendItem(trimmed);
     setText('');
   };
 
@@ -187,24 +196,24 @@ export default function NoticePage() {
           </Button>
         </div>
 
+        {/* 다가오는 학급 일정 — 누르면 "내일 현장학습 — 도시락"이 한 줄로 들어간다. */}
+        {eventPhrases.length > 0 ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1">
+            <span className="text-xs text-slate-500">다가오는 일정</span>
+            {eventPhrases.map(({ id, text: phrase }) => (
+              <button key={id} type="button" onClick={() => appendItem(phrase)}>
+                <Badge tone="info">+ {phrase}</Badge>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         {/* 자주 쓰는 문구 — 누르면 바로 한 줄 추가. 매주 치던 '우유갑 정리'를 다시 안 친다. */}
         {phrases.length > 0 ? (
           <div className="mt-2 flex flex-wrap items-center gap-1">
             <span className="text-xs text-slate-500">자주 쓰는 문구</span>
             {phrases.map((phrase) => (
-              <button
-                key={phrase}
-                type="button"
-                onClick={() =>
-                  update((suite) => ({
-                    ...suite,
-                    notices: setItems(suite.notices, classId, date, [
-                      ...itemsFor(suite.notices, classId, date),
-                      { id: createId(), text: phrase },
-                    ]),
-                  }))
-                }
-              >
+              <button key={phrase} type="button" onClick={() => appendItem(phrase)}>
                 <Badge tone="neutral">+ {phrase}</Badge>
               </button>
             ))}
@@ -216,7 +225,7 @@ export default function NoticePage() {
             아직 적은 것이 없습니다. 준비물·안내 사항을 한 줄씩 적어 주세요.
           </p>
         ) : (
-          <ol className="mt-3 flex flex-col gap-1">
+          <ol className="mt-3 flex flex-col gap-1" aria-label="알림장 항목">
             {items.map((item, index) => (
               <li
                 key={item.id}

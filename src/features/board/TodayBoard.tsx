@@ -3,7 +3,7 @@ import { isDesktop } from '../../shared/platform/target';
 import { useNow } from '../../shared/state/useNow';
 import { useToday } from '../../shared/state/useToday';
 import { cx } from '../../shared/ui';
-import { daysUntil, ddayLabel, upcomingEvents } from '../notice/eventsCore';
+import { ddayLabel, eventsSoon } from '../notice/eventsCore';
 import { assignmentsDueSoon, itemsFor } from '../notice/noticeCore';
 import { hmOf, nowState } from '../now/nowCore';
 import { useDuty } from '../duty/useDuty';
@@ -169,9 +169,7 @@ function EventsSection({ date }: { date: string }) {
   const classId = activeClass?.id ?? '';
 
   // 사흘 안까지만. 학급 TV에 한 달 뒤 운동회까지 늘어놓으면 오늘 것이 묻힌다.
-  const soon = upcomingEvents(data.classEvents, classId, date).filter(
-    (event) => daysUntil(date, event.date) <= 3,
-  );
+  const soon = eventsSoon(data.classEvents, classId, date, 3);
   if (soon.length === 0) return null;
 
   return (

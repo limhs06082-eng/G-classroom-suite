@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { daysUntil, ddayLabel, eventsOn, pastEvents, upcomingEvents } from '../../src/features/notice/eventsCore';
+import {
+  daysUntil,
+  ddayLabel,
+  eventPhrase,
+  eventsOn,
+  eventsSoon,
+  pastEvents,
+  shortDate,
+  upcomingEvents,
+} from '../../src/features/notice/eventsCore';
 import { createClassEvent } from '../../src/shared/domain/factories';
 
 const NOW = '2026-08-01T00:00:00.000Z';
@@ -39,5 +48,31 @@ describe('upcomingEvents · eventsOn · pastEvents', () => {
   it('그날 일정과 지난 일정을 가른다', () => {
     expect(eventsOn(events, CLASS, TODAY).map((e) => e.id)).toEqual(['e-today']);
     expect(pastEvents(events, CLASS, TODAY).map((e) => e.id)).toEqual(['e-past']);
+  });
+});
+
+describe('shortDate · eventsSoon · eventPhrase — 알림장에 넣을 한 줄', () => {
+  it('짧은 날짜는 M/D(요일)이다', () => {
+    expect(shortDate('2026-09-01')).toBe('9/1(화)');
+    expect(shortDate('2026-08-29')).toBe('8/29(토)');
+  });
+
+  it('며칠 안 일정만 가까운 순으로 꼽는다', () => {
+    expect(eventsSoon(events, CLASS, TODAY, 3).map((e) => e.id)).toEqual(['e-today', 'e-soon']);
+    expect(eventsSoon(events, CLASS, TODAY, 0).map((e) => e.id)).toEqual(['e-today']);
+  });
+
+  it('오늘·내일은 말로, 그 뒤는 날짜로 시작하고 메모는 대시 뒤에 붙는다', () => {
+    const base = { classId: CLASS, title: '현장학습' };
+
+    expect(eventPhrase(TODAY, createClassEvent({ ...base, date: '2026-08-29' }, NOW))).toBe(
+      '오늘 현장학습',
+    );
+    expect(
+      eventPhrase(TODAY, createClassEvent({ ...base, date: '2026-08-30', note: '도시락' }, NOW)),
+    ).toBe('내일 현장학습 — 도시락');
+    expect(
+      eventPhrase(TODAY, createClassEvent({ ...base, date: '2026-09-01', note: '  ' }, NOW)),
+    ).toBe('9/1(화) 현장학습');
   });
 });

@@ -61,3 +61,35 @@ export function pastEvents(
     .filter((event) => event.classId === classId && event.date < today)
     .sort((a, b) => b.date.localeCompare(a.date));
 }
+
+const WEEKDAY_SHORT = ['일', '월', '화', '수', '목', '금', '토'] as const;
+
+/** `"2026-09-01"` → `"9/1(화)"`. 알림장 한 줄에 들어가는 짧은 날짜. */
+export function shortDate(date: string): string {
+  const day = localDate(date);
+  return `${day.getMonth() + 1}/${day.getDate()}(${WEEKDAY_SHORT[day.getDay()] ?? ''})`;
+}
+
+/** 오늘부터 withinDays일 안(오늘 포함)의 일정, 가까운 순. 칠판은 3일, 알림장은 7일을 본다. */
+export function eventsSoon(
+  events: readonly ClassEvent[],
+  classId: string,
+  today: string,
+  withinDays: number,
+): ClassEvent[] {
+  return upcomingEvents(events, classId, today).filter(
+    (event) => daysUntil(today, event.date) <= withinDays,
+  );
+}
+
+/**
+ * 알림장에 그대로 넣을 한 줄. "내일 현장학습 — 도시락"
+ *
+ * 종례에서 읽어 주는 글이라 D-3보다 '내일'이 낫고, 그 뒤는 날짜가 낫다.
+ */
+export function eventPhrase(today: string, event: ClassEvent): string {
+  const days = daysUntil(today, event.date);
+  const when = days === 0 ? '오늘' : days === 1 ? '내일' : shortDate(event.date);
+  const note = event.note.trim();
+  return note === '' ? `${when} ${event.title}` : `${when} ${event.title} — ${note}`;
+}
