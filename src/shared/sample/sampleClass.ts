@@ -96,9 +96,13 @@ export function createSampleClass(data: SuiteData, today: string, now: string): 
   };
 
   // 학생 24명 — 명단 붙여넣기와 같은 길로 넣어 프로필까지 같이 선다.
+  const birthYear = todayYear - 9;
+  const leap = (birthYear % 4 === 0 && birthYear % 100 !== 0) || birthYear % 400 === 0;
   const rows: ParsedRosterRow[] = NAMES.map((name, index) => {
     const offset = index === 0 ? 0 : index === 1 ? 3 : index * 13 - 150;
-    const birthday = `${todayYear - 9}${shift(today, offset).slice(4)}`;
+    const monthDay = shift(today, offset).slice(5);
+    // 태어난 해가 평년이면 2월 29일은 없는 날이다.
+    const birthday = `${birthYear}-${monthDay === '02-29' && !leap ? '02-28' : monthDay}`;
     return { line: index + 1, number: index + 1, name, birthday };
   });
   next = applyRosterImport(next, classId, rows, 'replace', now);
@@ -273,9 +277,10 @@ export function removeSampleClass(data: SuiteData): SuiteData {
   if (orphanSampleTerms.size === 0) return next;
 
   const terms = next.terms.filter((term) => !orphanSampleTerms.has(term.id));
+  // 보던 학기가 사라졌으면, removeClassData가 옮겨 둔 학급의 학기를 따른다 — 학급과 학기가 어긋나면 검사가 학급을 지운다.
   const activeTermId =
     next.activeTermId !== null && orphanSampleTerms.has(next.activeTermId)
-      ? (terms[0]?.id ?? null)
+      ? (next.classRooms.find((room) => room.id === next.activeClassId)?.termId ?? terms[0]?.id ?? null)
       : next.activeTermId;
   return { ...next, terms, activeTermId };
 }

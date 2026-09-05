@@ -76,8 +76,10 @@ export function updateStudent(
     students: data.students.map((student) => {
       if (student.id !== studentId) return student;
       const next = { ...student, ...patch, updatedAt: now };
-      // 생일을 비우면 키를 지운다. undefined를 남기면 백업 JSON에는 안 실리지만 자료 모양이 흐트러진다.
-      if (patch.birthday === undefined || patch.birthday === '') delete next.birthday;
+      // 생일 칸을 **일부러** 비웠을 때만 지운다. 이름만 고치는 호출이 생일을 지우면 안 된다.
+      if ('birthday' in patch && (patch.birthday === undefined || patch.birthday === '')) {
+        delete next.birthday;
+      }
       return next;
     }),
   };
@@ -194,7 +196,9 @@ export function planRosterImport(
     }
 
     matchedIds.add(match.id);
-    if (match.number !== row.number || match.name !== row.name) {
+    // 생일 열이 새로 왔으면 그것도 고칠 거리다 — 명단이 이미 있는 반에 NEIS 생년월일을 붙여 넣는 길.
+    const birthdayChanged = row.birthday !== undefined && row.birthday !== match.birthday;
+    if (match.number !== row.number || match.name !== row.name || birthdayChanged) {
       updated.push({ student: match, row });
     }
     if (match.status === 'inactive') {

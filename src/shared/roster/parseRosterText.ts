@@ -61,6 +61,8 @@ function readDate(token: string): { valid: string | null } | null {
     const month = Number(match[2]);
     const day = Number(match[3]);
     if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return { valid: null };
+    // 4월 31일처럼 없는 날은 Date가 다음 달로 굴린다 — 그런 값은 생일이 아니다.
+    if (new Date(year, month - 1, day).getMonth() !== month - 1) return { valid: null };
     return { valid: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` };
   }
   return null;
