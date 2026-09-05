@@ -120,12 +120,15 @@ export function draftBehaviorComment(
   if (summary.dutyCount > 0) parts.push(`당번 활동을 ${summary.dutyCount}회 맡아 수행함.`);
 
   // 과제
+  // "빠짐없이"는 정말 다 냈을 때만. 9/10에 빠짐없이라고 적으면 나이스에 거짓이 들어간다.
   const { total, submitted } = summary.assignments;
   if (total > 0) {
     parts.push(
-      submitted / total >= 0.9
+      submitted === total
         ? `과제를 빠짐없이 성실히 제출함(${submitted}/${total}).`
-        : `과제 ${total}건 중 ${submitted}건을 제출함.`,
+        : submitted / total >= 0.9
+          ? `과제를 대부분 성실히 제출함(${submitted}/${total}).`
+          : `과제 ${total}건 중 ${submitted}건을 제출함.`,
     );
   }
 

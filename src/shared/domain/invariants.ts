@@ -862,16 +862,7 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       return [{ ...observation, classId: student.classId }];
     });
 
-    if (dropped > 0) {
-      repairs.push({
-        code: 'ORPHAN_CLASS_RECORD',
-        severity: 'info',
-        entityIds: [],
-        message: `없어진 학급·학생을 가리키던 출결·알림장·쿠폰·관찰 기록 ${dropped}건을 정리했습니다.`,
-      });
-    }
-
-    // 행동특성 의견도 관찰 기록처럼 학생을 따라간다.
+    // 행동특성 의견도 관찰 기록처럼 학생을 따라간다. 알림(dropped) 앞에서 센다.
     const behaviorComments = input.behaviorComments.flatMap((comment) => {
       const student = studentById.get(comment.studentId);
       if (student === undefined) {
@@ -881,6 +872,15 @@ export function validateAndRepair(input: SuiteData, now: string = new Date().toI
       if (student.classId === comment.classId) return [comment];
       return [{ ...comment, classId: student.classId }];
     });
+
+    if (dropped > 0) {
+      repairs.push({
+        code: 'ORPHAN_CLASS_RECORD',
+        severity: 'info',
+        entityIds: [],
+        message: `없어진 학급·학생을 가리키던 출결·알림장·쿠폰·관찰·의견 기록 ${dropped}건을 정리했습니다.`,
+      });
+    }
 
     return {
       attendanceRecords,

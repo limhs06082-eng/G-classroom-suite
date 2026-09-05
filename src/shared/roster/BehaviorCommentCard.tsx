@@ -26,11 +26,14 @@ export function BehaviorCommentCard({ student, range }: { student: Student; rang
   const [text, setText] = useState(saved);
   const [askReplace, setAskReplace] = useState(false);
 
-  // 다른 학생으로 옮겨 가면 글상자도 그 학생 것으로.
+  /*
+   * 다른 학생으로 옮겨 가거나 저장된 글이 바깥(다른 창·기기)에서 바뀌면
+   * 글상자도 따라간다. 아직 칸을 안 떠난 타이핑은 그때 덮인다 — 이 앱의
+   * 다른 blur 저장 칸들과 같은 한계다.
+   */
   useEffect(() => {
-    setText(commentOf(data.behaviorComments, student.classId, student.id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [student.id]);
+    setText(saved);
+  }, [student.id, saved]);
 
   const persist = (value: string): void => {
     update((suite) => ({
@@ -92,7 +95,10 @@ export function BehaviorCommentCard({ student, range }: { student: Student; rang
       <textarea
         value={text}
         onChange={(event) => setText(event.target.value)}
-        onBlur={() => persist(text)}
+        // 안 바뀌었으면 저장하지 않는다 — 칸을 스쳐 지나갈 때마다 쓰기가 나가면 안 된다.
+        onBlur={() => {
+          if (text.trim() !== saved) persist(text);
+        }}
         rows={6}
         aria-label={`${student.name} 행동특성 및 종합의견`}
         placeholder="[초안 넣기]를 누르거나 직접 적어 주세요."

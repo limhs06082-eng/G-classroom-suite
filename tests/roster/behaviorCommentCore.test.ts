@@ -136,9 +136,17 @@ describe('draftBehaviorComment — 기록에서 초안', () => {
     expect(draftBehaviorComment(absent, 'stu-1', RANGE)).not.toContain('개근');
   });
 
-  it('과제를 다 내지 않았으면 건수로 적는다', () => {
+  it('과제를 다 내지 않았으면 건수로 적고, 거의 다 냈으면 "대부분"이다 — "빠짐없이"는 전부일 때만', () => {
     const partial = { ...seeded(), submissions: [createSubmission('a-1', 'stu-1', 'submitted', NOW)] };
     expect(draftBehaviorComment(partial, 'stu-1', RANGE)).toContain('과제 2건 중 1건을 제출함.');
+
+    const ten = Array.from({ length: 10 }, (_, i) =>
+      createAssignment({ id: `a-${i}`, classId: CLASS, title: `과제${i}`, dueDate: '2026-04-01' }, NOW),
+    );
+    const nine = ten.slice(0, 9).map((a) => createSubmission(a.id, 'stu-1', 'submitted', NOW));
+    const mostly = { ...seeded(), assignments: ten, submissions: nine };
+    expect(draftBehaviorComment(mostly, 'stu-1', RANGE)).toContain('과제를 대부분 성실히 제출함(9/10).');
+    expect(draftBehaviorComment(mostly, 'stu-1', RANGE)).not.toContain('빠짐없이');
   });
 
   it('아무 기록이 없으면 빈 글이다', () => {
