@@ -15,6 +15,7 @@ import { TauriHttpClient } from '../../shared/external/TauriHttpClient';
 import { isDesktop } from '../../shared/platform/target';
 import { useSuite } from '../../shared/roster/SuiteDataProvider';
 import { parseSuiteData } from '../../shared/storage/schema';
+import { isEmptyLayout } from '../home/homeLayout';
 import { formatBytes, measureDataSize } from '../../shared/storage/dataSize';
 import type { BackupSummary } from '../../shared/storage/StorageAdapter';
 import { AccountPanel } from '../../shared/account/AccountPanel';
@@ -417,6 +418,8 @@ function BackupTab() {
       const { data: parsed } = parseSuiteData(JSON.parse(text));
       const schoolName = parsed.profile.schoolName;
       summary = `${schoolName === '' ? '학교 미지정' : schoolName} · 학급 ${parsed.classRooms.length}개 · 학생 ${parsed.students.length}명`;
+      // 홈 배치도 이 파일에 따라온다는 것을 알린다 — 다른 컴퓨터에서 가져올 때 놀라지 않게.
+      if (!isEmptyLayout(parsed.homeLayout)) summary += ' · 홈 배치 포함';
     } catch {
       // JSON도 아니면 importJson이 거절한다. 미리보기만 포기한다.
     }

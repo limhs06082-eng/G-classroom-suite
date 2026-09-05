@@ -20,6 +20,7 @@ import {
   notesInRange,
   rangeCounts,
   REASON_LABELS,
+  reasonCounts,
   reasonOf,
   setConfirmed,
   setNote,
@@ -434,6 +435,19 @@ function MonthlyTab({ today }: { today: string }) {
         : new Map<string, never[]>(),
     [data.attendanceRecords, classId, termMode, term],
   );
+  // 상태 칸 아래 "질병 1 · 기타 1". 나이스의 분류별 칸에 그대로 옮긴다.
+  const reasons = useMemo(
+    () =>
+      termMode && term !== null
+        ? reasonCounts(data.attendanceRecords, classId, term.startDate, term.endDate)
+        : new Map<string, never>(),
+    [data.attendanceRecords, classId, termMode, term],
+  );
+  const breakdownOf = (studentId: string, status: AttendanceStatus): string =>
+    ATTENDANCE_REASONS.flatMap((reason) => {
+      const count = reasons.get(studentId)?.[status][reason] ?? 0;
+      return count === 0 ? [] : [`${REASON_LABELS[reason]} ${count}`];
+    }).join(' · ');
   const noteLines = (studentId: string): { key: string; text: string }[] =>
     (notes.get(studentId) ?? []).map((item) => ({
       key: `${item.date}-${item.status}`,
@@ -519,6 +533,9 @@ function MonthlyTab({ today }: { today: string }) {
                   return (
                     <td key={status} data-numeric className="border border-black px-2 py-1 text-center">
                       {value === 0 ? '' : value}
+                      {termMode && value > 0 ? (
+                        <span className="block text-[10px] font-normal">{breakdownOf(student.id, status)}</span>
+                      ) : null}
                     </td>
                   );
                 })}
@@ -555,7 +572,16 @@ function MonthlyTab({ today }: { today: string }) {
               align: 'center' as const,
               render: (student: Student) => {
                 const value = counts.get(student.id)?.[status] ?? 0;
-                return value === 0 ? '' : value;
+                if (value === 0) return '';
+                const breakdown = termMode ? breakdownOf(student.id, status) : '';
+                return breakdown === '' ? (
+                  value
+                ) : (
+                  <span className="inline-flex flex-col items-center leading-tight">
+                    <span>{value}</span>
+                    <span className="text-[10px] text-slate-500">{breakdown}</span>
+                  </span>
+                );
               },
             })),
             ...(termMode

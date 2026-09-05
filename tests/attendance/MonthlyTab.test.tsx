@@ -83,7 +83,8 @@ describe('출결 집계 — 학기 전체', () => {
     const row = screen.getAllByRole('table')[0]?.querySelector('tbody tr') ?? null;
     expect(row).not.toBeNull();
     expect(within(row as HTMLElement).getByText('김하나')).toBeInTheDocument();
-    expect(within(row as HTMLElement).getByText('1', { selector: 'td' })).toBeInTheDocument();
+    // 학기 모드의 칸은 합계 위에 분류 줄이 붙어 span으로 나뉜다. 글자 '1'인 요소만 찾는다.
+    expect(within(row as HTMLElement).getByText('1')).toBeInTheDocument();
   });
 
   it('학기 전체에는 사유 열이 있고, 달 모드에는 없다', async () => {
@@ -97,5 +98,7 @@ describe('출결 집계 — 학기 전체', () => {
 
     expect(screen.getAllByRole('columnheader', { name: '사유' }).length).toBeGreaterThan(0);
     expect(screen.getAllByText('3/5 결석(질병): 병원').length).toBeGreaterThan(0);
+    // 결석 칸 아래 분류별 합계 — 나이스의 '질병 결석' 칸에 그대로 옮긴다.
+    expect(screen.getAllByText('질병 1').length).toBeGreaterThan(0);
   });
 });

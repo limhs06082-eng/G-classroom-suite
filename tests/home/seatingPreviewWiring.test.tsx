@@ -32,6 +32,18 @@ function seeded(): SuiteData {
       createStudent({ id: 'stu-1', classId: 'class-1', number: 1, name: '김하나' }, T0),
       createStudent({ id: 'stu-2', classId: 'class-1', number: 2, name: '이두리' }, T0),
     ],
+    groups: [
+      {
+        id: 'g-1',
+        classId: 'class-1',
+        name: '1모둠',
+        color: 'sky',
+        studentIds: ['stu-1'],
+        leaderId: null,
+        createdAt: T0,
+        updatedAt: T0,
+      },
+    ],
     seatingStates: [
       {
         classId: 'class-1',
@@ -89,6 +101,8 @@ describe('자리·모둠 카드 미리보기', () => {
     expect(within(slot).getByText('김하나')).toBeInTheDocument();
     // 사용 안 함 자리는 그대로 표시된다 — 자리표 모양이 실제와 같아야 한다.
     expect(within(slot).getByLabelText('2행 2열, 사용 안 함')).toBeInTheDocument();
+    // 모둠 색이 칸에 묻는다. 자리 화면에서 보던 그 색이다.
+    expect(within(slot).getByLabelText('1행 1열, 1번 김하나').className).toContain('bg-sky-50');
 
     await user.click(screen.getByRole('button', { name: '자리·모둠 카드 좁히기' }));
     expect(within(slot).queryByText('김하나')).not.toBeInTheDocument();

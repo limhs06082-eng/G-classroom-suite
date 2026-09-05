@@ -347,6 +347,32 @@ export function notesInRange(
   return notes;
 }
 
+/**
+ * 기간 안 학생별·상태별 분류 합계. 분류 없는 항목은 세지 않는다 — 합계는
+ * rangeCounts가 이미 센다. 나이스의 "질병 결석 n" 칸에 그대로 옮겨 적는다.
+ */
+export function reasonCounts(
+  records: readonly AttendanceRecord[],
+  classId: string,
+  from: string,
+  to: string,
+): Map<string, Record<AttendanceStatus, Partial<Record<AttendanceReason, number>>>> {
+  const counts = new Map<string, Record<AttendanceStatus, Partial<Record<AttendanceReason, number>>>>();
+
+  for (const record of records) {
+    if (record.classId !== classId || record.date < from || record.date > to) continue;
+    for (const entry of record.entries) {
+      if (entry.reason === undefined) continue;
+      const bucket = counts.get(entry.studentId) ?? { absent: {}, late: {}, early: {}, fieldTrip: {} };
+      const byReason = bucket[entry.status];
+      byReason[entry.reason] = (byReason[entry.reason] ?? 0) + 1;
+      counts.set(entry.studentId, bucket);
+    }
+  }
+
+  return counts;
+}
+
 /** `"2026-03-05"` → `"3/5"`. 표 한 칸에 들어가는 짧은 날짜. */
 export function monthDay(date: string): string {
   const [, month = '', day = ''] = date.split('-');

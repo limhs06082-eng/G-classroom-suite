@@ -8,6 +8,7 @@ import {
   nextStatus,
   notesInRange,
   rangeCounts,
+  reasonCounts,
   reasonOf,
   setReason,
   setConfirmed,
@@ -232,5 +233,30 @@ describe('setReason · reasonOf — 사유 분류', () => {
   it('기록이 없는 학생에게는 분류를 찍을 수 없다 — 출석에는 사유가 없다', () => {
     const records = setReason([], CLASS, DATE, 'stu-1', 'illness');
     expect(records).toEqual([]);
+  });
+});
+
+describe('reasonCounts — 상태별 분류 합계', () => {
+  it('상태마다 분류별로 세고, 분류 없는 것은 세지 않는다', () => {
+    let records: AttendanceRecord[] = [];
+    records = setStatus(records, CLASS, '2026-03-05', 'stu-1', 'absent');
+    records = setReason(records, CLASS, '2026-03-05', 'stu-1', 'illness');
+    records = setStatus(records, CLASS, '2026-03-06', 'stu-1', 'absent'); // 분류 없음
+    records = setStatus(records, CLASS, '2026-03-07', 'stu-1', 'late');
+    records = setReason(records, CLASS, '2026-03-07', 'stu-1', 'other');
+    records = setStatus(records, CLASS, '2026-03-12', 'stu-1', 'absent');
+    records = setReason(records, CLASS, '2026-03-12', 'stu-1', 'illness');
+    records = setStatus(records, CLASS, '2026-08-01', 'stu-1', 'absent'); // 기간 밖
+    records = setReason(records, CLASS, '2026-08-01', 'stu-1', 'illness');
+
+    const counts = reasonCounts(records, CLASS, '2026-03-01', '2026-07-20');
+
+    expect(counts.get('stu-1')).toEqual({
+      absent: { illness: 2 },
+      late: { other: 1 },
+      early: {},
+      fieldTrip: {},
+    });
+    expect(counts.has('stu-2')).toBe(false);
   });
 });
