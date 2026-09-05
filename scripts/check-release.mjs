@@ -115,6 +115,35 @@ if (tag !== '' && tag.replace(/^v/, '') !== String(conf.version)) {
   fail('태그와 판 번호가 다르다', `  태그 ${tag} · tauri.conf.json ${String(conf.version)}`);
 }
 
+/*
+ * 릴리스 노트. `docs/releases/v<판>.md` 한 파일이 GitHub 릴리스 본문과
+ * 앱의 "새 판" 알림 문구가 된다. 1행은 한 줄 별명(마크다운 기호 없이),
+ * 2행은 빈 줄, 3행부터 본문. 파일이 없으면 태그를 밀어도 빈 릴리스가
+ * 나가므로 여기서 막는다.
+ */
+const notesPath = `docs/releases/v${String(conf.version)}.md`;
+let notes = '';
+try {
+  notes = readFileSync(notesPath, 'utf8');
+} catch {
+  fail(
+    '릴리스 노트가 없다',
+    `  ${notesPath}를 쓰고 나서 판을 낸다. 1행 별명, 2행 빈 줄, 3행부터 본문.`,
+  );
+}
+if (notes !== '') {
+  const [summary = '', blank = '', ...body] = notes.split(/\r?\n/);
+  if (summary.trim() === '' || summary.startsWith('#')) {
+    fail(
+      '릴리스 노트 1행이 별명이 아니다',
+      `  ${notesPath}: 1행은 "자동 갱신 판"처럼 기호 없는 한 줄이어야 한다.`,
+    );
+  }
+  if (blank.trim() !== '' || body.join('').trim() === '') {
+    fail('릴리스 노트 본문이 없다', `  ${notesPath}: 2행은 빈 줄, 3행부터 본문(마크다운).`);
+  }
+}
+
 // ── 4. 바깥으로 나가는 문이 아는 것뿐인가 ────────────────────
 /*
  * 폴더 전부를 본다. Tauri는 `capabilities/` 아래 **모든** 파일을 읽으므로,

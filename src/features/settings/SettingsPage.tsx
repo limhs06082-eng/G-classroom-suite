@@ -832,7 +832,8 @@ function VersionCard() {
         toast.success('지금이 최신 판입니다.');
         return;
       }
-      toast.info(`새 판 ${update.version}이 있습니다.`, {
+      const summary = update.notes.split('\n')[0]?.trim() ?? '';
+      toast.info(summary === '' ? `새 판 ${update.version}이 있습니다.` : `새 판 ${update.version} — ${summary}`, {
         durationMs: 0,
         actionLabel: '지금 설치',
         onAction: () => {
