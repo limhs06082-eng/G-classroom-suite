@@ -8,6 +8,8 @@ import {
   nextStatus,
   notesInRange,
   rangeCounts,
+  reasonOf,
+  setReason,
   setConfirmed,
   setNote,
   setStatus,
@@ -196,5 +198,39 @@ describe('notesInRange — 학기 사유 모음', () => {
   it('monthDay는 M/D다', () => {
     expect(monthDay('2026-03-05')).toBe('3/5');
     expect(monthDay('2026-11-30')).toBe('11/30');
+  });
+
+  it('분류만 있는 항목도 모으고, 분류가 같이 실린다', () => {
+    let records: AttendanceRecord[] = [];
+    records = setStatus(records, CLASS, '2026-03-05', 'stu-1', 'absent');
+    records = setReason(records, CLASS, '2026-03-05', 'stu-1', 'illness');
+
+    expect(notesInRange(records, CLASS, '2026-03-01', '2026-03-31').get('stu-1')).toEqual([
+      { date: '2026-03-05', status: 'absent', note: '', reason: 'illness' },
+    ]);
+  });
+});
+
+describe('setReason · reasonOf — 사유 분류', () => {
+  it('분류를 찍고, 지우고, 상태를 바꿔도 남는다', () => {
+    let records: AttendanceRecord[] = [];
+    records = setStatus(records, CLASS, DATE, 'stu-1', 'absent');
+    expect(reasonOf(records, CLASS, DATE, 'stu-1')).toBeNull();
+
+    records = setReason(records, CLASS, DATE, 'stu-1', 'illness');
+    expect(reasonOf(records, CLASS, DATE, 'stu-1')).toBe('illness');
+
+    // "감기로 결석"이 지각으로 바뀌어도 감기(질병)라는 사실은 그대로다.
+    records = setStatus(records, CLASS, DATE, 'stu-1', 'late');
+    expect(reasonOf(records, CLASS, DATE, 'stu-1')).toBe('illness');
+
+    records = setReason(records, CLASS, DATE, 'stu-1', null);
+    expect(reasonOf(records, CLASS, DATE, 'stu-1')).toBeNull();
+    expect(records[0]?.entries[0]).not.toHaveProperty('reason');
+  });
+
+  it('기록이 없는 학생에게는 분류를 찍을 수 없다 — 출석에는 사유가 없다', () => {
+    const records = setReason([], CLASS, DATE, 'stu-1', 'illness');
+    expect(records).toEqual([]);
   });
 });

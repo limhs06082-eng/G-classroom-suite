@@ -2,7 +2,12 @@ import { CalendarCheck, CheckCheck, ChevronLeft, ChevronRight, Printer, RotateCc
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { ATTENDANCE_STATUSES, type AttendanceStatus, type Student } from '../../shared/domain/types';
+import {
+  ATTENDANCE_REASONS,
+  ATTENDANCE_STATUSES,
+  type AttendanceStatus,
+  type Student,
+} from '../../shared/domain/types';
 import { useActiveClass, useActiveTerm, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { useToday } from '../../shared/state/useToday';
 import { Badge, Button, Card, cx, EmptyState, PrintLayout, Table, Tabs, usePrint, useToast } from '../../shared/ui';
@@ -14,8 +19,11 @@ import {
   noteOf,
   notesInRange,
   rangeCounts,
+  REASON_LABELS,
+  reasonOf,
   setConfirmed,
   setNote,
+  setReason,
   setStatus,
   setStatusMany,
   statusOf,
@@ -319,13 +327,45 @@ function DailyTab({
             {marked.map((student) => {
               const status = statusOf(data.attendanceRecords, classId, date, student.id);
               return (
-                <li key={student.id} className="flex items-center gap-2">
+                <li key={student.id} className="flex flex-wrap items-center gap-2">
                   <span className="w-24 shrink-0 truncate text-sm font-medium text-slate-800">
                     {student.name}
                   </span>
                   <Badge tone={status === 'absent' ? 'danger' : status === 'late' ? 'warning' : 'neutral'}>
                     {status === null ? '' : STATUS_LABELS[status]}
                   </Badge>
+                  {/* 생활기록부 분류. 메모("병원")와 별개로 누르면 켜지고 다시 누르면 꺼진다. */}
+                  <div
+                    role="group"
+                    aria-label={`${student.name} 사유 분류`}
+                    className="inline-flex gap-0.5 rounded-control border border-slate-200 p-0.5"
+                  >
+                    {ATTENDANCE_REASONS.map((reason) => {
+                      const picked = reasonOf(data.attendanceRecords, classId, date, student.id) === reason;
+                      return (
+                        <Button
+                          key={reason}
+                          size="sm"
+                          variant={picked ? 'primary' : 'ghost'}
+                          aria-pressed={picked}
+                          onClick={() =>
+                            update((suite) => ({
+                              ...suite,
+                              attendanceRecords: setReason(
+                                suite.attendanceRecords,
+                                classId,
+                                date,
+                                student.id,
+                                picked ? null : reason,
+                              ),
+                            }))
+                          }
+                        >
+                          {REASON_LABELS[reason]}
+                        </Button>
+                      );
+                    })}
+                  </div>
                   <input
                     /*
                      * key에 날짜·학생을 넣어 날짜를 옮기면 입력이 새로 마운트되게
@@ -397,7 +437,11 @@ function MonthlyTab({ today }: { today: string }) {
   const noteLines = (studentId: string): { key: string; text: string }[] =>
     (notes.get(studentId) ?? []).map((item) => ({
       key: `${item.date}-${item.status}`,
-      text: `${monthDay(item.date)} ${STATUS_LABELS[item.status]}: ${item.note}`,
+      // "3/5 결석(질병): 병원" — 분류만이면 "3/5 결석(질병)", 메모만이면 "3/5 결석: 병원"
+      text:
+        `${monthDay(item.date)} ${STATUS_LABELS[item.status]}` +
+        (item.reason === undefined ? '' : `(${REASON_LABELS[item.reason]})`) +
+        (item.note === '' ? '' : `: ${item.note}`),
     }));
 
   const shiftMonth = (delta: number): void => {

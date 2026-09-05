@@ -1,4 +1,4 @@
-import type { AttendanceRecord, AttendanceStatus } from '../../shared/domain/types';
+import type { AttendanceReason, AttendanceRecord, AttendanceStatus } from '../../shared/domain/types';
 
 /**
  * 출결 판단.
@@ -13,6 +13,14 @@ export const STATUS_LABELS: Record<AttendanceStatus, string> = {
   late: '지각',
   early: '조퇴',
   fieldTrip: '체험학습',
+};
+
+/** 생활기록부 출결의 사유 분류. 나이스와 같은 낱말을 쓴다. */
+export const REASON_LABELS: Record<AttendanceReason, string> = {
+  illness: '질병',
+  unexcused: '미인정',
+  other: '기타',
+  authorized: '인정',
 };
 
 /**
@@ -59,6 +67,40 @@ export function noteOf(
   return entry?.note ?? '';
 }
 
+/** 그날 그 학생의 사유 분류. 안 골랐거나 기록이 없으면 null. */
+export function reasonOf(
+  records: readonly AttendanceRecord[],
+  classId: string,
+  date: string,
+  studentId: string,
+): AttendanceReason | null {
+  const entry = recordOf(records, classId, date)?.entries.find((e) => e.studentId === studentId);
+  return entry?.reason ?? null;
+}
+
+/**
+ * 사유 분류를 고른다. null이면 지운다.
+ *
+ * 기록(상태)이 없는 학생에게는 아무 일도 안 한다 — 출석에는 사유가 없다.
+ */
+export function setReason(
+  records: readonly AttendanceRecord[],
+  classId: string,
+  date: string,
+  studentId: string,
+  reason: AttendanceReason | null,
+): AttendanceRecord[] {
+  const existing = recordOf(records, classId, date);
+  if (existing === undefined) return [...records];
+
+  const entries = existing.entries.map((entry) => {
+    if (entry.studentId !== studentId) return entry;
+    const { reason: _dropped, ...rest } = entry;
+    return reason === null ? rest : { ...rest, reason };
+  });
+  return records.map((record) => (record === existing ? { ...existing, entries } : record));
+}
+
 /**
  * 상태를 찍는다. 바뀐 목록을 돌려준다.
  *
@@ -89,10 +131,15 @@ export function setStatus(
       : [...rest, { classId, date, entries: kept, ...stamp }];
   }
 
-  // 상태만 바뀌는 것이라 메모는 남긴다. "감기로 결석"이 지각으로 바뀌어도
-  // 감기라는 사실은 그대로다.
-  const note = entries.find((entry) => entry.studentId === studentId)?.note ?? '';
-  return [...rest, { classId, date, entries: [...kept, { studentId, status, note }], ...stamp }];
+  // 상태만 바뀌는 것이라 메모와 분류는 남긴다. "감기로 결석"이 지각으로
+  // 바뀌어도 감기(질병)라는 사실은 그대로다.
+  const previous = entries.find((entry) => entry.studentId === studentId);
+  const note = previous?.note ?? '';
+  const reason = previous?.reason === undefined ? {} : { reason: previous.reason };
+  return [
+    ...rest,
+    { classId, date, entries: [...kept, { studentId, status, note, ...reason }], ...stamp },
+  ];
 }
 
 /**
@@ -263,6 +310,7 @@ export interface AttendanceNote {
   date: string;
   status: AttendanceStatus;
   note: string;
+  reason?: AttendanceReason;
 }
 
 /**
@@ -283,9 +331,15 @@ export function notesInRange(
     if (record.classId !== classId || record.date < from || record.date > to) continue;
     for (const entry of record.entries) {
       const note = entry.note.trim();
-      if (note === '') continue;
+      // 메모도 분류도 없으면 적을 것이 없다. 분류만 있어도 "질병"은 생활기록부에 간다.
+      if (note === '' && entry.reason === undefined) continue;
       const list = notes.get(entry.studentId) ?? [];
-      list.push({ date: record.date, status: entry.status, note });
+      list.push({
+        date: record.date,
+        status: entry.status,
+        note,
+        ...(entry.reason === undefined ? {} : { reason: entry.reason }),
+      });
       notes.set(entry.studentId, list);
     }
   }
