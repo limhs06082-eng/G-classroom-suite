@@ -5,6 +5,7 @@ import {
   isConfirmed,
   monthlyCounts,
   nextStatus,
+  rangeCounts,
   setConfirmed,
   setNote,
   setStatus,
@@ -151,5 +152,21 @@ describe('monthlyCounts', () => {
     expect(counts.get('stu-1')).toEqual({ absent: 2, late: 0, early: 0, fieldTrip: 0 });
     expect(counts.get('stu-2')).toEqual({ absent: 0, late: 1, early: 0, fieldTrip: 0 });
     expect(counts.has('stu-3')).toBe(false);
+  });
+});
+
+describe('rangeCounts — 학기 전체 집계', () => {
+  it('시작·끝 날짜를 포함해 그 사이 기록만 센다', () => {
+    let records: AttendanceRecord[] = [];
+    records = setStatus(records, CLASS, '2026-03-02', 'stu-1', 'absent'); // 시작일
+    records = setStatus(records, CLASS, '2026-05-10', 'stu-1', 'late');
+    records = setStatus(records, CLASS, '2026-07-20', 'stu-2', 'early'); // 끝일
+    records = setStatus(records, CLASS, '2026-07-21', 'stu-2', 'absent'); // 방학
+    records = setStatus(records, CLASS, '2026-03-01', 'stu-1', 'absent'); // 전날
+
+    const counts = rangeCounts(records, CLASS, '2026-03-02', '2026-07-20');
+
+    expect(counts.get('stu-1')).toEqual({ absent: 1, late: 1, early: 0, fieldTrip: 0 });
+    expect(counts.get('stu-2')).toEqual({ absent: 0, late: 0, early: 1, fieldTrip: 0 });
   });
 });

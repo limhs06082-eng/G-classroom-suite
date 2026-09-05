@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { ATTENDANCE_STATUSES, type AttendanceStatus, type Student } from '../../shared/domain/types';
-import { useActiveClass, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
+import { useActiveClass, useActiveTerm, useRoster, useSuite } from '../../shared/roster/SuiteDataProvider';
 import { useToday } from '../../shared/state/useToday';
 import { Badge, Button, Card, cx, EmptyState, PrintLayout, Table, Tabs, usePrint, useToast } from '../../shared/ui';
 import {
@@ -11,6 +11,7 @@ import {
   monthlyCounts,
   nextStatus,
   noteOf,
+  rangeCounts,
   setConfirmed,
   setNote,
   setStatus,
@@ -366,9 +367,21 @@ function MonthlyTab({ today }: { today: string }) {
   const [month, setMonth] = useState(today.slice(0, 7));
   const printNow = usePrint();
 
+  /*
+   * 달 말고 학기 전체. 학기말 생활기록부 출결은 한 학기를 세야 하는데,
+   * 달마다 더하게 하면 손으로 틀린다. 학기 날짜가 비어 있으면 달만 있다.
+   */
+  const term = useActiveTerm();
+  const hasTermDates = term !== null && term.startDate !== '' && term.endDate !== '';
+  const [scope, setScope] = useState<'month' | 'term'>('month');
+  const termMode = scope === 'term' && hasTermDates;
+
   const counts = useMemo(
-    () => monthlyCounts(data.attendanceRecords, classId, month),
-    [data.attendanceRecords, classId, month],
+    () =>
+      termMode && term !== null
+        ? rangeCounts(data.attendanceRecords, classId, term.startDate, term.endDate)
+        : monthlyCounts(data.attendanceRecords, classId, month),
+    [data.attendanceRecords, classId, month, termMode, term],
   );
 
   const shiftMonth = (delta: number): void => {
@@ -379,24 +392,46 @@ function MonthlyTab({ today }: { today: string }) {
 
   const rows = roster.filter((student) => counts.has(student.id));
   const [year = '', mon = ''] = month.split('-');
+  const periodLabel = termMode && term !== null ? term.name : `${year}년 ${Number(mon)}월`;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="ghost" icon={ChevronLeft} iconOnly aria-label="이전 달" onClick={() => shiftMonth(-1)} />
-        <p className="text-sm font-semibold text-slate-800">
-          {year}년 {Number(mon)}월
-        </p>
-        <Button size="sm" variant="ghost" icon={ChevronRight} iconOnly aria-label="다음 달" onClick={() => shiftMonth(1)} />
+        {termMode ? (
+          <p className="text-sm font-semibold text-slate-800">{periodLabel}</p>
+        ) : (
+          <>
+            <Button size="sm" variant="ghost" icon={ChevronLeft} iconOnly aria-label="이전 달" onClick={() => shiftMonth(-1)} />
+            <p className="text-sm font-semibold text-slate-800">{periodLabel}</p>
+            <Button size="sm" variant="ghost" icon={ChevronRight} iconOnly aria-label="다음 달" onClick={() => shiftMonth(1)} />
+          </>
+        )}
+        {hasTermDates ? (
+          <div
+            className="inline-flex gap-0.5 rounded-control border border-slate-200 p-0.5"
+            role="group"
+            aria-label="집계 기간"
+          >
+            <Button size="sm" variant={termMode ? 'ghost' : 'primary'} aria-pressed={!termMode} onClick={() => setScope('month')}>
+              달
+            </Button>
+            <Button size="sm" variant={termMode ? 'primary' : 'ghost'} aria-pressed={termMode} onClick={() => setScope('term')}>
+              학기 전체
+            </Button>
+          </div>
+        ) : null}
         {/* 나이스는 다른 창(다른 PC)이다. 옆에 두고 보라면 종이로도 나가야 한다. */}
         <Button size="sm" variant="secondary" icon={Printer} disabled={rows.length === 0} onClick={printNow}>
           인쇄
         </Button>
-        <p className="ml-auto text-sm text-slate-500">나이스 월말 입력 때 옆에 두고 보는 표입니다.</p>
+        <p className="ml-auto text-sm text-slate-500">
+          {termMode ? '학기말 출결 집계를 낼 때 옆에 두고 보는 표입니다.' : '나이스 월말 입력 때 옆에 두고 보는 표입니다.'}
+        </p>
       </div>
 
       <PrintLayout
-        title={`${activeClass?.name ?? ''} ${year}년 ${Number(mon)}월 출결`}
+        title={`${activeClass?.name ?? ''} ${periodLabel} 출결`}
+        {...(termMode && term !== null ? { subtitle: `${term.startDate} ~ ${term.endDate}` } : {})}
         footer={[data.profile.schoolName, data.profile.teacherName].filter(Boolean).join(' · ')}
       >
         <table className="w-full border-collapse text-sm">

@@ -219,19 +219,21 @@ export function isAwayToday(
 }
 
 /**
- * 그 달 학생별 상태 횟수. month는 "2026-08" 꼴이다.
+ * 기간 안 학생별 상태 횟수. from·to 포함 — ISO 날짜라 글자 비교면 된다.
  *
- * 나이스에 월말 출결을 넣을 때 옆에 두고 보는 표라, 기록이 있는 학생만 담는다.
+ * 학기말 생활기록부 출결은 한 학기 전체를 세야 한다. 달마다 더하게 하면
+ * 손으로 틀린다. 기록이 있는 학생만 담는다.
  */
-export function monthlyCounts(
+export function rangeCounts(
   records: readonly AttendanceRecord[],
   classId: string,
-  month: string,
+  from: string,
+  to: string,
 ): Map<string, Record<AttendanceStatus, number>> {
   const counts = new Map<string, Record<AttendanceStatus, number>>();
 
   for (const record of records) {
-    if (record.classId !== classId || !record.date.startsWith(`${month}-`)) continue;
+    if (record.classId !== classId || record.date < from || record.date > to) continue;
     for (const entry of record.entries) {
       const bucket =
         counts.get(entry.studentId) ?? { absent: 0, late: 0, early: 0, fieldTrip: 0 };
@@ -241,4 +243,17 @@ export function monthlyCounts(
   }
 
   return counts;
+}
+
+/**
+ * 그 달 학생별 상태 횟수. month는 "2026-08" 꼴이다.
+ *
+ * 나이스에 월말 출결을 넣을 때 옆에 두고 보는 표라, 기록이 있는 학생만 담는다.
+ */
+export function monthlyCounts(
+  records: readonly AttendanceRecord[],
+  classId: string,
+  month: string,
+): Map<string, Record<AttendanceStatus, number>> {
+  return rangeCounts(records, classId, `${month}-01`, `${month}-31`);
 }
