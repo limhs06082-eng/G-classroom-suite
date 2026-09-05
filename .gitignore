@@ -29,3 +29,8 @@ pnpm-debug.log*
 # Tauri 빌드 산출물
 src-tauri/target/
 src-tauri/gen/
+
+# 갱신 서명 열쇠. 저장소에 절대 넣지 않는다 — 쥔 사람이 모든 설치본에
+# 아무 코드나 밀어 넣을 수 있다. 열쇠는 ~/.tauri/ 와 GitHub 비밀값에만 산다.
+*.key
+*.key.pub

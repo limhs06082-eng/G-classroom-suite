@@ -24,6 +24,8 @@
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-fs": "^2.5.1",
     "@tauri-apps/plugin-http": "^2.5.9",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.11.0",
     "@testing-library/user-event": "^14.6.5",
     "@types/qrcode": "^1.5.6",
     "firebase": "^12.18.0",

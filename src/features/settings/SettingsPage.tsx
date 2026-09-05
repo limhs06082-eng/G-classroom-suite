@@ -445,6 +445,8 @@ function BackupTab() {
     <div className="flex flex-col gap-4">
       <DataSizeCard />
 
+      {isDesktop() ? <VersionCard /> : null}
+
       <Card title="백업" icon={Shield}>
         <div className="flex flex-col gap-3">
           <p className="text-sm text-slate-600">
@@ -798,6 +800,76 @@ function ToolkitLegacyTab() {
           })();
         }}
       />
+    </Card>
+  );
+}
+
+/**
+ * 지금 판과 새 판 확인. 설치형에만 있다.
+ *
+ * 켤 때 자동으로 한 번 확인하지만(AppShell), "지금 새 판이 있나"를 손으로
+ * 물을 자리도 있어야 한다 — 연수 자리에서 옆 사람 것과 판이 다를 때
+ * 제일 먼저 찾는 것이 이 단추다.
+ */
+function VersionCard() {
+  const toast = useToast();
+  const { flush } = useSuite();
+  const [version, setVersion] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void import('../../shared/platform/updater').then(({ currentVersion }) =>
+      currentVersion().then(setVersion),
+    );
+  }, []);
+
+  const check = async (): Promise<void> => {
+    setBusy(true);
+    try {
+      const { checkForUpdate, relaunch } = await import('../../shared/platform/updater');
+      const update = await checkForUpdate();
+      if (update === null) {
+        toast.success('지금이 최신 판입니다.');
+        return;
+      }
+      toast.info(`새 판 ${update.version}이 있습니다.`, {
+        durationMs: 0,
+        actionLabel: '지금 설치',
+        onAction: () => {
+          void (async () => {
+            const progressId = toast.info('새 판을 받아 설치하는 중입니다. 잠시만요…', {
+              durationMs: 0,
+            });
+            try {
+              await update.install(() => undefined);
+              await flush();
+              toast.dismiss(progressId);
+              await relaunch();
+            } catch {
+              toast.dismiss(progressId);
+              toast.error('새 판을 설치하지 못했습니다. 인터넷 연결을 확인하고 다시 해 주세요.');
+            }
+          })();
+        },
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card title="판" icon={RotateCcw}>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-slate-700">
+          지금 판 <strong data-numeric>{version === '' ? '…' : version}</strong>
+        </p>
+        <Button size="sm" variant="secondary" disabled={busy} onClick={() => void check()}>
+          {busy ? '확인 중…' : '새 판 확인'}
+        </Button>
+        <p className="text-sm text-slate-500">
+          새 판은 켤 때도 한 번 확인합니다. 설치는 여기서 누를 때만 됩니다.
+        </p>
+      </div>
     </Card>
   );
 }

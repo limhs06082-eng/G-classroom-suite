@@ -67,6 +67,13 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 자동 갱신 서명. 저장소 Settings → Secrets에 넣는다.
+          #   TAURI_SIGNING_PRIVATE_KEY          — ~/.tauri/gboard.key 파일의 내용 전체
+          #   TAURI_SIGNING_PRIVATE_KEY_PASSWORD — 열쇠 암호(없으면 비워 둔다)
+          # 없으면 tauri.conf.json의 createUpdaterArtifacts 때문에 빌드가 여기서 멈춘다.
+          # 그게 맞다 — 서명 없는 갱신 파일을 조용히 올리는 것보다 낫다.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: G-board ${{ github.ref_name }}

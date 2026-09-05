@@ -13,6 +13,7 @@ import { engageLock, tryUnlock } from '../shared/lock/lockOps';
 import { isDesktop } from '../shared/platform/target';
 import { useSuite } from '../shared/roster/SuiteDataProvider';
 import { useNow } from '../shared/state/useNow';
+import { useToast } from '../shared/ui';
 import { ClassSwitcher } from './ClassSwitcher';
 import { ErrorBoundary } from './ErrorBoundary';
 import { FEATURE_NAV } from './navigation';
@@ -70,6 +71,8 @@ export function AppShell() {
    */
   return (
     <ToolsProvider>
+      {/* 새 판 확인. 설치형에서만, 켜고 잠시 뒤 한 번. 설치는 교사가 누른다. */}
+      {isDesktop() ? <UpdateChecker /> : null}
       <div className="flex min-h-full flex-col">
         {/* 반투명 헤더는 스크롤할 때 본문 한글이 비쳐 읽기 어려워진다. 불투명으로 둔다. */}
         <header className="no-print sticky top-0 z-20 border-b border-slate-200 bg-surface">
@@ -374,4 +377,61 @@ export function TodayWeather() {
   }, [address, officeCode, schoolCode, tick]);
 
   return <WeatherBadge state={state} />;
+}
+
+/**
+ * 새 판 확인.
+ *
+ * 켜고 8초 뒤 한 번만 묻는다 — 아침 첫 화면이 뜨는 것을 갱신 확인이
+ * 막으면 안 되고, 하루 종일 켜 두는 앱이 한 시간마다 물을 이유도 없다.
+ * 새 판이 있으면 사라지지 않는 알림을 띄우고, 교사가 [지금 설치]를
+ * 눌러야 받는다. 설치가 끝나면 다시 켠다 — 그 전에 저장 대기분을 밀어낸다.
+ */
+function UpdateChecker() {
+  const toast = useToast();
+  const { flush } = useSuite();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        const { checkForUpdate, relaunch } = await import('../shared/platform/updater');
+        const update = await checkForUpdate();
+        if (cancelled || update === null) return;
+
+        toast.info(`새 판 ${update.version}이 있습니다.`, {
+          durationMs: 0,
+          actionLabel: '지금 설치',
+          onAction: () => {
+            void (async () => {
+              // 받는 동안 사라지지 않는 알림 하나. 끝나면 닫고 다시 켠다.
+              const progressId = toast.info('새 판을 받아 설치하는 중입니다. 잠시만요…', {
+                durationMs: 0,
+              });
+              try {
+                await update.install(() => undefined);
+                // 저장 대기분을 먼저 파일에 내려놓는다. 다시 켜는 순간 잃으면 안 된다.
+                await flush();
+                toast.dismiss(progressId);
+                await relaunch();
+              } catch {
+                toast.dismiss(progressId);
+                toast.error('새 판을 설치하지 못했습니다. 인터넷 연결을 확인하고 다시 해 주세요.');
+              }
+            })();
+          },
+        });
+      })();
+    }, 8_000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+    // toast·flush는 provider 수명 동안 안정적이다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null;
 }

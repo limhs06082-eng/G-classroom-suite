@@ -166,6 +166,9 @@ if (missingHosts.length > 0) {
  */
 const EXPECTED_PERMISSIONS = [
   'core:default',
+  // 자동 갱신: 새 판 확인·받기·설치와, 설치 뒤 다시 켜기.
+  'updater:default',
+  'process:allow-restart',
   'core:webview:allow-create-webview-window',
   'core:window:allow-destroy',
   'core:window:allow-close',

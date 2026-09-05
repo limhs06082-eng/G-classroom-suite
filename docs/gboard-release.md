@@ -110,26 +110,34 @@ Actions가 십 분쯤 돌고 나면 Releases에 **초안**이 생긴다.
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
 ```
 
-### 자동 갱신 — 아직 안 붙였다
+### 자동 갱신 — 0.13.0에 붙였다
 
-새 판이 나오면 앱이 스스로 알아채고 받아 두는 기능이다. 붙이려면 두 가지가 필요하다.
+새 판이 나오면 앱이 스스로 알아채는 기능이다. 켜고 8초 뒤 GitHub Releases의 `latest.json`을 한 번 보고, 새 판이 있으면 사라지지 않는 알림을 띄운다. **받고 다시 켜는 것은 교사가 [지금 설치]를 눌러야 한다** — 수업 중에 저절로 재시작하는 앱은 도구가 아니라 사고다. 설정 → 백업·복원 맨 위의 '판' 칸에서 손으로도 확인할 수 있다.
 
-**1. 갱신용 서명 열쇠 한 쌍.** 코드 서명 인증서와 **다른 것**이고, 돈이 안 든다. 다만 **개인 열쇠는 만드는 사람이 가지고 있어야 한다** — 그 열쇠를 쥔 사람은 모든 설치본에 아무 코드나 밀어 넣을 수 있으므로, 내가 만들어 저장소에 넣어 두면 안 된다.
+**열쇠는 어디 있나.** 갱신 파일은 서명이 맞아야만 설치된다.
 
-만드는 명령은 이렇다. **직접 돌리시고, 나온 개인 열쇠는 저장소에 올리지 마세요.**
+| | 자리 |
+|---|---|
+| 개인 열쇠 | `%USERPROFILE%\.tauri\gboard.key` — **이 컴퓨터에만.** 저장소에 없고 `.gitignore`가 `*.key`를 막는다 |
+| 공개 열쇠 | `src-tauri/tauri.conf.json`의 `plugins.updater.pubkey` |
+| GitHub 비밀값 | `TAURI_SIGNING_PRIVATE_KEY`에 개인 열쇠 파일 **내용 전체**. 암호 없이 만들었으므로 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`는 비워 둔다 |
+
+> 열쇠를 쥔 사람은 모든 설치본에 아무 코드나 밀어 넣을 수 있다. 개인 열쇠 파일을 다른 곳에 복사하거나 메신저로 보내지 말 것. 잃어버리면 새로 만들어야 하고, 그러면 **옛 설치본은 새 판을 못 받는다**(공개 열쇠가 달라져서) — 설치 파일을 한 번 더 손으로 나눠 드려야 한다.
+
+**릴리스 내는 순서** (이전과 같다 + 비밀값 한 번):
+
+1. GitHub 저장소 → Settings → Secrets and variables → Actions → `TAURI_SIGNING_PRIVATE_KEY` 등록 (처음 한 번)
+2. `git tag v0.13.0` → `git push origin v0.13.0`
+3. `release.yml`이 설치 파일과 함께 `latest.json`·`.sig`를 릴리스 초안에 올린다 (`bundle.createUpdaterArtifacts`)
+4. 설치해 보고 [Publish release] — **공개해야** 설치본들이 새 판을 본다. 초안은 안 보인다
+
+**컴퓨터에서 설치본을 만들 때**는 열쇠 경로를 환경변수로 준다. 없으면 `createUpdaterArtifacts` 때문에 빌드가 멈춘다 — 서명 없는 갱신 파일을 조용히 만드는 것보다 낫다.
 
 ```bash
-npx tauri signer generate -w %USERPROFILE%\.tauri\gboard.key
+TAURI_SIGNING_PRIVATE_KEY_PATH=%USERPROFILE%\.tauri\gboard.key npm run desktop:build
 ```
 
-- 나온 **공개 열쇠**는 `tauri.conf.json`의 `plugins.updater.pubkey`에 넣는다
-- 나온 **개인 열쇠**와 암호는 GitHub 저장소 비밀값(`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`)에 넣는다
-
-**2. 갱신 정보를 둘 자리.** GitHub Releases를 그대로 쓸 수 있다.
-
-이 둘이 갖춰지면 `tauri-plugin-updater`를 붙이고 "새 판이 있습니다" 알림을 어디에 띄울지 정하는 일이 남는다. **열쇠가 있어야 시작할 수 있는 일이라 여기까지 적어 두고 멈춘다.**
-
-> 자동 갱신이 없어도 배포는 된다. 새 판이 나오면 설치 파일 주소를 다시 알려 드리고, 받는 분이 덮어씌우면 자료는 그대로 남는다. 지금까지 0.1.0부터 0.5.0까지 그렇게 해 왔다.
+> 자동 갱신이 없던 판(0.12.0 이하)은 이 기능을 모른다. 그 설치본들에는 0.13.0 설치 파일을 한 번 더 손으로 나눠 드려야 하고, 그 뒤부터는 저절로 온다.
 
 ---
 
@@ -142,7 +150,7 @@ npx tauri signer generate -w %USERPROFILE%\.tauri\gboard.key
 | 배포 전 막을 것을 검사기가 센다 | ✅ `check:release` |
 | 릴리스 주소를 드릴 수 있다 | ✅ 태그를 밀면 된다 |
 | 파란 창이 안 뜬다 | ❌ 인증서가 필요하다 |
-| 앱이 스스로 갱신한다 | ❌ 열쇠가 필요하다 |
+| 앱이 스스로 갱신한다 | ✅ 0.13.0부터. GitHub 비밀값 `TAURI_SIGNING_PRIVATE_KEY` 한 번 등록 |
 
 ---
 

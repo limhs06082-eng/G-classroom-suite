@@ -27,7 +27,22 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"]
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.ico"
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI5ODdDNTgzMERENzI2NjQKUldSa0p0Y05nOFdIdWJ4SzdDdTZuL0xMQUNQYkorVWxxMjFLaDJVRXp5dS9TM0F1RzJvTDNnYmoK",
+      "endpoints": [
+        "https://github.com/limhs06082-eng/G-classroom-suite/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

@@ -41,6 +41,15 @@ pub fn run() {
             .build(),
         )?;
       }
+
+      // 자동 갱신과 다시 켜기. 갱신 확인은 화면(AppShell)이 켠 뒤 잠시
+      // 있다가 한 번 부르고, 받을지 말지는 교사가 누른다 — 수업 중에
+      // 저절로 재시작하는 앱은 도구가 아니라 사고다.
+      #[cfg(desktop)]
+      {
+        app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+        app.handle().plugin(tauri_plugin_process::init())?;
+      }
       Ok(())
     })
     .plugin(tauri_plugin_fs::init())
