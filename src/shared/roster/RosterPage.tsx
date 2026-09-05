@@ -706,6 +706,7 @@ function ObservationSection({ student }: { student: Student }) {
               <span data-numeric className="shrink-0 pt-0.5 text-xs text-slate-400">
                 {entry.date}
               </span>
+              {entry.kind === 'counsel' ? <Badge tone="info">상담</Badge> : null}
               <span className="min-w-0 flex-1 text-sm text-slate-800">{entry.text}</span>
               <button
                 type="button"

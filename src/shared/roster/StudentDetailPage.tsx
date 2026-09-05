@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { STATUS_LABELS } from '../../features/attendance/attendanceCore';
+import { ddayLabel } from '../../features/notice/eventsCore';
+import { useToday } from '../state/useToday';
 import { Badge, Button, Card, EmptyState, PrintLayout, usePrint } from '../ui';
 import { BehaviorCommentCard } from './BehaviorCommentCard';
-import { addObservation, removeObservation } from './observationCore';
+import { addObservation, nextCounsel, removeObservation } from './observationCore';
 import { summarizeStudent } from './studentSummary';
 import { useActiveClass, useSuite } from './SuiteDataProvider';
 
@@ -22,7 +24,11 @@ export default function StudentDetailPage() {
   const { data, update } = useSuite();
   const activeClass = useActiveClass();
   const printNow = usePrint();
+  const today = useToday();
   const [text, setText] = useState('');
+  // 상담 기록으로 적는 중인가, 다음 상담 날짜.
+  const [counsel, setCounsel] = useState(false);
+  const [followUp, setFollowUp] = useState('');
 
   /*
    * 기본은 '이번 학기만'. 상담에서 묻는 것은 대개 이번 학기고, 학년말
@@ -76,10 +82,17 @@ export default function StudentDetailPage() {
         classId: student.classId,
         studentId: student.id,
         text,
+        ...(counsel ? { kind: 'counsel' as const } : {}),
+        ...(counsel && followUp !== '' ? { followUpDate: followUp } : {}),
       }),
     }));
     setText('');
+    setCounsel(false);
+    setFollowUp('');
   };
+
+  // 다음 상담. 학기/통산 토글과 무관하게 전체 기록에서 본다 — 예정은 지난 학기 것이라도 예정이다.
+  const upcomingCounsel = nextCounsel(data.observations, student.id, today);
 
   return (
     <div className="flex flex-col gap-4">
@@ -98,6 +111,11 @@ export default function StudentDetailPage() {
         </h1>
         {room === undefined ? null : <p className="text-sm text-slate-500">{room.name}</p>}
         {student.status === 'inactive' ? <Badge tone="neutral">전출·제외</Badge> : null}
+        {upcomingCounsel === null ? null : (
+          <Badge tone={upcomingCounsel.days <= 3 ? 'warning' : 'info'}>
+            다음 상담 {ddayLabel(today, upcomingCounsel.date)}
+          </Badge>
+        )}
 
         <div className="ml-auto flex items-center gap-2">
           {term !== null ? (
@@ -165,14 +183,34 @@ export default function StudentDetailPage() {
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.nativeEvent.isComposing) addNote();
             }}
-            placeholder="예: 모둠 활동에서 친구를 먼저 도왔다 — Enter로 저장"
+            placeholder={counsel ? '예: 학습 태도 상담, 집에서 숙제 시간 정하기로 — Enter로 저장' : '예: 모둠 활동에서 친구를 먼저 도왔다 — Enter로 저장'}
             aria-label={`${student.name} 관찰 기록 추가`}
             className="h-10 w-full rounded-control border border-slate-300 px-3 text-sm"
           />
+          {/* 상담 기록. 켜면 다음 상담 날짜를 같이 받는다 — 상담 주간의 "언제 보기로 했더라"가 여기서 끝난다. */}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Button size="sm" variant={counsel ? 'primary' : 'secondary'} aria-pressed={counsel} onClick={() => setCounsel((value) => !value)}>
+              상담
+            </Button>
+            {counsel ? (
+              <label className="flex items-center gap-1 text-sm text-slate-600">
+                다음 상담
+                <input
+                  type="date"
+                  value={followUp}
+                  onChange={(event) => setFollowUp(event.target.value)}
+                  aria-label="다음 상담"
+                  className="h-8 rounded-control border border-slate-300 px-2 text-sm"
+                />
+              </label>
+            ) : (
+              <span className="text-xs text-slate-400">상담 내용이면 [상담]을 켜고 적으세요.</span>
+            )}
+          </div>
           {summary.observations.length === 0 ? (
             <p className="mt-3 text-sm text-slate-500">아직 기록이 없습니다.</p>
           ) : (
-            <ul className="mt-3 flex flex-col gap-1">
+            <ul className="mt-3 flex flex-col gap-1" aria-label="관찰 기록 목록">
               {summary.observations.map((entry) => (
                 <li
                   key={entry.id}
@@ -181,7 +219,13 @@ export default function StudentDetailPage() {
                   <span data-numeric className="shrink-0 pt-0.5 text-xs text-slate-400">
                     {entry.date}
                   </span>
-                  <span className="min-w-0 flex-1 text-sm text-slate-800">{entry.text}</span>
+                  {entry.kind === 'counsel' ? <Badge tone="info">상담</Badge> : null}
+                  <span className="min-w-0 flex-1 text-sm text-slate-800">
+                    {entry.text}
+                    {entry.followUpDate === undefined ? null : (
+                      <span className="ml-1 text-xs text-slate-500">(다음 상담 {entry.followUpDate})</span>
+                    )}
+                  </span>
                   <Button
                     size="sm"
                     variant="ghost"

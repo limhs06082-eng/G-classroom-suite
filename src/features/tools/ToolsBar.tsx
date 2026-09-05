@@ -1,4 +1,4 @@
-import { Bell, Dices, EyeOff, Maximize2, Pause, Play, RotateCcw, Timer as TimerIcon, Volume2, VolumeX, X } from 'lucide-react';
+import { Bell, Dices, EyeOff, Hand, Maximize2, Pause, Play, RotateCcw, Timer as TimerIcon, Volume2, VolumeX, X } from 'lucide-react';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -6,6 +6,7 @@ import { isMuted, setMuted, subscribeMuted } from '../../shared/fx/sound';
 import { Button, cx, Modal } from '../../shared/ui';
 import { PickerModal } from './PickerModal';
 import { useTools, useToolsTimer } from './ToolsContext';
+import { VoteModal } from './VoteModal';
 import { formatDuration } from './useTimer';
 
 /**
@@ -58,6 +59,9 @@ export function ToolsBar() {
           <Button size="sm" icon={Dices} onClick={() => open('picker')}>
             뽑기
           </Button>
+          <Button size="sm" icon={Hand} onClick={() => open('vote')}>
+            거수 투표
+          </Button>
           <span className="ml-auto hidden text-xs text-slate-400 sm:inline">
             수업 중 쓰는 도구입니다
           </span>
@@ -73,6 +77,8 @@ export function ToolsBar() {
         늘 마운트해 두면 SuiteDataProvider 없이 툴바만 그리는 자리가 깨진다.
       */}
       {openTool === 'picker' ? <PickerModal onClose={close} /> : null}
+      {/* 투표는 늘 마운트 — 명단을 안 읽고, 집계가 닫았다 열어도 남아야 한다. */}
+      <VoteModal open={openTool === 'vote'} onClose={close} />
     </>
   );
 }

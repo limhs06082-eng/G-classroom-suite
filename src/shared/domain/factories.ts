@@ -544,7 +544,7 @@ export function createRedemption(
 
 export function createObservation(
   input: Pick<ObservationEntry, 'classId' | 'studentId' | 'text'> &
-    Partial<Pick<ObservationEntry, 'id' | 'date'>>,
+    Partial<Pick<ObservationEntry, 'id' | 'date' | 'kind' | 'followUpDate'>>,
   now: string = nowIso(),
 ): ObservationEntry {
   return {
@@ -554,6 +554,10 @@ export function createObservation(
     date: input.date ?? now.slice(0, 10),
     text: input.text,
     createdAt: now,
+    ...(input.kind === 'counsel' ? { kind: 'counsel' as const } : {}),
+    ...(input.kind === 'counsel' && input.followUpDate !== undefined && input.followUpDate !== ''
+      ? { followUpDate: input.followUpDate }
+      : {}),
   };
 }
 

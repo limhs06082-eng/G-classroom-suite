@@ -18,6 +18,38 @@ import { parseSuiteData } from '../../shared/storage/schema';
 import { isEmptyLayout } from '../home/homeLayout';
 import { setTipsSeen } from '../home/tipsStore';
 import { useNavigate } from 'react-router-dom';
+import { useSyncExternalStore } from 'react';
+import { isPeriodChimeOn, setPeriodChimeOn, subscribePeriodChime } from '../../shared/fx/periodChime';
+import { isMuted, subscribeMuted } from '../../shared/fx/sound';
+
+/**
+ * 소리 — 이 컴퓨터의 것. 교시 끝 알림음은 기본 꺼짐이다. 학교 종이 이미
+ * 울리는 교실에서 소리가 겹치면 잡음이라서. 원하는 교실만 켠다.
+ */
+function SoundCard() {
+  const chime = useSyncExternalStore(subscribePeriodChime, isPeriodChimeOn, isPeriodChimeOn);
+  const muted = useSyncExternalStore(subscribeMuted, isMuted, isMuted);
+
+  return (
+    <Card title="소리">
+      <div className="flex flex-col gap-2">
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={chime}
+            onChange={(event) => setPeriodChimeOn(event.target.checked)}
+            className="size-4"
+          />
+          수업 끝 5분 전에 종을 한 번 울린다
+        </label>
+        <p className="text-sm text-slate-500">
+          '지금' 카드와 오늘 보드가 5분 전을 알 때 울립니다. 하단 도구 막대의 스피커로 효과음을 전부 끄면 이것도 조용합니다.
+          {muted ? ' (지금은 효과음이 꺼져 있습니다.)' : ''}
+        </p>
+      </div>
+    </Card>
+  );
+}
 
 /** 첫 화면 안내 다시 보기. 연수에서 옆 사람에게 보여 줄 때 쓴다. */
 function TipsResetCard() {
@@ -172,6 +204,7 @@ export default function SettingsPage() {
         {tab === 'theme' ? (
           <>
             <ThemeTab />
+            <SoundCard />
             <TipsResetCard />
           </>
         ) : null}

@@ -8,6 +8,7 @@ import { ddayLabel, eventsSoon } from '../notice/eventsCore';
 import { assignmentsDueSoon, itemsFor } from '../notice/noticeCore';
 import { hmOf, nowState } from '../now/nowCore';
 import { useDuty } from '../duty/useDuty';
+import { usePeriodChime } from '../home/usePeriodChime';
 import { useTodayMeal } from '../home/useTodayMeal';
 import { effectivePeriods, weekdayOf, WEEKDAY_NAMES } from '../timetable/timetableCore';
 
@@ -36,6 +37,8 @@ export function TodayBoard() {
   const classId = activeClass?.id ?? '';
   const periods = effectivePeriods(data.timetableEntries, data.timetableOverrides, classId, date, weekday);
   const now = nowState(data.periodTimes, periods, minutes);
+  // 교시 끝 알림음(설정에서 켠 경우). 홈과 같이 떠 있어도 한 번만 울린다.
+  usePeriodChime(now, date);
 
   const hasNotice =
     itemsFor(data.notices, classId, date).length > 0 ||

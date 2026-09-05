@@ -821,6 +821,10 @@ export interface ObservationEntry {
   date: string;
   text: string;
   createdAt: string;
+  /** 'counsel'이면 상담 기록. 없으면 보통 관찰. */
+  kind?: 'counsel';
+  /** 다음 상담 날짜 YYYY-MM-DD. 상담 기록에만. */
+  followUpDate?: string;
 }
 
 // ─────────────────────────────────────────────────────────────

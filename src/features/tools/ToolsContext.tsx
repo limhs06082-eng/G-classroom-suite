@@ -4,7 +4,7 @@ import { playChime } from '../../shared/fx/sound';
 import { useToast } from '../../shared/ui';
 import { useTimer, type Timer } from './useTimer';
 
-export type ToolName = 'timer' | 'curtain' | 'notice' | 'picker';
+export type ToolName = 'timer' | 'curtain' | 'notice' | 'picker' | 'vote';
 
 interface ToolsValue {
   /** 지금 열려 있는 것. 없으면 null. */

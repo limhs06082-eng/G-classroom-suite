@@ -960,6 +960,8 @@ function parseObservation(raw: unknown, now: string): ObservationEntry | null {
   const studentId = requiredStr(raw['studentId']);
   if (id === null || classId === null || studentId === null) return null;
 
+  const counsel = raw['kind'] === 'counsel';
+  const followUp = raw['followUpDate'];
   return {
     id,
     classId,
@@ -967,6 +969,10 @@ function parseObservation(raw: unknown, now: string): ObservationEntry | null {
     date: str(raw['date'], now.slice(0, 10)),
     text: str(raw['text']),
     createdAt: str(raw['createdAt'], now),
+    ...(counsel ? { kind: 'counsel' as const } : {}),
+    ...(counsel && typeof followUp === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(followUp)
+      ? { followUpDate: followUp }
+      : {}),
   };
 }
 
