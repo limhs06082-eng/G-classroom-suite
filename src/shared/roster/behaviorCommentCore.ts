@@ -53,6 +53,35 @@ export function upsertBehaviorComment(
   ];
 }
 
+/**
+ * 칭찬(양수) 기록을 사유별로 센다, 많은 순. 되돌린 것과 지도(음수)는 뺀다.
+ * 규칙 초안과 AI 사실 모음이 같은 숫자를 봐야 한다.
+ */
+export function praiseCounts(
+  data: SuiteData,
+  studentId: string,
+  inRange: (date: string) => boolean,
+): { reason: string; count: number }[] {
+  const praise = new Map<string, number>();
+  for (const entry of data.scoreEntries) {
+    if (
+      entry.targetUnit !== 'student' ||
+      entry.targetId !== studentId ||
+      !isCounted(entry) ||
+      entry.points <= 0 ||
+      !inRange(entry.occurredAt)
+    ) {
+      continue;
+    }
+    const reason = entry.reason.trim();
+    if (reason === '') continue;
+    praise.set(reason, (praise.get(reason) ?? 0) + 1);
+  }
+  return [...praise.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'))
+    .map(([reason, count]) => ({ reason, count }));
+}
+
 /** 끝맺음을 맞춘다. "친구를 도왔다" → "친구를 도왔다." 빈 글은 빈 글. */
 function sentence(text: string): string {
   const trimmed = text.trim();
@@ -91,27 +120,12 @@ export function draftBehaviorComment(
   }
 
   // 칭찬 — 양수 기록을 사유별로 센다.
-  const praise = new Map<string, number>();
-  for (const entry of data.scoreEntries) {
-    if (
-      entry.targetUnit !== 'student' ||
-      entry.targetId !== studentId ||
-      !isCounted(entry) ||
-      entry.points <= 0 ||
-      !inRange(entry.occurredAt)
-    ) {
-      continue;
-    }
-    const reason = entry.reason.trim();
-    if (reason === '') continue;
-    praise.set(reason, (praise.get(reason) ?? 0) + 1);
-  }
-  const praiseTotal = [...praise.values()].reduce((sum, count) => sum + count, 0);
+  const praise = praiseCounts(data, studentId, inRange);
+  const praiseTotal = praise.reduce((sum, item) => sum + item.count, 0);
   if (praiseTotal > 0) {
-    const top = [...praise.entries()]
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'))
+    const top = praise
       .slice(0, 3)
-      .map(([reason, count]) => `${reason} ${count}회`)
+      .map((item) => `${item.reason} ${item.count}회`)
       .join(', ');
     parts.push(`${top} 등 칭찬받은 일이 모두 ${praiseTotal}회임.`);
   }

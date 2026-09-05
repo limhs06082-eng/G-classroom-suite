@@ -1,6 +1,9 @@
-import { Copy, Sparkles } from 'lucide-react';
+import { Copy, Sparkles, WandSparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { readAiConfig } from '../ai/aiSettings';
+import { collectCommentFacts } from '../ai/commentPrompt';
+import { writeCommentWithAi } from '../ai/writeComment';
 import type { Student } from '../domain/types';
 import { Button, Card, ConfirmDialog, cx, useToast } from '../ui';
 import {
@@ -24,7 +27,9 @@ export function BehaviorCommentCard({ student, range }: { student: Student; rang
   const toast = useToast();
   const saved = commentOf(data.behaviorComments, student.classId, student.id);
   const [text, setText] = useState(saved);
-  const [askReplace, setAskReplace] = useState(false);
+  const [askReplace, setAskReplace] = useState<'draft' | 'ai' | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const aiReady = readAiConfig() !== null;
 
   /*
    * 다른 학생으로 옮겨 가거나 저장된 글이 바깥(다른 창·기기)에서 바뀌면
@@ -57,6 +62,30 @@ export function BehaviorCommentCard({ student, range }: { student: Student; rang
     toast.success('초안을 넣었습니다. 고쳐서 쓰세요.');
   };
 
+  /** AI 글. 이름·번호는 보내지 않는다(collectCommentFacts). 키는 학급 전체 화면에서 넣는다. */
+  const fillAi = async (): Promise<void> => {
+    const config = readAiConfig();
+    if (config === null) {
+      toast.warning('먼저 학생 명단 → [행동특성 한 번에]에서 AI 키를 넣어 주세요.');
+      return;
+    }
+    const facts = collectCommentFacts(data, student.id, range);
+    if (facts === null) return;
+    setAiBusy(true);
+    try {
+      const result = await writeCommentWithAi(facts, config);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setText(result.text);
+      persist(result.text);
+      toast.success('AI가 썼습니다. 읽고 고쳐서 쓰세요.');
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
   const copy = async (): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
@@ -77,11 +106,22 @@ export function BehaviorCommentCard({ student, range }: { student: Student; rang
           <Button
             size="sm"
             variant="secondary"
-            icon={Sparkles}
-            onClick={() => (text.trim() === '' ? fillDraft() : setAskReplace(true))}
+            icon={WandSparkles}
+            onClick={() => (text.trim() === '' ? fillDraft() : setAskReplace('draft'))}
           >
             초안 넣기
           </Button>
+          {aiReady ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={Sparkles}
+              loading={aiBusy}
+              onClick={() => (text.trim() === '' ? void fillAi() : setAskReplace('ai'))}
+            >
+              AI로 작성
+            </Button>
+          ) : null}
           <Button size="sm" variant="primary" icon={Copy} disabled={text.trim() === ''} onClick={() => void copy()}>
             복사하기
           </Button>
@@ -109,15 +149,21 @@ export function BehaviorCommentCard({ student, range }: { student: Student; rang
       </p>
 
       <ConfirmDialog
-        open={askReplace}
-        title="초안으로 바꿀까요?"
-        description="지금 적힌 글을 기록에서 만든 초안으로 바꿉니다. 바꾼 뒤에는 되돌릴 수 없습니다."
-        confirmLabel="초안으로 바꾸기"
+        open={askReplace !== null}
+        title={askReplace === 'ai' ? 'AI 글로 바꿀까요?' : '초안으로 바꿀까요?'}
+        description={
+          askReplace === 'ai'
+            ? '지금 적힌 글을 AI가 쓴 글로 바꿉니다. 바꾼 뒤에는 되돌릴 수 없습니다.'
+            : '지금 적힌 글을 기록에서 만든 초안으로 바꿉니다. 바꾼 뒤에는 되돌릴 수 없습니다.'
+        }
+        confirmLabel={askReplace === 'ai' ? 'AI 글로 바꾸기' : '초안으로 바꾸기'}
         onConfirm={() => {
-          setAskReplace(false);
-          fillDraft();
+          const kind = askReplace;
+          setAskReplace(null);
+          if (kind === 'ai') void fillAi();
+          else fillDraft();
         }}
-        onCancel={() => setAskReplace(false)}
+        onCancel={() => setAskReplace(null)}
       />
     </Card>
   );

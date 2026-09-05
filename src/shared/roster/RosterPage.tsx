@@ -1,6 +1,6 @@
-import { Pencil, Printer, RotateCcw, Trash2, UserMinus, UserPlus, Users } from 'lucide-react';
+import { Pencil, Printer, RotateCcw, Sparkles, Trash2, UserMinus, UserPlus, Users } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import {
   Badge,
@@ -48,6 +48,7 @@ export default function RosterPage() {
   const activeClass = useActiveClass();
   const toast = useToast();
   const printNow = usePrint();
+  const navigate = useNavigate();
 
   const [tab, setTab] = useState('list');
   const [editing, setEditing] = useState<Student | null>(null);
@@ -186,6 +187,10 @@ export default function RosterPage() {
           {/* 학기말 '우리 반 한 장' — 학생별 집계를 반 전체로 돌려 종이 한 장에. */}
           <Button size="sm" variant="ghost" icon={Printer} disabled={active.length === 0} onClick={printNow}>
             학급 요약 인쇄
+          </Button>
+          {/* 서른 명의 행동특성을 한 화면에서. 학생 한눈에 카드와 같은 글이다. */}
+          <Button size="sm" variant="ghost" icon={Sparkles} disabled={active.length === 0} onClick={() => navigate('/roster/comments')}>
+            행동특성 한 번에
           </Button>
           <Button
             size="sm"

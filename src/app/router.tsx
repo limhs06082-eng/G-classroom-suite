@@ -25,6 +25,7 @@ const RewardPage = lazy(() => import('../features/reward/RewardPage'));
 const AssignmentPage = lazy(() => import('../features/assignment/AssignmentPage'));
 const RosterPage = lazy(() => import('../shared/roster/RosterPage'));
 const StudentDetailPage = lazy(() => import('../shared/roster/StudentDetailPage'));
+const CommentsPage = lazy(() => import('../shared/roster/CommentsPage'));
 const SettingsPage = lazy(() => import('../features/settings/SettingsPage'));
 const SetupPage = lazy(() => import('../shared/setup/SetupPage'));
 const LessonPage = lazy(() => import('../features/lesson/LessonPage'));
@@ -97,6 +98,7 @@ export const router = createBrowserRouter([
       { path: 'task', element: <TaskPage /> },
       { path: 'message', element: <MessagePage /> },
       { path: 'roster', element: <RosterPage /> },
+      { path: 'roster/comments', element: <CommentsPage /> },
       { path: 'roster/:studentId', element: <StudentDetailPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'login', element: <LoginPage /> },
