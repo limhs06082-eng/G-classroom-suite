@@ -47,12 +47,13 @@ import { summarizeTasks } from '../task/taskCore';
 import { effectivePeriods, weekdayOf } from '../timetable/timetableCore';
 import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
 import {
-  loadLayout,
+  clearLegacyLayout,
+  isEmptyLayout,
   moveCard,
   moveCardTo,
+  readLegacyLayout,
   resize,
   resolveOrder,
-  saveLayout,
   setHidden,
   sizeOf,
   type HomeLayout,
@@ -60,6 +61,7 @@ import {
 import { MealCard } from './MealCard';
 import { NowCard } from './NowCard';
 import { quoteOfDay } from './quotes';
+import { SeatingPreview } from './SeatingPreview';
 import { BigStat, PendingNote, SummaryCard } from './SummaryCard';
 import { TimetableCard } from './TimetableCard';
 import { useTodayMeal, useWeekMeals } from './useTodayMeal';
@@ -99,21 +101,41 @@ const HOME_CARD_LABELS: Record<HomeCardId, string> = {
 };
 
 export default function HomePage() {
-  const { data, adapter } = useSuite();
+  const { data, adapter, update, isLoading } = useSuite();
   const term = useActiveTerm();
   const activeClass = useActiveClass();
   const roster = useRoster();
 
   /*
-   * 카드 배치(순서·숨김)는 이 기기의 취향이다 — 테마처럼 localStorage에.
-   * 그리는 쪽은 CSS `order`만 바꾼다. JSX 순서는 기본 순서 그대로라
-   * 카드를 옮겨도 코드에서 카드를 찾는 자리는 그대로다.
+   * 카드 배치(순서·숨김·크기)는 자료에 산다 — 백업에 따라가고 교실 PC와
+   * 집 노트북이 같은 배치를 본다. 그리는 쪽은 CSS `order`만 바꾼다. JSX
+   * 순서는 기본 순서 그대로라 카드를 옮겨도 코드에서 카드를 찾는 자리는
+   * 그대로다.
    */
-  const [layout, setLayout] = useState<HomeLayout>(loadLayout);
+  const layout = data.homeLayout;
   const applyLayout = (next: HomeLayout): void => {
-    setLayout(next);
-    saveLayout(next);
+    update((suite) => ({ ...suite, homeLayout: next }));
   };
+
+  /*
+   * 0.14까지는 이 기기의 localStorage에 있었다. 자료가 비어 있을 때 한 번
+   * 들여오고 지운다. 자료가 이미 차 있으면(다른 기기에서 옮겼으면) 자료가
+   * 이기고, 기기 것은 그냥 지운다 — 새로 고칠 때마다 되돌아가면 안 된다.
+   */
+  const migratedRef = useRef(false);
+  useEffect(() => {
+    // 자료를 다 읽기 전에 들여오면 읽기가 끝나는 순간 덮여 사라진다. 다 읽은 뒤 한 번.
+    if (isLoading || migratedRef.current) return;
+    migratedRef.current = true;
+
+    const legacy = readLegacyLayout();
+    if (legacy !== null && isEmptyLayout(data.homeLayout)) {
+      update((suite) => (isEmptyLayout(suite.homeLayout) ? { ...suite, homeLayout: legacy } : suite));
+    }
+    clearLegacyLayout();
+    // data.homeLayout은 그 순간의 값이면 된다 — 읽기가 끝난 시점에 한 번만 본다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]);
   const orderOf = new Map(resolveOrder(HOME_CARD_IDS, layout).map((id, index) => [id, index]));
 
   /*
@@ -274,6 +296,8 @@ export default function HomePage() {
           ) : (
             <PendingNote>아직 모둠을 만들지 않았습니다. 명단으로 바로 편성할 수 있습니다.</PendingNote>
           )}
+          {/* 넓힌 카드에만 자리표. 한 칸에는 들어갈 자리가 없다. */}
+          {sizeOf(layout, 'seating') >= 2 ? <SeatingPreview /> : null}
         </SummaryCard>
         </HomeSlot>
 

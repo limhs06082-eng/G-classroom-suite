@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  clearLegacyLayout,
   EMPTY_LAYOUT,
-  loadLayout,
+  isEmptyLayout,
   moveCard,
   moveCardTo,
+  readLegacyLayout,
   resize,
   resolveOrder,
-  saveLayout,
   setHidden,
   sizeOf,
   visibleCards,
@@ -38,12 +39,29 @@ describe('홈 카드 배치', () => {
     expect(moveCard(DEFAULTS, EMPTY_LAYOUT, 'now', -1)).toBe(EMPTY_LAYOUT);
   });
 
-  it('localStorage에 남고, 깨진 값은 빈 배치로 읽힌다', () => {
-    saveLayout({ order: ['duty'], hidden: ['seating'], sizes: {} });
-    expect(loadLayout()).toEqual({ order: ['duty'], hidden: ['seating'], sizes: {} });
+  it('예전 기기 배치(localStorage)를 한 번 읽고 지운다 — 깨졌거나 비었으면 null', () => {
+    window.localStorage.setItem(
+      'gboard:home-layout',
+      JSON.stringify({ order: ['duty'], hidden: ['seating'], sizes: { now: 2 } }),
+    );
+    expect(readLegacyLayout()).toEqual({ order: ['duty'], hidden: ['seating'], sizes: { now: 2 } });
+
+    clearLegacyLayout();
+    expect(window.localStorage.getItem('gboard:home-layout')).toBeNull();
+    expect(readLegacyLayout()).toBeNull();
 
     window.localStorage.setItem('gboard:home-layout', '{not json');
-    expect(loadLayout()).toEqual(EMPTY_LAYOUT);
+    expect(readLegacyLayout()).toBeNull();
+
+    window.localStorage.setItem('gboard:home-layout', JSON.stringify({ order: [], hidden: [] }));
+    expect(readLegacyLayout()).toBeNull();
+    clearLegacyLayout();
+  });
+
+  it('빈 배치를 안다', () => {
+    expect(isEmptyLayout(EMPTY_LAYOUT)).toBe(true);
+    expect(isEmptyLayout(resize(EMPTY_LAYOUT, 'now', 1))).toBe(false);
+    expect(isEmptyLayout(setHidden(EMPTY_LAYOUT, 'now', true))).toBe(false);
   });
 
   it('크기는 1~3칸이고 1이면 저장하지 않는다', () => {
@@ -76,14 +94,12 @@ describe('홈 카드 배치', () => {
     expect(moveCardTo(DEFAULTS, EMPTY_LAYOUT, 'ghost', 'now')).toBe(EMPTY_LAYOUT);
   });
 
-  it('크기도 localStorage에 남고, 엉뚱한 값은 버린다', () => {
-    saveLayout({ order: [], hidden: [], sizes: { now: 2 } });
-    expect(loadLayout().sizes).toEqual({ now: 2 });
-
+  it('예전 배치의 엉뚱한 크기 값은 버린다', () => {
     window.localStorage.setItem(
       'gboard:home-layout',
       JSON.stringify({ sizes: { now: 7, duty: 'x', meal: 3 } }),
     );
-    expect(loadLayout().sizes).toEqual({ meal: 3 });
+    expect(readLegacyLayout()?.sizes).toEqual({ meal: 3 });
+    clearLegacyLayout();
   });
 });

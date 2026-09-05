@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -56,10 +56,9 @@ function fakeTransfer(): Record<string, unknown> {
   };
 }
 
-function savedOrder(): string[] {
-  const raw = window.localStorage.getItem('gboard:home-layout');
-  if (raw === null) return [];
-  return (JSON.parse(raw) as { order?: string[] }).order ?? [];
+/** 카드 자리의 CSS order — 배치가 자료에 반영됐는지는 이걸로 본다. */
+function orderOf(label: string): string {
+  return screen.getByLabelText(`${label} 카드 자리`).style.order;
 }
 
 beforeEach(() => {
@@ -87,8 +86,21 @@ describe('홈 카드 끌기·크기', () => {
     fireEvent.drop(screen.getByLabelText('지금 카드 자리'), { dataTransfer });
 
     // 앞으로 끌었으니 '지금' 앞에 선다.
-    expect(savedOrder().slice(0, 2)).toEqual(['attendance', 'now']);
-    expect(screen.getByLabelText('오늘 출결 카드 자리')).toHaveStyle({ order: '0' });
+    expect(orderOf('오늘 출결')).toBe('0');
+    expect(orderOf('지금')).toBe('1');
+  });
+
+  it('예전 기기 배치(localStorage)는 자료가 비어 있을 때 한 번 들여오고 지운다', async () => {
+    window.localStorage.setItem(
+      'gboard:home-layout',
+      JSON.stringify({ order: ['duty', 'now'], hidden: [], sizes: {} }),
+    );
+    show();
+    await screen.findByLabelText('오늘의 당번 카드 자리');
+
+    await waitFor(() => expect(orderOf('오늘의 당번')).toBe('0'));
+    expect(orderOf('지금')).toBe('1');
+    expect(window.localStorage.getItem('gboard:home-layout')).toBeNull();
   });
 
   it('넓히기를 누르면 두 칸이 되고 좁히기로 돌아온다', async () => {

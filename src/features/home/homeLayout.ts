@@ -1,29 +1,29 @@
 /**
- * 홈 카드 배치 — 순서·숨김·크기.
+ * 홈 카드 배치 — 순서·숨김·크기의 순수 함수.
  *
  * 교사마다 아침에 먼저 보는 카드가 다르다. 담임은 출결, 전담은 시간표.
- * 배치는 학급 자료가 아니라 **이 기기의 취향**이라 테마처럼 localStorage에
- * 산다(백업에 안 들어간다).
+ * 배치는 `SuiteData.homeLayout`에 산다 — 백업에 따라가고 교실 PC와 집
+ * 노트북이 같은 배치를 본다. (0.14까지는 이 기기의 localStorage였다.
+ * 그 배치는 자료가 비어 있을 때 한 번 들여오고 지운다.)
  *
  * 순수 함수는 알려진 카드 id 목록을 받는다. 저장된 순서에 없는 새 카드는
  * 원래 자리(기본 순서)를 지키고, 이제 없는 카드 id는 조용히 버린다 —
  * 판이 바뀌어 카드가 늘고 줄어도 저장된 배치가 깨지지 않는다.
  */
 
-/** 그리드 칸 수. 1이 기본, 3이면 한 줄 전부(큰 화면 기준). */
-export type HomeCardSize = 1 | 2 | 3;
+import type { HomeCardSize, HomeLayout } from '../../shared/domain/types';
 
-export interface HomeLayout {
-  /** 보이는 순서. 여기 없는 카드는 기본 순서대로 뒤에 붙는다. */
-  order: string[];
-  hidden: string[];
-  /** 카드별 칸 수. 없으면 1이라 1은 저장하지 않는다. */
-  sizes: Record<string, HomeCardSize>;
-}
+export type { HomeCardSize, HomeLayout };
 
-const STORAGE_KEY = 'gboard:home-layout';
+const LEGACY_STORAGE_KEY = 'gboard:home-layout';
 
 export const EMPTY_LAYOUT: HomeLayout = { order: [], hidden: [], sizes: {} };
+
+export function isEmptyLayout(layout: HomeLayout): boolean {
+  return (
+    layout.order.length === 0 && layout.hidden.length === 0 && Object.keys(layout.sizes).length === 0
+  );
+}
 
 /** 기본 순서(defaults)에 저장된 순서(layout.order)를 얹어 실제 순서를 만든다. */
 export function resolveOrder(defaults: readonly string[], layout: HomeLayout): string[] {
@@ -107,16 +107,18 @@ export function resize(layout: HomeLayout, id: string, delta: -1 | 1): HomeLayou
   return { ...layout, sizes: next === 1 ? rest : { ...rest, [id]: next as HomeCardSize } };
 }
 
-function isSize(value: unknown): value is HomeCardSize {
-  return value === 1 || value === 2 || value === 3;
-}
-
-export function loadLayout(): HomeLayout {
+/**
+ * 0.14까지 이 기기에 남긴 배치. 비었거나 깨졌으면 null.
+ *
+ * 한 번 들여오고 나면 `clearLegacyLayout()`으로 지운다 — 새로 고칠 때마다
+ * 자료를 덮어쓰면 다른 기기에서 옮긴 배치가 되돌아간다.
+ */
+export function readLegacyLayout(): HomeLayout | null {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return EMPTY_LAYOUT;
+    const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (raw === null) return null;
     const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== 'object' || parsed === null) return EMPTY_LAYOUT;
+    if (typeof parsed !== 'object' || parsed === null) return null;
     const record = parsed as Record<string, unknown>;
     const strings = (value: unknown): string[] =>
       Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
@@ -125,20 +127,21 @@ export function loadLayout(): HomeLayout {
     const rawSizes = record['sizes'];
     if (typeof rawSizes === 'object' && rawSizes !== null) {
       for (const [id, value] of Object.entries(rawSizes as Record<string, unknown>)) {
-        if (isSize(value) && value !== 1) sizes[id] = value;
+        if (value === 2 || value === 3) sizes[id] = value;
       }
     }
 
-    return { order: strings(record['order']), hidden: strings(record['hidden']), sizes };
+    const layout = { order: strings(record['order']), hidden: strings(record['hidden']), sizes };
+    return isEmptyLayout(layout) ? null : layout;
   } catch {
-    return EMPTY_LAYOUT;
+    return null;
   }
 }
 
-export function saveLayout(layout: HomeLayout): void {
+export function clearLegacyLayout(): void {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
-    // 저장이 안 되는 환경이면 이 세션 동안만 유지된다.
+    // 지울 수 없는 환경이면 다음에 또 읽겠지만, 자료가 차 있으면 무시된다.
   }
 }

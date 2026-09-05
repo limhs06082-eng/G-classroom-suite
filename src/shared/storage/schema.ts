@@ -48,7 +48,11 @@ import {
   MESSAGE_CATEGORIES,
   TASK_AREAS,
   // 2판에서 늘어난 것
+  ATTENDANCE_REASONS,
   ATTENDANCE_STATUSES,
+  type AttendanceReason,
+  type HomeCardSize,
+  type HomeLayout,
   type AttendanceRecord,
   type AttendanceStatus,
   type ClassEvent,
@@ -774,6 +778,28 @@ function parseSubmission(raw: unknown, now: string): Submission | null {
   };
 }
 
+/**
+ * 홈 카드 배치. 칸이 없는 옛 백업은 빈 배치다 — 고칠 것이 아니라 그냥
+ * 없는 것이라 repairs에 남기지 않는다. 크기는 2·3만 담는다(1은 기본값).
+ */
+function parseHomeLayout(raw: unknown): HomeLayout {
+  const empty: HomeLayout = { order: [], hidden: [], sizes: {} };
+  if (!isRecord(raw)) return empty;
+
+  const strings = (value: unknown): string[] =>
+    Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+
+  const sizes: Record<string, HomeCardSize> = {};
+  const rawSizes = raw['sizes'];
+  if (isRecord(rawSizes)) {
+    for (const [id, value] of Object.entries(rawSizes)) {
+      if (value === 2 || value === 3) sizes[id] = value;
+    }
+  }
+
+  return { order: strings(raw['order']), hidden: strings(raw['hidden']), sizes };
+}
+
 function parseScoreCycle(raw: unknown): ScoreCycle {
   if (!isRecord(raw)) return { ...DEFAULT_SCORE_CYCLE };
 
@@ -820,7 +846,18 @@ function parseAttendanceRecord(raw: unknown): AttendanceRecord | null {
     ) {
       return [];
     }
-    return [{ studentId, status: status as AttendanceStatus, note: str(entry['note']) }];
+    // 분류는 상태와 달라서, 모르는 값이면 항목은 두고 분류만 버린다 — 없어도 뜻이 남는다.
+    const reason = entry['reason'];
+    const hasReason =
+      typeof reason === 'string' && (ATTENDANCE_REASONS as readonly string[]).includes(reason);
+    return [
+      {
+        studentId,
+        status: status as AttendanceStatus,
+        note: str(entry['note']),
+        ...(hasReason ? { reason: reason as AttendanceReason } : {}),
+      },
+    ];
   });
 
   return {
@@ -1094,6 +1131,7 @@ export function parseSuiteData(raw: unknown, now: string = new Date().toISOStrin
     timetableEntries: parseList('timetableEntries', '시간표', parseTimetableEntry),
     periodTimes,
     scoreCycle: parseScoreCycle(root['scoreCycle']),
+    homeLayout: parseHomeLayout(root['homeLayout']),
     activeTermId: typeof root['activeTermId'] === 'string' ? root['activeTermId'] : null,
     activeClassId: typeof root['activeClassId'] === 'string' ? root['activeClassId'] : null,
     ...parseLock(root),

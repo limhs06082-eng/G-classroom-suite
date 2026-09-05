@@ -690,11 +690,17 @@ export const ATTENDANCE_STATUSES = ['absent', 'late', 'early', 'fieldTrip'] as c
 /** 결석 · 지각 · 조퇴 · 체험학습 */
 export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
 
+export const ATTENDANCE_REASONS = ['illness', 'unexcused', 'other', 'authorized'] as const;
+/** 질병 · 미인정 · 기타 · 인정 — 생활기록부 출결의 사유 분류다. */
+export type AttendanceReason = (typeof ATTENDANCE_REASONS)[number];
+
 export interface AttendanceEntry {
   studentId: string;
   status: AttendanceStatus;
   /** 사유. 비어 있어도 된다. */
   note: string;
+  /** 사유 분류. 없으면 아직 안 고른 것이다 — 메모와 별개다. */
+  reason?: AttendanceReason;
 }
 
 /** 날짜·학급마다 하나. DutyCompletion과 같은 자연키다. */
@@ -837,12 +843,32 @@ export interface ClassEvent {
 // 이식하는 7~10단계에서 이 인터페이스에 추가된다.
 // ─────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────
+// 홈 카드 배치 (features/home)
+//
+// 순서·숨김·크기. 처음엔 기기 취향이라 localStorage에 두었는데, 교실 PC와
+// 집 노트북에서 같은 배치를 보고 싶다는 쪽이 이겼다 — 자료에 넣어 백업과
+// 함께 다닌다. 카드 id는 홈 화면이 정한다. 모르는 id는 조용히 버린다.
+// ─────────────────────────────────────────────────────────────
+
+/** 그리드 칸 수. 1이 기본, 3이면 한 줄 전부(큰 화면 기준). */
+export type HomeCardSize = 1 | 2 | 3;
+
+export interface HomeLayout {
+  /** 보이는 순서. 여기 없는 카드는 기본 순서대로 뒤에 붙는다. */
+  order: string[];
+  hidden: string[];
+  /** 카드별 칸 수. 없으면 1이라 1은 저장하지 않는다. */
+  sizes: Record<string, HomeCardSize>;
+}
+
 /**
  * 2판: 출결·알림장·시간표 하루 바꾸기·쿠폰·관찰 기록이 늘었다.
- * 1판 앱이 2판 백업을 열면 이 필드들을 잃으므로, 버전을 올려
+ * 3판: 홈 카드 배치(homeLayout)와 출결 사유 분류가 늘었다.
+ * 이전 판 앱이 새 판 백업을 열면 이 필드들을 잃으므로, 버전을 올려
  * SCHEMA_VERSION_AHEAD 경고가 뜨게 한다.
  */
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export interface SuiteData {
   schemaVersion: number;
@@ -931,4 +957,9 @@ export interface SuiteData {
   observations: ObservationEntry[];
   /** 학급 일정. 지난 것도 남긴다 — 학기말에 "언제 뭘 했나"를 돌아본다. */
   classEvents: ClassEvent[];
+
+  // ── 3판에서 늘어난 것 ──────────────────────────────────────
+
+  /** 홈 카드 배치. 학급이 아니라 교사(자료 파일)에 매인다. */
+  homeLayout: HomeLayout;
 }
