@@ -73,10 +73,13 @@ export function TimetableCard() {
       icon={CalendarDays}
       action={
         // 주말·빈 시간표에는 바꿀 오늘이 없다.
+        // 홈 카드 자리의 [접기]가 오른쪽 위 구석에 앉는다(HomeSlot). 그 밑에 깔리지 않게 비운다.
         hasAny && weekday !== 0 ? (
-          <Button size="sm" variant="ghost" icon={CalendarCog} onClick={() => setEditing(true)}>
-            오늘만 바꾸기
-          </Button>
+          <div className="mr-6">
+            <Button size="sm" variant="ghost" icon={CalendarCog} onClick={() => setEditing(true)}>
+              오늘만 바꾸기
+            </Button>
+          </div>
         ) : undefined
       }
     >

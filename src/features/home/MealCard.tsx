@@ -54,7 +54,8 @@ export function MealCard({
       title="오늘 급식"
       icon={UtensilsCrossed}
       action={
-        <div className="flex items-center gap-1">
+        // 홈 카드 자리의 [접기]가 오른쪽 위 구석에 앉는다(HomeSlot). 그 밑에 깔리지 않게 비운다.
+        <div className="mr-6 flex items-center gap-1">
           {hasAllergenInfo ? (
             <button
               type="button"

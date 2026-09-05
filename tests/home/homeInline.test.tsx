@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -110,6 +110,21 @@ describe('홈에서 바로 하기', () => {
     expect(within(events).getByText('D-3')).toBeInTheDocument();
   });
 
+  it('날짜를 지우면 [추가]가 눌리지 않는다', async () => {
+    const user = userEvent.setup();
+    show();
+    await screen.findByLabelText('주요 일정 카드 자리');
+
+    await user.click(screen.getByRole('button', { name: '+ 일정' }));
+    const dialog = await screen.findByRole('dialog', { name: '일정 추가' });
+    await user.type(within(dialog).getByRole('textbox', { name: '일정 이름' }), '수학 수행평가');
+    expect(within(dialog).getByRole('button', { name: '추가' })).toBeEnabled();
+
+    // 날짜 입력칸을 비우면 값이 ''가 된다. 그때 [추가]가 살아 있으면 눌러도 아무 일이 없다.
+    await user.clear(within(dialog).getByLabelText('날짜'));
+    expect(within(dialog).getByRole('button', { name: '추가' })).toBeDisabled();
+  });
+
   it('도구 격자에서 타이머가 열린다', async () => {
     const user = userEvent.setup();
     show();
@@ -130,5 +145,22 @@ describe('홈에서 바로 하기', () => {
 
     await user.click(screen.getByRole('button', { name: '오늘 출결 카드 펴기' }));
     expect(screen.getByRole('button', { name: '전원 출석 확인' })).toBeInTheDocument();
+  });
+});
+
+/*
+ * 교실 PC는 밤새 켜 둔다. 홈 2.0부터 홈이 출석 확인·알림장·일정을 **오늘 날짜로 쓰므로**
+ * 렌더 때 한 번 잰 날짜로는 아침에 어제 날짜에 도장을 찍게 된다.
+ */
+describe('홈의 오늘', () => {
+  it('자정을 넘기면 제목 옆 날짜가 바뀐다', async () => {
+    vi.setSystemTime(new Date(2026, 7, 24, 23, 59, 59));
+    show();
+    expect(await screen.findByText('8월 24일 월요일')).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(screen.getByText('8월 25일 화요일')).toBeInTheDocument();
   });
 });

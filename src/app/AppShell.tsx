@@ -98,7 +98,9 @@ export function AppShell() {
             처음에는 전부 한 줄이었는데, 기능이 11개가 되자 기본 창(1280px)에서
             flex가 항목을 쥐어짜 한글 라벨이 세로로 꺾였다 — '출결'이 '출/결'로.
             글자가 꺾이는 머리띠보다 줄이 하나 더 있는 머리띠가 낫다.
-            아주 넓은 화면(2xl≥1536px)에서만 다시 한 줄로 합친다.
+
+            홈 2.0: xl(1280px)부터 아이콘만으로 한 줄에 합치고, 글자는 2xl(1536px)에서 돌아온다.
+            lg(1024px)는 설치형에서 날씨·잠금까지 더하면 1,010px쯤 필요해 977px 안에 안 들어간다.
           */}
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-0.5 px-4 py-2">
             <Link to="/" className="shrink-0 text-base font-bold tracking-tight text-slate-900">
@@ -116,8 +118,8 @@ export function AppShell() {
                * shrink-0·whitespace-nowrap이라 무슨 일이 있어도 글자는
                * 안 꺾인다 — 모자라면 꺾이는 대신 넘쳐서 스크롤된다.
                */
-              // 홈 2.0: lg(1024px)부터 한 줄 — 아이콘만 보이고 글자는 2xl에서. 좁은 창은 둘째 줄.
-              className="order-last -mx-1 flex basis-full items-center gap-1 overflow-x-auto px-1 pb-0.5 lg:order-0 lg:ml-1 lg:basis-auto lg:pb-0"
+              // 홈 2.0: xl(1280px)부터 한 줄 — 아이콘만 보이고 글자는 2xl에서. 좁은 창은 둘째 줄.
+              className="order-last -mx-1 flex basis-full items-center gap-1 overflow-x-auto px-1 pb-0.5 xl:order-0 xl:ml-1 xl:basis-auto xl:pb-0"
             >
               {FEATURE_NAV.filter(
                 ({ id }) => !(isDesktop() && HIDDEN_NAV_IDS_ON_DESKTOP.includes(id)),

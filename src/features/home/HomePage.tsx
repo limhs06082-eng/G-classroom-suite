@@ -33,7 +33,7 @@ import {
   UtensilsCrossed,
   Wand2,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
@@ -254,9 +254,13 @@ export default function HomePage() {
 
   const groups = data.groups.filter((group) => group.classId === activeClass?.id);
 
+  /*
+   * 자정이 지나면 저절로 바뀐다. 홈 2.0부터는 이 날짜로 출석 확인·알림장·일정을
+   * **쓴다**. 렌더 때 한 번 재면 밤새 켜 둔 교실 PC가 아침에 어제 날짜에 도장을 찍는다.
+   */
+  const todayString = useToday();
+  const today = localDate(todayString);
   // 업무는 학급에 매이지 않는다. activeClass가 없어도 셀 수 있다.
-  const today = new Date();
-  const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const taskSummary = summarizeTasks(data.tasks, todayString);
   const todayWeekday = weekdayOf(today);
   const todayLabel = `${today.getMonth() + 1}월 ${today.getDate()}일 ${todayWeekday === 0 ? '주말' : `${WEEKDAY_NAMES[todayWeekday - 1] ?? ''}요일`}`;
@@ -776,7 +780,11 @@ function QuickEventAction({ classId, today }: { classId: string; today: string }
             <Button variant="secondary" onClick={() => setOpen(false)}>
               취소
             </Button>
-            <Button variant="primary" disabled={title.trim() === ''} onClick={add}>
+            <Button
+              variant="primary"
+              disabled={title.trim() === '' || !/^\d{4}-\d{2}-\d{2}$/.test(date)}
+              onClick={add}
+            >
               추가
             </Button>
           </>
@@ -1150,6 +1158,12 @@ const SIZE_CLASS: Record<1 | 2 | 3, string> = {
 
 const SLOT_BUTTON = 'rounded bg-surface/90 p-0.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400';
 
+/** `YYYY-MM-DD`를 **우리 시간대의** 그날 0시로. `new Date('YYYY-MM-DD')`는 UTC라 아침에 어제가 된다. */
+function localDate(ymd: string): Date {
+  const [year, month, day] = ymd.split('-').map(Number);
+  return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1);
+}
+
 /** 접힌 머리의 [열기] 화살. lucide의 ArrowUpRight를 여기서만 써서 위 import 목록을 안 건드린다. */
 function ArrowUpRightIcon() {
   return (
@@ -1213,6 +1227,20 @@ function HomeSlot({
   children: ReactNode;
 }) {
   const slotRef = useRef<HTMLDivElement>(null);
+  const toolbar = (
+    <SlotTools
+      id={id}
+      label={label}
+      size={size}
+      placement={collapsed ? 'inline' : 'foot'}
+      slotRef={slotRef}
+      onMove={onMove}
+      onResize={onResize}
+      onHide={onHide}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+    />
+  );
 
   return (
     <div
@@ -1241,6 +1269,7 @@ function HomeSlot({
         <div className="flex items-center gap-2 rounded-card border border-slate-200 bg-surface px-3 py-2">
           <Icon className="size-4 shrink-0 text-slate-400" aria-hidden />
           <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-700">{label}</span>
+          {toolbar}
           {to === undefined ? null : (
             <Link to={to} aria-label={`${label} 열기`} title="열기" className="rounded p-1 text-slate-400 hover:text-brand-700">
               <ArrowUpRightIcon />
@@ -1271,7 +1300,52 @@ function HomeSlot({
           <ChevronsDownUp className="size-4" aria-hidden />
         </button>
       )}
-      <div className="absolute top-2.5 right-9 flex gap-0.5 opacity-0 transition-opacity group-hover/slot:opacity-100 focus-within:opacity-100">
+      {collapsed ? null : toolbar}
+    </div>
+  );
+}
+
+/**
+ * 마우스를 올리면 나오는 끌기·앞뒤·넓히기·숨기기.
+ *
+ * **머리 줄에 두지 않는다.** 머리 오른쪽에는 이제 [전원 출석 확인]·[+ 일정]·[열기 ↗]가
+ * 산다. 도구줄이 그 위에 앉으면 [열기]를 노린 손이 [숨기기]를 눌러 카드가 사라진다.
+ * 펼친 카드에서는 발치 오른쪽, 접은 카드에서는 머리 한 줄 안에 자리한다.
+ *
+ * **안 보일 때는 눌리지도 않는다**(pointer-events-none). 투명해도 맞는 자리는 남으므로,
+ * 전자칠판을 손가락으로 쓸 때 보이지 않는 단추가 먼저 맞는 일이 없어야 한다.
+ */
+function SlotTools({
+  id,
+  label,
+  size,
+  placement,
+  slotRef,
+  onMove,
+  onResize,
+  onHide,
+  onDragStart,
+  onDragEnd,
+}: {
+  id: string;
+  label: string;
+  size: 1 | 2 | 3;
+  placement: 'foot' | 'inline';
+  slotRef: RefObject<HTMLDivElement | null>;
+  onMove: (delta: -1 | 1) => void;
+  onResize: (delta: -1 | 1) => void;
+  onHide: () => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}) {
+  return (
+      <div
+        className={cx(
+          'flex gap-0.5 opacity-0 transition-opacity group-hover/slot:opacity-100 focus-within:opacity-100',
+          'pointer-events-none group-hover/slot:pointer-events-auto focus-within:pointer-events-auto',
+          placement === 'foot' ? 'absolute right-2 bottom-2' : 'shrink-0',
+        )}
+      >
         <button
           type="button"
           draggable
@@ -1337,6 +1411,5 @@ function HomeSlot({
           <EyeOff className="size-3.5" aria-hidden />
         </button>
       </div>
-    </div>
   );
 }
