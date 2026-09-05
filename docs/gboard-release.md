@@ -147,6 +147,7 @@ Actions가 십 분쯤 돌고 나면 Releases에 **초안**이 생긴다.
 ```bash
 # Git Bash
 export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/gboard.key)"
+export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""   # 비워도 반드시 둔다 — 없으면 암호를 물으며 멈춘다
 npm run desktop:build
 ```
 
