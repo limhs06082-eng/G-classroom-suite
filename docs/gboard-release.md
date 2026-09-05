@@ -131,11 +131,15 @@ Actions가 십 분쯤 돌고 나면 Releases에 **초안**이 생긴다.
 3. `release.yml`이 설치 파일과 함께 `latest.json`·`.sig`를 릴리스 초안에 올린다 (`bundle.createUpdaterArtifacts`)
 4. 설치해 보고 [Publish release] — **공개해야** 설치본들이 새 판을 본다. 초안은 안 보인다
 
-**컴퓨터에서 설치본을 만들 때**는 열쇠 경로를 환경변수로 준다. 없으면 `createUpdaterArtifacts` 때문에 빌드가 멈춘다 — 서명 없는 갱신 파일을 조용히 만드는 것보다 낫다.
+**컴퓨터에서 설치본을 만들 때**는 열쇠 **내용**을 환경변수로 준다(`_PATH` 변수는 이 판의 CLI가 안 읽는다 — 실제로 시험해 보니 경로만 주면 "no private key"로 서명이 빠진 채 설치 파일만 나온다). 열쇠가 없으면 갱신용 서명 파일(`.sig`)이 안 만들어진다 — 설치 파일은 나오지만 자동 갱신은 그 파일을 못 받는다.
 
 ```bash
-TAURI_SIGNING_PRIVATE_KEY_PATH=%USERPROFILE%\.tauri\gboard.key npm run desktop:build
+# Git Bash
+export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/gboard.key)"
+npm run desktop:build
 ```
+
+산출물: `src-tauri/target/release/bundle/nsis/` 안의 `.exe`와 `.exe.sig`. GitHub Actions에서는 `latest.json`까지 tauri-action이 만든다.
 
 > 자동 갱신이 없던 판(0.12.0 이하)은 이 기능을 모른다. 그 설치본들에는 0.13.0 설치 파일을 한 번 더 손으로 나눠 드려야 하고, 그 뒤부터는 저절로 온다.
 
