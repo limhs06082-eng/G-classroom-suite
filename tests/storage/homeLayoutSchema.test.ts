@@ -10,15 +10,25 @@ import { parseSuiteData, serializeSuiteData } from '../../src/shared/storage/sch
  * 조용히 열려야 한다.
  */
 describe('홈 배치 스키마', () => {
-  it('저장했다 읽으면 순서·숨김·크기가 그대로다', () => {
+  it('저장했다 읽으면 순서·숨김·크기·접힘이 그대로다', () => {
     const data = {
       ...createEmptySuiteData(),
-      homeLayout: { order: ['duty', 'now'], hidden: ['meal'], sizes: { seating: 2 as const } },
+      homeLayout: {
+        order: ['duty', 'now'],
+        hidden: ['meal'],
+        sizes: { seating: 2 as const, notice: 1 as const },
+        collapsed: ['reward'],
+      },
     };
 
     const { data: parsed } = parseSuiteData(JSON.parse(serializeSuiteData(data)));
 
-    expect(parsed.homeLayout).toEqual({ order: ['duty', 'now'], hidden: ['meal'], sizes: { seating: 2 } });
+    expect(parsed.homeLayout).toEqual({
+      order: ['duty', 'now'],
+      hidden: ['meal'],
+      sizes: { seating: 2, notice: 1 },
+      collapsed: ['reward'],
+    });
   });
 
   it('칸이 없는 옛 백업은 빈 배치로, 알림 없이 열린다', () => {
@@ -26,7 +36,7 @@ describe('홈 배치 스키마', () => {
 
     const { data: parsed, repairs } = parseSuiteData(withoutLayout);
 
-    expect(parsed.homeLayout).toEqual({ order: [], hidden: [], sizes: {} });
+    expect(parsed.homeLayout).toEqual({ order: [], hidden: [], sizes: {}, collapsed: [] });
     expect(repairs).toEqual([]);
   });
 
@@ -38,7 +48,7 @@ describe('홈 배치 스키마', () => {
 
     const { data: parsed } = parseSuiteData(raw);
 
-    expect(parsed.homeLayout).toEqual({ order: ['now'], hidden: [], sizes: { meal: 3 } });
+    expect(parsed.homeLayout).toEqual({ order: ['now'], hidden: [], sizes: { meal: 3, roster: 1 }, collapsed: [] });
   });
 
   it('3판부터다 — 2판 앱이 열면 경고가 뜨도록', () => {

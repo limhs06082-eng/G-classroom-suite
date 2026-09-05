@@ -800,21 +800,22 @@ function parseBehaviorComment(raw: unknown, now: string): BehaviorComment | null
  * 없는 것이라 repairs에 남기지 않는다. 크기는 2·3만 담는다(1은 기본값).
  */
 function parseHomeLayout(raw: unknown): HomeLayout {
-  const empty: HomeLayout = { order: [], hidden: [], sizes: {} };
+  const empty: HomeLayout = { order: [], hidden: [], sizes: {}, collapsed: [] };
   if (!isRecord(raw)) return empty;
 
   const strings = (value: unknown): string[] =>
     Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
 
+  // 1도 담는다 — 기본이 2칸인 카드를 1칸으로 좁힌 뜻이다.
   const sizes: Record<string, HomeCardSize> = {};
   const rawSizes = raw['sizes'];
   if (isRecord(rawSizes)) {
     for (const [id, value] of Object.entries(rawSizes)) {
-      if (value === 2 || value === 3) sizes[id] = value;
+      if (value === 1 || value === 2 || value === 3) sizes[id] = value;
     }
   }
 
-  return { order: strings(raw['order']), hidden: strings(raw['hidden']), sizes };
+  return { order: strings(raw['order']), hidden: strings(raw['hidden']), sizes, collapsed: strings(raw['collapsed']) };
 }
 
 function parseScoreCycle(raw: unknown): ScoreCycle {

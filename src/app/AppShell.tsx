@@ -15,6 +15,7 @@ import { engageLock, tryUnlock } from '../shared/lock/lockOps';
 import { isDesktop } from '../shared/platform/target';
 import { useSuite } from '../shared/roster/SuiteDataProvider';
 import { useNow } from '../shared/state/useNow';
+import { useToday } from '../shared/state/useToday';
 import { ShortcutsModal, useHelpKey, useToast } from '../shared/ui';
 import { ClassSwitcher } from './ClassSwitcher';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -47,6 +48,9 @@ export function AppShell() {
    * 교사에게 그것부터 보여 줄 이유가 없다.
    */
   const onSetup = useLocation().pathname === '/setup';
+  const today = useToday();
+  const [ty = 0, tm = 1, td = 1] = today.split('-').map(Number);
+  const headerDate = `${tm}월 ${td}일 ${['일', '월', '화', '수', '목', '금', '토'][new Date(ty, tm - 1, td).getDay()] ?? ''}요일`;
 
   // 단축키 도움. 잠금 중에는 열지 않는다 — 잠금 화면은 아무것도 안 새는 것이 목적이다.
   const [helpOpen, setHelpOpen] = useState(false);
@@ -102,6 +106,8 @@ export function AppShell() {
             </Link>
 
             <ClassSwitcher />
+            {/* 오늘 날짜. 홈 2.0 — 머리띠 한 줄에 학교·학급·날짜. */}
+            <p className="hidden shrink-0 text-sm text-slate-500 sm:block">{headerDate}</p>
 
             {onSetup ? null : (
             <nav
@@ -110,7 +116,8 @@ export function AppShell() {
                * shrink-0·whitespace-nowrap이라 무슨 일이 있어도 글자는
                * 안 꺾인다 — 모자라면 꺾이는 대신 넘쳐서 스크롤된다.
                */
-              className="order-last -mx-1 flex basis-full items-center gap-1 overflow-x-auto px-1 pb-0.5 2xl:order-0 2xl:ml-1 2xl:basis-auto 2xl:pb-0"
+              // 홈 2.0: lg(1024px)부터 한 줄 — 아이콘만 보이고 글자는 2xl에서. 좁은 창은 둘째 줄.
+              className="order-last -mx-1 flex basis-full items-center gap-1 overflow-x-auto px-1 pb-0.5 lg:order-0 lg:ml-1 lg:basis-auto lg:pb-0"
             >
               {FEATURE_NAV.filter(
                 ({ id }) => !(isDesktop() && HIDDEN_NAV_IDS_ON_DESKTOP.includes(id)),
@@ -132,7 +139,7 @@ export function AppShell() {
                   }
                 >
                   <Icon className="size-4" aria-hidden />
-                  <span className="hidden md:inline">{label}</span>
+                  <span className="hidden 2xl:inline">{label}</span>
                 </NavLink>
               ))}
             </nav>

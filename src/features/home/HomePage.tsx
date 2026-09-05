@@ -1,17 +1,24 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Bell,
   Cake,
   CalendarCheck,
   CalendarDays,
   CheckSquare,
   ChevronDown,
+  ChevronsDownUp,
+  ChevronsUpDown,
   ChevronUp,
   ClipboardCheck,
+  Clock,
+  Dices,
   Download,
   EyeOff,
   GripVertical,
+  Hand,
   ListChecks,
   Maximize2,
+  Megaphone,
   MessageSquareText,
   Minimize2,
   Monitor,
@@ -20,6 +27,8 @@ import {
   School,
   Shield,
   Sparkles,
+  Timer,
+  Users,
   UsersRound,
   UtensilsCrossed,
   Wand2,
@@ -36,16 +45,21 @@ import {
 import { isDesktop } from '../../shared/platform/target';
 import { useNow } from '../../shared/state/useNow';
 import { useToday } from '../../shared/state/useToday';
-import { Button, Card, cx, EmptyState, useToast } from '../../shared/ui';
+import { Button, Card, cx, EmptyState, Modal, useToast } from '../../shared/ui';
 import { openBoard } from '../../shared/window/openBoard';
 import { AssignmentSummary } from '../assignment/AssignmentSummary';
 import { AttendanceSummary } from '../attendance/AttendanceSummary';
+import { isConfirmed, setConfirmed, summarize } from '../attendance/attendanceCore';
+import { itemsFor, setItems } from '../notice/noticeCore';
+import { useTools } from '../tools/ToolsContext';
+import { createClassEvent } from '../../shared/domain/factories';
+import { createId } from '../../shared/ids';
 import { DutySummary } from '../duty/DutySummary';
 import { nowState } from '../now/nowCore';
 import { RewardSummary } from '../reward/RewardSummary';
 import { ddayLabel, daysUntil, upcomingEvents } from '../notice/eventsCore';
 import { summarizeTasks } from '../task/taskCore';
-import { effectivePeriods, weekdayOf } from '../timetable/timetableCore';
+import { effectivePeriods, WEEKDAY_NAMES, weekdayOf } from '../timetable/timetableCore';
 import type { Student } from '../../shared/domain/types';
 import { birthdaysOn, upcomingBirthdays } from '../../shared/roster/birthdayCore';
 import { removeSampleClass } from '../../shared/sample/sampleClass';
@@ -54,15 +68,18 @@ import { evaluateBackupReminder, type BackupReminder } from './backupReminder';
 import { HomeTips } from './HomeTips';
 import {
   clearLegacyLayout,
+  isCollapsed,
   isEmptyLayout,
   moveCard,
   moveCardTo,
   readLegacyLayout,
   resize,
   resolveOrder,
+  setCollapsed,
   setHidden,
   sizeOf,
   type HomeLayout,
+  type SizeDefaults,
 } from './homeLayout';
 import { MealCard } from './MealCard';
 import { NowCard } from './NowCard';
@@ -78,18 +95,25 @@ import { useTodayMeal, useWeekMeals } from './useTodayMeal';
  * 원본 dashboard를 그대로 홈으로 쓰지 않고, 5개 기능 요약을 얹은 새 화면을 만든다.
  * 7~10단계에서 각 기능을 이식하며 '준비 중' 카드가 실제 요약으로 바뀐다.
  */
-/** 홈 학급 카드. 순서·숨김의 열쇠이자 기본 순서다. */
+/**
+ * 홈 학급 카드. 순서·숨김의 열쇠이자 기본 순서다.
+ *
+ * 줄마다 역할이 있다(3열 기준). 첫 줄은 오늘 것 — 지금·출결·시간표.
+ * 둘째 줄은 급식·생일과 넓은 알림장. 그 뒤로 일정(D-day 열 개)·당번·점수,
+ * 넓은 자리표·과제·명단. 교사가 옮긴 배치는 그대로 존중한다.
+ */
 const HOME_CARD_IDS = [
   'now',
   'attendance',
-  'duty',
-  'seating',
-  'reward',
-  'assignment',
   'timetable',
   'meal',
-  'events',
   'birthday',
+  'notice',
+  'events',
+  'duty',
+  'reward',
+  'seating',
+  'assignment',
   'roster',
 ] as const;
 type HomeCardId = (typeof HOME_CARD_IDS)[number];
@@ -97,16 +121,50 @@ type HomeCardId = (typeof HOME_CARD_IDS)[number];
 const HOME_CARD_LABELS: Record<HomeCardId, string> = {
   now: '지금',
   attendance: '오늘 출결',
-  duty: '오늘의 당번',
-  seating: '자리·모둠',
-  reward: '학급 점수',
-  assignment: '마감 임박 과제',
   timetable: '오늘 시간표',
   meal: '급식',
-  events: '다가오는 일정',
   birthday: '생일',
+  notice: '오늘 알림장',
+  events: '주요 일정',
+  duty: '오늘의 당번',
+  reward: '학급 점수',
+  seating: '자리·모둠',
+  assignment: '마감 임박 과제',
   roster: '학생 명단',
 };
+
+/** 접힌 카드의 머리와 [열기]에 쓴다. */
+const HOME_CARD_ICONS: Record<HomeCardId, LucideIcon> = {
+  now: Clock,
+  attendance: CalendarCheck,
+  timetable: CalendarDays,
+  meal: UtensilsCrossed,
+  birthday: Cake,
+  notice: Megaphone,
+  events: CalendarDays,
+  duty: Wand2,
+  reward: Sparkles,
+  seating: UsersRound,
+  assignment: ClipboardCheck,
+  roster: Users,
+};
+
+const HOME_CARD_PATHS: Partial<Record<HomeCardId, string>> = {
+  attendance: '/attendance',
+  timetable: '/settings?tab=timetable',
+  meal: '/settings',
+  birthday: '/roster',
+  notice: '/notice',
+  events: '/notice',
+  duty: '/duty',
+  reward: '/reward',
+  seating: '/seating',
+  assignment: '/assignment',
+  roster: '/roster',
+};
+
+/** 기본 칸 수. 알림장은 적는 칸이라 넓게, 자리표는 넓어야 미리보기가 들어간다. */
+const DEFAULT_SIZES: SizeDefaults = { notice: 2, seating: 2 };
 
 export default function HomePage() {
   const { data, adapter, update, isLoading, guard } = useSuite();
@@ -170,15 +228,19 @@ export default function HomePage() {
   const slot = (id: HomeCardId) => ({
     id,
     label: HOME_CARD_LABELS[id],
+    icon: HOME_CARD_ICONS[id],
+    to: HOME_CARD_PATHS[id],
     order: orderOf.get(id) ?? HOME_CARD_IDS.length,
     hidden: layout.hidden.includes(id),
-    size: sizeOf(layout, id),
+    collapsed: isCollapsed(layout, id),
+    size: sizeOf(layout, id, DEFAULT_SIZES),
     highlighted: tipCard === id,
     dragging: draggingId === id,
     dropTarget: overId === id && draggingId !== null && draggingId !== id,
     onMove: (delta: -1 | 1) => applyLayout(moveCard(HOME_CARD_IDS, layout, id, delta)),
-    onResize: (delta: -1 | 1) => applyLayout(resize(layout, id, delta)),
+    onResize: (delta: -1 | 1) => applyLayout(resize(layout, id, delta, DEFAULT_SIZES)),
     onHide: () => applyLayout(setHidden(layout, id, true)),
+    onToggleCollapse: () => applyLayout(setCollapsed(layout, id, !isCollapsed(layout, id))),
     onDragStart: () => setDraggingId(id),
     onDragEnd: endDrag,
     onDragOver: () => setOverId((current) => (current === id ? current : id)),
@@ -196,6 +258,9 @@ export default function HomePage() {
   const today = new Date();
   const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const taskSummary = summarizeTasks(data.tasks, todayString);
+  const todayWeekday = weekdayOf(today);
+  const todayLabel = `${today.getMonth() + 1}월 ${today.getDate()}일 ${todayWeekday === 0 ? '주말' : `${WEEKDAY_NAMES[todayWeekday - 1] ?? ''}요일`}`;
+  const tools = useTools();
 
   if (activeClass === null) {
     return (
@@ -221,6 +286,7 @@ export default function HomePage() {
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <h1 className="text-xl font-bold text-slate-900">{activeClass.name}</h1>
+        <p className="text-sm font-medium text-slate-700">{todayLabel}</p>
         {term === null ? null : <p className="text-sm text-slate-500">{term.name}</p>}
         {data.profile.schoolName === '' ? null : (
           <p className="text-sm text-slate-400">· {data.profile.schoolName}</p>
@@ -297,7 +363,7 @@ export default function HomePage() {
           <TodayNow />
         </HomeSlot>
 
-        {/* '지금' 바로 다음. 아침에 홈을 열면 출결부터 찍는 것이 하루의 순서다. */}
+        {/* '지금' 바로 다음. 아침에 홈을 열면 출결부터 찍는 것이 하루의 순서다. 아무도 안 빠진 날은 여기서 끝난다. */}
         <HomeSlot {...slot('attendance')}>
         <SummaryCard
           to="/attendance"
@@ -306,8 +372,23 @@ export default function HomePage() {
           accentClass="text-attendance-500"
           tintClass="bg-attendance-50"
           cta="출결 열기"
+          action={<AttendanceConfirmAction classId={activeClass.id} today={todayString} />}
         >
           <AttendanceSummary />
+        </SummaryCard>
+        </HomeSlot>
+
+        {/* 오늘 알림장 — 홈에서 적고 끝낸다. 종례 때 칠판에 그대로 뜬다. */}
+        <HomeSlot {...slot('notice')}>
+        <SummaryCard
+          to="/notice"
+          label="오늘 알림장"
+          icon={Megaphone}
+          accentClass="text-notice-500"
+          tintClass="bg-notice-50"
+          cta="알림장 열기"
+        >
+          <NoticeInline classId={activeClass.id} today={todayString} />
         </SummaryCard>
         </HomeSlot>
 
@@ -339,8 +420,8 @@ export default function HomePage() {
           ) : (
             <PendingNote>아직 모둠을 만들지 않았습니다. 명단으로 바로 편성할 수 있습니다.</PendingNote>
           )}
-          {/* 넓힌 카드에만 자리표. 한 칸에는 들어갈 자리가 없다. */}
-          {sizeOf(layout, 'seating') >= 2 ? <SeatingPreview /> : null}
+          {/* 넓힌 카드에만 자리표. 한 칸에는 들어갈 자리가 없다. 기본이 두 칸이라 대개 보인다. */}
+          {sizeOf(layout, 'seating', DEFAULT_SIZES) >= 2 ? <SeatingPreview /> : null}
         </SummaryCard>
         </HomeSlot>
 
@@ -401,16 +482,17 @@ export default function HomePage() {
         )}
         </HomeSlot>
 
-        {/* 다가오는 일정 셋. */}
+        {/* 주요 일정 — D-day 열 개를 한 줄에 하나씩. [+ 일정]으로 홈에서 바로 적는다. */}
         <HomeSlot {...slot('events')}>
         <SummaryCard
           to="/notice"
-          label="다가오는 일정"
+          label="주요 일정"
           icon={CalendarDays}
           accentClass="text-notice-500"
           tintClass="bg-notice-50"
           pending={upcomingEvents(data.classEvents, activeClass.id, todayString).length === 0}
           cta="일정 관리"
+          action={<QuickEventAction classId={activeClass.id} today={todayString} />}
         >
           <UpcomingEvents classId={activeClass.id} today={todayString} />
         </SummaryCard>
@@ -544,8 +626,184 @@ export default function HomePage() {
         />
       </section>
 
+      {/* 수업 도구 격자. 하단 막대와 같은 도구지만 손가락으로 눌리는 크기다 — 그림의 '업무 바로가기'. */}
+      <section aria-label="수업 도구" className="rounded-card border border-slate-200 bg-surface p-3">
+        <h2 className="mb-2 text-sm font-semibold text-slate-700">수업 도구</h2>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          <ToolTile icon={Timer} label="타이머" onClick={() => tools.open('timer')} />
+          <ToolTile icon={Dices} label="뽑기" onClick={() => tools.open('picker')} />
+          <ToolTile icon={Hand} label="거수 투표" onClick={() => tools.open('vote')} />
+          <ToolTile icon={EyeOff} label="화면 가리기" onClick={() => tools.open('curtain')} />
+          <ToolTile icon={Bell} label="알림 띄우기" onClick={() => tools.open('notice')} />
+          <ToolTile icon={Monitor} label="오늘 보드" onClick={() => openBoard('/board/today')} />
+        </div>
+      </section>
+
       <QuoteCard />
     </div>
+  );
+}
+
+/** 도구 격자의 한 칸. */
+function ToolTile({ icon: Icon, label, onClick }: { icon: LucideIcon; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-center gap-1.5 rounded-control border border-slate-200 px-2 py-3 text-sm text-slate-800 transition-colors hover:border-slate-300 hover:bg-slate-50"
+    >
+      <Icon className="size-5 text-brand-700" aria-hidden />
+      {label}
+    </button>
+  );
+}
+
+/** 오늘 알림장 — 카드 안의 입력칸. 적으면 바로 목록에 서고, 종례 칠판에 그대로 뜬다. */
+function NoticeInline({ classId, today }: { classId: string; today: string }) {
+  const { data, update } = useSuite();
+  const [text, setText] = useState('');
+  const items = itemsFor(data.notices, classId, today);
+
+  const add = (): void => {
+    const trimmed = text.trim();
+    if (trimmed === '') return;
+    update((suite) => ({
+      ...suite,
+      notices: setItems(suite.notices, classId, today, [
+        ...itemsFor(suite.notices, classId, today),
+        { id: createId(), text: trimmed },
+      ]),
+    }));
+    setText('');
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <input
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.nativeEvent.isComposing) add();
+        }}
+        placeholder="한 줄 적고 Enter — 종례 때 칠판에 그대로 뜹니다"
+        aria-label="알림장 한 줄 추가"
+        className="h-9 w-full rounded-control border border-slate-300 px-2.5 text-sm"
+      />
+      {items.length === 0 ? (
+        <PendingNote>오늘 알림장이 비어 있습니다.</PendingNote>
+      ) : (
+        <ol className="flex flex-col gap-0.5">
+          {items.slice(0, 6).map((item, index) => (
+            <li key={item.id} className="flex gap-1.5 text-sm text-slate-800">
+              <span data-numeric className="w-4 shrink-0 text-right text-slate-400">
+                {index + 1}.
+              </span>
+              <span className="min-w-0 flex-1 truncate">{item.text}</span>
+            </li>
+          ))}
+          {items.length > 6 ? <li className="text-xs text-slate-400">외 {items.length - 6}줄</li> : null}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+/** 출결 카드 머리의 [전원 출석 확인]. 아무도 안 찍은 날에만 보인다 — 아무도 안 빠진 날은 홈에서 끝난다. */
+function AttendanceConfirmAction({ classId, today }: { classId: string; today: string }) {
+  const { data, update } = useSuite();
+  const roster = useRoster();
+  const toast = useToast();
+  if (roster.length === 0) return null;
+  const summary = summarize(data.attendanceRecords, classId, today, roster.length);
+  if (summary.marked > 0 || isConfirmed(data.attendanceRecords, classId, today)) return null;
+
+  return (
+    <Button
+      size="sm"
+      variant="secondary"
+      onClick={() => {
+        update((suite) => ({
+          ...suite,
+          attendanceRecords: setConfirmed(suite.attendanceRecords, classId, today, true, new Date().toISOString()),
+        }));
+        toast.success('오늘 전원 출석으로 확인했습니다.');
+      }}
+    >
+      전원 출석 확인
+    </Button>
+  );
+}
+
+/** 주요 일정 카드 머리의 [+ 일정]. 이름과 날짜만 받는다 — 메모는 알림장 화면에서. */
+function QuickEventAction({ classId, today }: { classId: string; today: string }) {
+  const { update } = useSuite();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [date, setDate] = useState(today);
+
+  const add = (): void => {
+    const trimmed = title.trim();
+    if (trimmed === '' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    update((suite) => ({
+      ...suite,
+      classEvents: [...suite.classEvents, createClassEvent({ classId, date, title: trimmed }, new Date().toISOString())],
+    }));
+    toast.success('일정을 적었습니다.');
+    setTitle('');
+    setOpen(false);
+  };
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => {
+          setDate(today);
+          setOpen(true);
+        }}
+      >
+        + 일정
+      </Button>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="일정 추가"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setOpen(false)}>
+              취소
+            </Button>
+            <Button variant="primary" disabled={title.trim() === ''} onClick={add}>
+              추가
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.nativeEvent.isComposing) add();
+            }}
+            placeholder="예: 수학 수행평가"
+            aria-label="일정 이름"
+            className="h-10 w-full rounded-control border border-slate-300 px-3 text-sm"
+          />
+          <input
+            type="date"
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+            aria-label="날짜"
+            className="h-10 w-full rounded-control border border-slate-300 px-3 text-sm"
+          />
+          <p className="text-xs text-slate-500">준비물·장소 같은 메모는 알림장 화면의 학급 일정에서 덧붙일 수 있습니다.</p>
+        </div>
+      </Modal>
+    </>
   );
 }
 
@@ -584,31 +842,32 @@ function BirthdayCard({ roster, today }: { roster: Student[]; today: string }) {
   );
 }
 
-/** 홈 '다가오는 일정' 카드 본문. 가까운 셋, D-day 순. */
+/** 홈 '주요 일정' 카드 본문. 가까운 열 개, 한 줄에 하나씩, D-day는 오른쪽 정렬. */
 function UpcomingEvents({ classId, today }: { classId: string; today: string }) {
   const { data } = useSuite();
-  const upcoming = upcomingEvents(data.classEvents, classId, today, 3);
+  const upcoming = upcomingEvents(data.classEvents, classId, today, 10);
 
   if (upcoming.length === 0) {
     return <PendingNote>수행평가·현장학습 같은 날짜를 적어 두면 여기 D-day로 나옵니다.</PendingNote>;
   }
 
   return (
-    <ul className="flex flex-col gap-1">
+    <ul className="flex flex-col divide-y divide-slate-100">
       {upcoming.map((event) => {
         const days = daysUntil(today, event.date);
         return (
-          <li key={event.id} className="flex items-center gap-2 text-sm">
+          <li key={event.id} className="flex items-center gap-2 py-1 text-sm">
+            <span className="min-w-0 flex-1 truncate text-slate-800">{event.title}</span>
+            <span className="shrink-0 text-xs text-slate-400">{shortDate(event.date)}</span>
             <span
               data-numeric
               className={cx(
-                'w-12 shrink-0 font-semibold',
-                days === 0 ? 'text-danger-700' : days <= 3 ? 'text-warning-700' : 'text-slate-500',
+                'w-12 shrink-0 text-right font-semibold',
+                days === 0 ? 'text-danger-700' : days <= 3 ? 'text-warning-700' : 'text-brand-700',
               )}
             >
               {ddayLabel(today, event.date)}
             </span>
-            <span className="min-w-0 flex-1 truncate text-slate-800">{event.title}</span>
           </li>
         );
       })}
@@ -891,6 +1150,16 @@ const SIZE_CLASS: Record<1 | 2 | 3, string> = {
 
 const SLOT_BUTTON = 'rounded bg-surface/90 p-0.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400';
 
+/** 접힌 머리의 [열기] 화살. lucide의 ArrowUpRight를 여기서만 써서 위 import 목록을 안 건드린다. */
+function ArrowUpRightIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M7 17 17 7" />
+      <path d="M7 7h10v10" />
+    </svg>
+  );
+}
+
 /**
  * 홈 카드 자리. 순서는 CSS `order`, 숨김은 `hidden` 속성, 크기는 col-span으로 —
  * 카드 자체는 모른다. 조작(끌기·위·아래·좁히기·넓히기·숨기기)은 마우스를
@@ -900,8 +1169,11 @@ const SLOT_BUTTON = 'rounded bg-surface/90 p-0.5 text-slate-400 hover:text-slate
 function HomeSlot({
   id,
   label,
+  icon: Icon,
+  to,
   order,
   hidden,
+  collapsed,
   size,
   highlighted,
   dragging,
@@ -909,6 +1181,7 @@ function HomeSlot({
   onMove,
   onResize,
   onHide,
+  onToggleCollapse,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -917,8 +1190,13 @@ function HomeSlot({
 }: {
   id: string;
   label: string;
+  icon: LucideIcon;
+  /** 그 기능으로 가는 길. 접힌 머리의 [열기]에 쓴다. */
+  to?: string;
   order: number;
   hidden: boolean;
+  /** 접힘 — 머리만 남는다. 늘 보이는 [접기]로 켜고 끈다. */
+  collapsed: boolean;
   size: 1 | 2 | 3;
   /** 첫 화면 안내가 가리키는 중 */
   highlighted: boolean;
@@ -927,6 +1205,7 @@ function HomeSlot({
   onMove: (delta: -1 | 1) => void;
   onResize: (delta: -1 | 1) => void;
   onHide: () => void;
+  onToggleCollapse: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDragOver: () => void;
@@ -953,13 +1232,46 @@ function HomeSlot({
       }}
       className={cx(
         'group/slot relative rounded-card transition-opacity',
-        SIZE_CLASS[size],
+        collapsed ? 'sm:col-span-1' : SIZE_CLASS[size],
         dragging && 'opacity-40',
         (dropTarget || highlighted) && 'ring-2 ring-brand-400 ring-offset-2',
       )}
     >
-      {children}
-      <div className="absolute top-2 right-2 flex gap-0.5 opacity-0 transition-opacity group-hover/slot:opacity-100 focus-within:opacity-100">
+      {collapsed ? (
+        <div className="flex items-center gap-2 rounded-card border border-slate-200 bg-surface px-3 py-2">
+          <Icon className="size-4 shrink-0 text-slate-400" aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-700">{label}</span>
+          {to === undefined ? null : (
+            <Link to={to} aria-label={`${label} 열기`} title="열기" className="rounded p-1 text-slate-400 hover:text-brand-700">
+              <ArrowUpRightIcon />
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-label={`${label} 카드 펴기`}
+            title="펴기"
+            className="rounded p-1 text-slate-400 hover:text-slate-700"
+          >
+            <ChevronsUpDown className="size-4" aria-hidden />
+          </button>
+        </div>
+      ) : (
+        children
+      )}
+      {/* 늘 보이는 [접기]. 처음 온 사람이 카드를 다룰 수 있다는 것을 아는 유일한 표시다. */}
+      {collapsed ? null : (
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          aria-label={`${label} 카드 접기`}
+          title="접기"
+          className="absolute top-2.5 right-2 rounded p-1 text-slate-300 transition-colors hover:bg-slate-100 hover:text-slate-700"
+        >
+          <ChevronsDownUp className="size-4" aria-hidden />
+        </button>
+      )}
+      <div className="absolute top-2.5 right-9 flex gap-0.5 opacity-0 transition-opacity group-hover/slot:opacity-100 focus-within:opacity-100">
         <button
           type="button"
           draggable

@@ -1,5 +1,5 @@
 /**
- * 홈 카드 배치 — 순서·숨김·크기의 순수 함수.
+ * 홈 카드 배치 — 순서·숨김·크기·접힘의 순수 함수.
  *
  * 교사마다 아침에 먼저 보는 카드가 다르다. 담임은 출결, 전담은 시간표.
  * 배치는 `SuiteData.homeLayout`에 산다 — 백업에 따라가고 교실 PC와 집
@@ -9,6 +9,9 @@
  * 순수 함수는 알려진 카드 id 목록을 받는다. 저장된 순서에 없는 새 카드는
  * 원래 자리(기본 순서)를 지키고, 이제 없는 카드 id는 조용히 버린다 —
  * 판이 바뀌어 카드가 늘고 줄어도 저장된 배치가 깨지지 않는다.
+ *
+ * 크기는 카드마다 기본값이 있을 수 있다(알림장 2칸 등). 사용자가 정한 값은
+ * 1이라도 저장한다 — 그래야 "기본 2칸을 1칸으로" 한 뜻이 남는다.
  */
 
 import type { HomeCardSize, HomeLayout } from '../../shared/domain/types';
@@ -17,11 +20,16 @@ export type { HomeCardSize, HomeLayout };
 
 const LEGACY_STORAGE_KEY = 'gboard:home-layout';
 
-export const EMPTY_LAYOUT: HomeLayout = { order: [], hidden: [], sizes: {} };
+export const EMPTY_LAYOUT: HomeLayout = { order: [], hidden: [], sizes: {}, collapsed: [] };
+
+export type SizeDefaults = Readonly<Record<string, HomeCardSize>>;
 
 export function isEmptyLayout(layout: HomeLayout): boolean {
   return (
-    layout.order.length === 0 && layout.hidden.length === 0 && Object.keys(layout.sizes).length === 0
+    layout.order.length === 0 &&
+    layout.hidden.length === 0 &&
+    Object.keys(layout.sizes).length === 0 &&
+    layout.collapsed.length === 0
   );
 }
 
@@ -94,17 +102,29 @@ export function setHidden(layout: HomeLayout, id: string, hidden: boolean): Home
   return { ...layout, hidden: hidden ? [...without, id] : without };
 }
 
-export function sizeOf(layout: HomeLayout, id: string): HomeCardSize {
-  return layout.sizes[id] ?? 1;
+export function isCollapsed(layout: HomeLayout, id: string): boolean {
+  return layout.collapsed.includes(id);
 }
 
-/** 한 칸 넓히거나 좁힌다. 1~3 밖이면 그대로. 1로 돌아오면 키를 지운다. */
-export function resize(layout: HomeLayout, id: string, delta: -1 | 1): HomeLayout {
-  const next = sizeOf(layout, id) + delta;
-  if (next < 1 || next > 3) return layout;
+export function setCollapsed(layout: HomeLayout, id: string, collapsed: boolean): HomeLayout {
+  const without = layout.collapsed.filter((item) => item !== id);
+  return { ...layout, collapsed: collapsed ? [...without, id] : without };
+}
 
-  const { [id]: _dropped, ...rest } = layout.sizes;
-  return { ...layout, sizes: next === 1 ? rest : { ...rest, [id]: next as HomeCardSize } };
+export function sizeOf(layout: HomeLayout, id: string, defaults: SizeDefaults = {}): HomeCardSize {
+  return layout.sizes[id] ?? defaults[id] ?? 1;
+}
+
+/** 한 칸 넓히거나 좁힌다. 1~3 밖이면 그대로(같은 객체). 정한 값은 1이라도 저장한다. */
+export function resize(
+  layout: HomeLayout,
+  id: string,
+  delta: -1 | 1,
+  defaults: SizeDefaults = {},
+): HomeLayout {
+  const next = sizeOf(layout, id, defaults) + delta;
+  if (next < 1 || next > 3) return layout;
+  return { ...layout, sizes: { ...layout.sizes, [id]: next as HomeCardSize } };
 }
 
 /**
@@ -131,7 +151,7 @@ export function readLegacyLayout(): HomeLayout | null {
       }
     }
 
-    const layout = { order: strings(record['order']), hidden: strings(record['hidden']), sizes };
+    const layout = { order: strings(record['order']), hidden: strings(record['hidden']), sizes, collapsed: [] };
     return isEmptyLayout(layout) ? null : layout;
   } catch {
     return null;

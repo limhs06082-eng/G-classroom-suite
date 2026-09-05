@@ -621,7 +621,7 @@ export function createEmptySuiteData(): SuiteData {
     redemptions: [],
     observations: [],
     classEvents: [],
-    homeLayout: { order: [], hidden: [], sizes: {} },
+    homeLayout: { order: [], hidden: [], sizes: {}, collapsed: [] },
     behaviorComments: [],
   };
 }

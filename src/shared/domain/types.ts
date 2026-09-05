@@ -884,8 +884,10 @@ export interface HomeLayout {
   /** 보이는 순서. 여기 없는 카드는 기본 순서대로 뒤에 붙는다. */
   order: string[];
   hidden: string[];
-  /** 카드별 칸 수. 없으면 1이라 1은 저장하지 않는다. */
+  /** 카드별 칸 수. 없으면 카드 기본값(대개 1). 사용자가 정한 값은 1이라도 저장한다. */
   sizes: Record<string, HomeCardSize>;
+  /** 접어 둔 카드. 머리만 남는다. */
+  collapsed: string[];
 }
 
 /**

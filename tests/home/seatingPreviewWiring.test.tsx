@@ -90,14 +90,12 @@ afterEach(() => {
  * 그래야 "카드를 넓힌다"는 조작이 그저 여백을 늘리는 일이 아니게 된다.
  */
 describe('자리·모둠 카드 미리보기', () => {
-  it('넓히면 자리표가 보이고, 좁히면 사라진다', async () => {
+  it('기본 두 칸에는 자리표가 보이고, 한 칸으로 좁히면 사라지고, 넓히면 돌아온다', async () => {
     const user = userEvent.setup();
     show();
     const slot = await screen.findByLabelText('자리·모둠 카드 자리');
 
-    expect(within(slot).queryByText('김하나')).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: '자리·모둠 카드 넓히기' }));
+    // 홈 2.0: 자리·모둠은 기본이 두 칸이라 자리표가 처음부터 보인다.
     expect(within(slot).getByText('김하나')).toBeInTheDocument();
     // 사용 안 함 자리는 그대로 표시된다 — 자리표 모양이 실제와 같아야 한다.
     expect(within(slot).getByLabelText('2행 2열, 사용 안 함')).toBeInTheDocument();
@@ -106,5 +104,8 @@ describe('자리·모둠 카드 미리보기', () => {
 
     await user.click(screen.getByRole('button', { name: '자리·모둠 카드 좁히기' }));
     expect(within(slot).queryByText('김하나')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '자리·모둠 카드 넓히기' }));
+    expect(within(slot).getByText('김하나')).toBeInTheDocument();
   });
 });

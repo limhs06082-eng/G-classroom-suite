@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 import {
   clearLegacyLayout,
   EMPTY_LAYOUT,
+  isCollapsed,
   isEmptyLayout,
   moveCard,
   moveCardTo,
   readLegacyLayout,
   resize,
   resolveOrder,
+  setCollapsed,
   setHidden,
   sizeOf,
   visibleCards,
@@ -23,7 +25,7 @@ describe('홈 카드 배치', () => {
 
   it('저장된 순서를 앞에, 모르는 카드는 기본 순서로 뒤에 둔다', () => {
     // 'ghost'는 이제 없는 카드 — 조용히 버린다. 'seating'은 새로 생긴 카드처럼 뒤에 붙는다.
-    const layout = { order: ['duty', 'ghost', 'now'], hidden: [], sizes: {} };
+    const layout = { order: ['duty', 'ghost', 'now'], hidden: [], sizes: {}, collapsed: [] };
     expect(resolveOrder(DEFAULTS, layout)).toEqual(['duty', 'now', 'attendance', 'seating']);
   });
 
@@ -44,7 +46,7 @@ describe('홈 카드 배치', () => {
       'gboard:home-layout',
       JSON.stringify({ order: ['duty'], hidden: ['seating'], sizes: { now: 2 } }),
     );
-    expect(readLegacyLayout()).toEqual({ order: ['duty'], hidden: ['seating'], sizes: { now: 2 } });
+    expect(readLegacyLayout()).toEqual({ order: ['duty'], hidden: ['seating'], sizes: { now: 2 }, collapsed: [] });
 
     clearLegacyLayout();
     expect(window.localStorage.getItem('gboard:home-layout')).toBeNull();
@@ -62,19 +64,31 @@ describe('홈 카드 배치', () => {
     expect(isEmptyLayout(EMPTY_LAYOUT)).toBe(true);
     expect(isEmptyLayout(resize(EMPTY_LAYOUT, 'now', 1))).toBe(false);
     expect(isEmptyLayout(setHidden(EMPTY_LAYOUT, 'now', true))).toBe(false);
+    expect(isEmptyLayout(setCollapsed(EMPTY_LAYOUT, 'now', true))).toBe(false);
   });
 
-  it('크기는 1~3칸이고 1이면 저장하지 않는다', () => {
+  it('크기는 1~3칸. 카드별 기본값이 있고, 사용자가 정한 값은 1이라도 저장한다', () => {
+    const defaults = { notice: 2 as const };
+    expect(sizeOf(EMPTY_LAYOUT, 'now')).toBe(1);
+    expect(sizeOf(EMPTY_LAYOUT, 'notice', defaults)).toBe(2);
+
     const wide = resize(EMPTY_LAYOUT, 'now', 1);
     expect(sizeOf(wide, 'now')).toBe(2);
-    expect(sizeOf(EMPTY_LAYOUT, 'now')).toBe(1);
-
-    // 3에서는 더 못 넓힌다.
+    // 3에서는 더 못 넓힌다, 1에서는 더 못 좁힌다 — 같은 객체.
     expect(sizeOf(resize(resize(wide, 'now', 1), 'now', 1), 'now')).toBe(3);
-    // 1에서는 더 못 좁힌다 — 같은 객체.
     expect(resize(EMPTY_LAYOUT, 'now', -1)).toBe(EMPTY_LAYOUT);
-    // 1로 돌아오면 키가 사라진다.
-    expect(resize(wide, 'now', -1).sizes).toEqual({});
+
+    // 기본 2칸인 카드를 1칸으로 좁히면 1이 저장되어 기본값을 이긴다.
+    const narrowed = resize(EMPTY_LAYOUT, 'notice', -1, defaults);
+    expect(narrowed.sizes).toEqual({ notice: 1 });
+    expect(sizeOf(narrowed, 'notice', defaults)).toBe(1);
+  });
+
+  it('접었다 편다', () => {
+    const folded = setCollapsed(EMPTY_LAYOUT, 'duty', true);
+    expect(isCollapsed(folded, 'duty')).toBe(true);
+    expect(isCollapsed(folded, 'now')).toBe(false);
+    expect(setCollapsed(folded, 'duty', false).collapsed).toEqual([]);
   });
 
   it('떨어뜨린 자리로 옮긴다 — 앞으로 끌면 그 앞에, 뒤로 끌면 그 뒤에', () => {
