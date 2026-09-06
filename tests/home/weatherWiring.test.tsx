@@ -339,6 +339,20 @@ describe('이미 학교를 고른 교사의 주소 메우기', () => {
 });
 
 describe('급식과 한 파일을 나눠 쓴다', () => {
+  /*
+   * 시계를 급식 날짜에 못 박는다. CacheStore는 7일 지난 급식을 버리므로(KEEP_DAYS),
+   * 실제 시계로 돌리면 2026-09-06부터 '2026-08-29' 급식이 버려져 이 시험이 깨진다 —
+   * 실제로 v0.21.0 배포 CI가 그날 아침 그렇게 막혔다. 다른 describe와 같은 시각.
+   */
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(2026, 7, 29, 9, 0, 0));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('날씨를 담아도 받아 둔 급식이 남는다', async () => {
     /*
      * `cache.json` 하나에 급식과 날씨가 함께 산다. 여기서 임자 글자
@@ -364,19 +378,12 @@ describe('급식과 한 파일을 나눠 쓴다', () => {
     show();
     await screen.findByText('26°');
 
-    /*
-     * 날씨가 파일에 앉기까지 받아 오기 → 캐시 → 쓰기 세 단계다. GitHub Actions의
-     * Windows 러너에서 이 시험만 1초 기본 한도를 넘겨 v0.21.0 배포가 한 번 막혔다.
-     */
-    await waitFor(
-      () => {
-        const raw: unknown = JSON.parse(shared.disk.get('cache.json') ?? '{}');
-        const shape = raw as { meals?: Record<string, unknown>; weather?: Record<string, unknown> };
-        expect(shape.weather?.['인천광역시']).toBeDefined();
-        expect(shape.meals?.['2026-08-29']).toBeDefined();
-      },
-      { timeout: 4000 },
-    );
+    await waitFor(() => {
+      const raw: unknown = JSON.parse(shared.disk.get('cache.json') ?? '{}');
+      const shape = raw as { meals?: Record<string, unknown>; weather?: Record<string, unknown> };
+      expect(shape.weather?.['인천광역시']).toBeDefined();
+      expect(shape.meals?.['2026-08-29']).toBeDefined();
+    });
   });
 });
 
