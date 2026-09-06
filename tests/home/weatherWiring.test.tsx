@@ -364,12 +364,19 @@ describe('급식과 한 파일을 나눠 쓴다', () => {
     show();
     await screen.findByText('26°');
 
-    await waitFor(() => {
-      const raw: unknown = JSON.parse(shared.disk.get('cache.json') ?? '{}');
-      const shape = raw as { meals?: Record<string, unknown>; weather?: Record<string, unknown> };
-      expect(shape.weather?.['인천광역시']).toBeDefined();
-      expect(shape.meals?.['2026-08-29']).toBeDefined();
-    });
+    /*
+     * 날씨가 파일에 앉기까지 받아 오기 → 캐시 → 쓰기 세 단계다. GitHub Actions의
+     * Windows 러너에서 이 시험만 1초 기본 한도를 넘겨 v0.21.0 배포가 한 번 막혔다.
+     */
+    await waitFor(
+      () => {
+        const raw: unknown = JSON.parse(shared.disk.get('cache.json') ?? '{}');
+        const shape = raw as { meals?: Record<string, unknown>; weather?: Record<string, unknown> };
+        expect(shape.weather?.['인천광역시']).toBeDefined();
+        expect(shape.meals?.['2026-08-29']).toBeDefined();
+      },
+      { timeout: 4000 },
+    );
   });
 });
 
