@@ -254,7 +254,6 @@ export default function ClassboardPage() {
         board={board}
         link={link}
         busy={data.loading || busy}
-        ready={data.board !== null}
         onRefresh={() => void data.refresh()}
         onSignOut={() => void signOut()}
         onUpdate={(patch) => report(data.updateBoard(patch))}
@@ -397,7 +396,6 @@ function ShareCard({
   board,
   link,
   busy,
-  ready,
   onRefresh,
   onSignOut,
   onUpdate,
@@ -405,8 +403,6 @@ function ShareCard({
   board: Board;
   link: string;
   busy: boolean;
-  /** 서버에서 게시판을 읽어 왔는가. 그 전의 조작은 낙관적 반영이 붙을 자리가 없어 막는다. */
-  ready: boolean;
   onRefresh: () => void;
   onSignOut: () => void;
   onUpdate: (patch: Partial<Omit<Board, 'code' | 'ownerUid' | 'createdAt'>>) => void;
@@ -444,7 +440,7 @@ function ShareCard({
           <Button size="sm" variant="ghost" icon={RefreshCw} onClick={onRefresh} disabled={busy}>
             새로고침
           </Button>
-          <Button size="sm" variant="ghost" icon={Settings2} onClick={() => setManaging(true)} disabled={!ready}>
+          <Button size="sm" variant="ghost" icon={Settings2} onClick={() => setManaging(true)}>
             주제 관리
           </Button>
           <Button size="sm" variant="ghost" icon={LogOut} onClick={onSignOut}>
@@ -478,18 +474,12 @@ function ShareCard({
               <input
                 type="checkbox"
                 checked={board.nicknameOnly}
-                disabled={!ready}
                 onChange={(event) => onUpdate({ nicknameOnly: event.target.checked })}
               />
               별명만 받기
             </label>
             <label className="inline-flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                checked={board.closed}
-                disabled={!ready}
-                onChange={(event) => onUpdate({ closed: event.target.checked })}
-              />
+              <input type="checkbox" checked={board.closed} onChange={(event) => onUpdate({ closed: event.target.checked })} />
               게시판 닫기
             </label>
           </div>
@@ -497,7 +487,7 @@ function ShareCard({
       </div>
       {qr === null ? null : (
         <div className="mt-3 flex justify-center">
-          <img src={qr} alt="학생 접속 QR" className="size-64 rounded-card border border-slate-200" />
+          <img src={qr} alt="학생 접속 QR" className="size-64 rounded-card border border-slate-200 bg-white p-2" />
         </div>
       )}
       <p className="mt-3 text-xs text-slate-500">
@@ -535,13 +525,7 @@ function TopicsModal({
               maxLength={TOPIC_NAME_MAX}
               aria-label={`${topic.name} 이름`}
               onBlur={(event) => {
-                const next = event.target.value.trim();
-                // 빈 이름은 무시되는데(boardCore), 칸까지 비어 있으면 지운 것처럼 보인다. 되돌린다.
-                if (next === '') {
-                  event.target.value = topic.name;
-                  return;
-                }
-                if (next !== topic.name) apply(renameTopic(board, topic.id, event.target.value));
+                if (event.target.value.trim() !== topic.name) apply(renameTopic(board, topic.id, event.target.value));
               }}
               className={cx('h-9 min-w-0 flex-1 rounded-control border border-slate-300 bg-surface px-2 text-sm', topic.locked && 'text-slate-500')}
             />

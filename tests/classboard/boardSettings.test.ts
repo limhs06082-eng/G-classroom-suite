@@ -90,14 +90,8 @@ describe('규칙 글', () => {
     expect(text).toContain('match /boards/{code}');
     expect(text).toContain("sign_in_provider != 'anonymous'");
     expect(text).toContain('resource.data.hidden == false');
-    // 바이트로 센다 — 한글 1,000자는 3,000바이트다.
-    expect(text).toContain('toUtf8().size() <= maxBytes');
-    expect(text).toContain('textOk(code, 4000)');
-    expect(text).toContain('textOk(code, 1200)');
-    // 학생이 손으로 만든 요청으로 '선생님' 표시를 달 수 없다.
-    expect(text).toContain('request.resource.data.byTeacher == false || owner(code)');
-    // 없는 게시판은 get()이 터지기 전에 exists()로 거른다.
-    expect(text).toContain('exists(boardPath(code))');
+    expect(text).toContain('textOk(1000)');
+    expect(text).toContain('textOk(300)');
     // 로그인만 보는 느슨한 규칙이 아니다.
     expect(text).not.toMatch(/allow read, write: if request\.auth != null;/);
   });

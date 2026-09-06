@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 import { isDesktop } from '../../shared/platform/target';
 import { Button, Card, useToast } from '../../shared/ui';
-import { createCheckClient, toKoreanBoardError } from './boardClient';
+import { getBoardClient, toKoreanBoardError } from './boardClient';
 import {
   clearClassboardSettings,
   OFFICIAL_STUDENT_ORIGIN,
@@ -53,14 +53,13 @@ export function ClassboardSettingsTab() {
 
   /**
    * 세 단계를 차례로 — 익명 로그인(설정값·익명 켜짐), Firestore 읽기(데이터베이스·규칙).
-   * 어디서 막혔는지가 곧 무엇을 빠뜨렸는지다. 확인용 앱을 따로 쓰므로 게시판 화면의
-   * 선생님 로그인은 끊기지 않는다.
+   * 어디서 막혔는지가 곧 무엇을 빠뜨렸는지다.
    */
   const check = async (): Promise<void> => {
     if (settings === null) return;
     setChecking(true);
     setResult(null);
-    const client = createCheckClient(settings.config);
+    const client = getBoardClient(settings.config);
     try {
       await client.signInAnonymously();
     } catch (caught) {
@@ -200,7 +199,7 @@ export function ClassboardSettingsTab() {
           이 규칙이 실제 자물쇠입니다. 게시판을 만든 선생님 계정만 글을 숨기고 지우며, 학생은 숨긴 글을 읽지 못합니다.
           Firebase 콘솔 → Firestore Database → <strong>규칙</strong> 탭에 그대로 붙여 넣고 <strong>게시</strong>하세요.
         </p>
-        <pre className="ink mt-2 max-h-72 overflow-auto rounded-control bg-slate-900 p-3 text-xs leading-relaxed text-white">
+        <pre className="mt-2 max-h-72 overflow-auto rounded-control bg-slate-900 p-3 text-xs leading-relaxed text-slate-100">
           {rulesText()}
         </pre>
       </Card>

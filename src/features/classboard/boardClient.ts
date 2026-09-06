@@ -24,7 +24,7 @@ export interface BoardClient {
   createBoard(board: Board): Promise<void>;
   updateBoard(code: string, patch: Partial<Omit<Board, 'code' | 'ownerUid' | 'createdAt'>>): Promise<void>;
 
-  /** 최신 글 100개·댓글 300개. 학생(includeHidden=false)은 숨긴 글을 받지 않는다 — 규칙도 그렇게 잠근다. */
+  /** 최신 300개. 학생(includeHidden=false)은 숨긴 글을 받지 않는다 — 규칙도 그렇게 잠근다. */
   listPosts(code: string, includeHidden: boolean): Promise<BoardPost[]>;
   listComments(code: string, includeHidden: boolean): Promise<BoardComment[]>;
   addPost(code: string, post: BoardPost): Promise<void>;
@@ -38,24 +38,16 @@ export interface BoardClient {
 let override: BoardClient | null = null;
 const cache = new Map<string, BoardClient>();
 
-/** 설정값마다 하나. 네 값이 다 같아야 같은 앱이다 — apiKey만 고쳐 다시 붙여 넣은 경우를 놓치지 않게. */
+/** 설정값마다 하나. 같은 프로젝트면 같은 Firebase 앱을 다시 쓴다. */
 export function getBoardClient(config: BoardFirebaseConfig): BoardClient {
   if (override !== null) return override;
-  const key = `${config.projectId}|${config.appId}|${config.apiKey}|${config.authDomain}`;
+  const key = `${config.projectId}|${config.appId}`;
   let client = cache.get(key);
   if (client === undefined) {
     client = new FirebaseBoardClient(config);
     cache.set(key, client);
   }
   return client;
-}
-
-/**
- * 설정의 [연결 확인]용. 따로 이름 붙인 앱이라 익명으로 들어갔다 나와도 선생님의
- * 로그인 세션(getBoardClient 쪽)은 그대로다.
- */
-export function createCheckClient(config: BoardFirebaseConfig): BoardClient {
-  return override ?? new FirebaseBoardClient(config, 'check');
 }
 
 /** 시험용. null이면 다시 Firebase 구현으로. */

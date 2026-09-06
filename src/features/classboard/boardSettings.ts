@@ -105,14 +105,7 @@ export function resolveStudentOrigin(
  *
  * - 게시판 문서는 로그인한 누구나 **하나씩** 읽는다(코드를 아는 학생). 목록은 주인만.
  * - 만들기는 이메일 계정만(익명 불가), 고치기·지우기는 주인만.
- * - 글·댓글: 숨긴 것은 주인만 읽는다. 쓰기는 자기 uid로, 숨김 아님으로, 글자 수 안에서,
- *   **'선생님' 표시(byTeacher)는 주인만**. 설정값이 링크에 실려 가므로 학생이 손으로 만든
- *   요청도 올 수 있다 — 화면이 아니라 규칙이 막아야 한다.
- * - 글자 수는 UTF-8 **바이트**로 센다(toUtf8). `size()`가 글자인지 바이트인지에 걸지 않는다.
- *   한글 3바이트·이모지 4바이트라 앱의 1,000자·300자에 4,000·1,200바이트를 준다.
- * - 없는 게시판은 exists()로 먼저 거른다. get()이 null을 주면 .data에서 규칙 평가가
- *   터져 "찾지 못했습니다" 대신 "규칙이 막았습니다"가 뜬다.
- * - 닫은 게시판에는 주인만 쓴다. 주제 잠금은 규칙이 못 본다(목록 안을 못 훑는다) — 화면만.
+ * - 글·댓글: 숨긴 것은 주인만 읽는다. 쓰기는 자기 uid로, 숨김 아님으로, 글자 수 안에서.
  *   고치기·지우기(숨기기 포함)는 주인만 — 학생은 자기 글도 못 지운다(선생님께 말한다).
  */
 export function rulesText(): string {
@@ -122,27 +115,16 @@ service cloud.firestore {
     function signedIn() {
       return request.auth != null;
     }
-    function boardPath(code) {
-      return /databases/$(database)/documents/boards/$(code);
-    }
     function owner(code) {
-      return signedIn() && exists(boardPath(code))
-        && get(boardPath(code)).data.ownerUid == request.auth.uid;
+      return signedIn()
+        && get(/databases/$(database)/documents/boards/$(code)).data.ownerUid == request.auth.uid;
     }
-    function boardOpen(code) {
-      return exists(boardPath(code)) && get(boardPath(code)).data.closed == false;
-    }
-    // 글자 수는 UTF-8 바이트(한글 3, 이모지 4). 앱은 글 1,000자·댓글 300자.
-    function textOk(code, maxBytes) {
+    function textOk(max) {
       return request.resource.data.text is string
         && request.resource.data.text.size() > 0
-        && request.resource.data.text.toUtf8().size() <= maxBytes
+        && request.resource.data.text.size() <= max
         && request.resource.data.authorUid == request.auth.uid
-        && request.resource.data.authorName is string
-        && request.resource.data.authorName.toUtf8().size() <= 80
-        && request.resource.data.hidden == false
-        && request.resource.data.byTeacher is bool
-        && (request.resource.data.byTeacher == false || owner(code));
+        && request.resource.data.hidden == false;
     }
 
     match /boards/{code} {
@@ -154,19 +136,13 @@ service cloud.firestore {
       allow update, delete: if owner(code);
 
       match /posts/{postId} {
-        allow read: if (signedIn() && resource.data.hidden == false) || owner(code);
-        allow create: if signedIn()
-          && (boardOpen(code) || owner(code))
-          && request.resource.data.topicId is string
-          && textOk(code, 4000);
+        allow read: if owner(code) || (signedIn() && resource.data.hidden == false);
+        allow create: if signedIn() && textOk(1000);
         allow update, delete: if owner(code);
       }
       match /comments/{commentId} {
-        allow read: if (signedIn() && resource.data.hidden == false) || owner(code);
-        allow create: if signedIn()
-          && (boardOpen(code) || owner(code))
-          && request.resource.data.postId is string
-          && textOk(code, 1200);
+        allow read: if owner(code) || (signedIn() && resource.data.hidden == false);
+        allow create: if signedIn() && textOk(300);
         allow update, delete: if owner(code);
       }
     }

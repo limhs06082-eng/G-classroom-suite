@@ -17,8 +17,6 @@ export interface BoardData {
   posts: BoardPost[];
   comments: BoardComment[];
   loading: boolean;
-  /** 지금 코드로 한 번이라도 읽어 왔는가. false면 아직 '불러오는 중'이다. */
-  loaded: boolean;
   error: string;
   refresh: () => Promise<void>;
   addPost: (post: BoardPost) => Promise<string | null>;
@@ -40,26 +38,12 @@ export function useBoardData(
   const [posts, setPosts] = useState<BoardPost[]>([]);
   const [comments, setComments] = useState<BoardComment[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
   // 늦게 온 옛 응답이 새 응답을 덮지 않게 순번을 센다.
   const seq = useRef(0);
 
   const refresh = useCallback(async (): Promise<void> => {
-    if (client === null || code === '' || !enabled) {
-      /*
-       * 꺼졌거나 다른 게시판으로 옮겨 갔다(학급 전환·로그아웃). 전 게시판의 글이
-       * 남아 새 학급 아래 보이면, 코드도 링크도 남의 것이 된다. 비운다.
-       */
-      seq.current += 1;
-      setBoard(null);
-      setPosts([]);
-      setComments([]);
-      setError('');
-      setLoading(false);
-      setLoaded(false);
-      return;
-    }
+    if (client === null || code === '' || !enabled) return;
     const mine = (seq.current += 1);
     setLoading(true);
     setError('');
@@ -73,7 +57,6 @@ export function useBoardData(
       setBoard(nextBoard);
       setPosts(nextPosts);
       setComments(nextComments);
-      setLoaded(true);
     } catch (caught) {
       if (mine !== seq.current) return;
       setError(toKoreanBoardError(caught));
@@ -186,7 +169,6 @@ export function useBoardData(
     posts,
     comments,
     loading,
-    loaded,
     error,
     refresh,
     addPost,

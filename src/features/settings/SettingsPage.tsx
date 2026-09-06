@@ -83,15 +83,7 @@ import { ClassTermTab } from './ClassTermTab';
 import { LockTab } from './LockTab';
 import { SchoolSearch } from './SchoolSearch';
 import { ThemeTab } from './ThemeTab';
-import { lazy, Suspense } from 'react';
-
-/*
- * 학급 게시판 탭은 필요할 때 온다. 설정 화면은 첫 청크에 실리는데, 이 탭이
- * 끌고 오는 BoardClient·규칙 글까지 함께 실으면 웹 첫 청크가 400KB 한도에 닿는다.
- */
-const ClassboardSettingsTab = lazy(() =>
-  import('../classboard/ClassboardSettingsTab').then((module) => ({ default: module.ClassboardSettingsTab })),
-);
+import { ClassboardSettingsTab } from '../classboard/ClassboardSettingsTab';
 
 type SettingsTab =
   | 'school'
@@ -227,11 +219,7 @@ export default function SettingsPage() {
         ) : null}
         {/* 탭 목록에서 빼는 것만으로는 안 된다 — tab 상태가 무슨 값이든 설치형에서는 이 패널이 렌더되면 안 된다. */}
         {tab === 'sync' && !isDesktop() ? <AccountPanel /> : null}
-        {tab === 'classboard' ? (
-          <Suspense fallback={null}>
-            <ClassboardSettingsTab />
-          </Suspense>
-        ) : null}
+        {tab === 'classboard' ? <ClassboardSettingsTab /> : null}
         {tab === 'backup' ? <BackupTab /> : null}
         {tab === 'legacy' && !isDesktop() ? (
           <div className="flex flex-col gap-4">
