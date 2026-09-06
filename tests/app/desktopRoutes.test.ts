@@ -39,9 +39,6 @@ describe('라우터가 실제로 등록하는 경로', () => {
     // 빠지는지는 코드가 아니라 결과물을 직접 여는 번들 검사가 본다.
     expect(paths).toContain('quiz');
     expect(paths).toContain('join/:code');
-    // 학급 게시판 학생 화면도 같은 결이다. 교사 화면은 어느 쪽에나 있다.
-    expect(paths).toContain('classboard/join/:code');
-    expect(paths).toContain('classboard');
   });
 
   it('전자칠판은 어느 쪽에서도 감추지 않는다', () => {

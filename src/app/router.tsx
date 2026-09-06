@@ -95,11 +95,6 @@ export const router = createBrowserRouter([
       ...(import.meta.env.VITE_TARGET === 'desktop'
         ? []
         : [{ path: 'quiz', Component: lazy(() => import('../features/quiz/QuizPage')) }]),
-      /*
-       * 학급 게시판(교사). 설치형에서도 산다 — Firestore는 브라우저 fetch로 붙고
-       * tauri.conf.json의 CSP connect-src가 그 주소를 연다. 학생 화면은 아래(셸 밖).
-       */
-      { path: 'classboard', Component: lazy(() => import('../features/classboard/ClassboardPage')) },
       { path: 'task', element: <TaskPage /> },
       { path: 'message', element: <MessagePage /> },
       { path: 'roster', element: <RosterPage /> },
@@ -150,20 +145,6 @@ export const router = createBrowserRouter([
           element: (
             <Suspense fallback={<PageLoader />}>
               {createElement(lazy(() => import('../features/quiz/JoinPage')))}
-            </Suspense>
-          ),
-          errorElement: <RootErrorBoundary />,
-        },
-        /*
-         * 학급 게시판 학생 화면. 형성평가 참여 화면과 같은 이유로 셸 밖·웹 전용.
-         * 설치형 번들에서 빠졌는지는 check-bundle-purity가 joinStore.ts의
-         * 저장소 키 글자로 본다.
-         */
-        {
-          path: 'classboard/join/:code',
-          element: (
-            <Suspense fallback={<PageLoader />}>
-              {createElement(lazy(() => import('../features/classboard/ClassboardJoinPage')))}
             </Suspense>
           ),
           errorElement: <RootErrorBoundary />,

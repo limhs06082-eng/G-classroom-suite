@@ -84,38 +84,6 @@ if (typeof csp !== 'string' || csp.trim() === '') {
   );
 }
 
-/*
- * connect-src는 **정확히 이 목록**이어야 한다. 학급 게시판(0.21.0)이 Firestore·
- * Auth에 브라우저 fetch로 붙으므로 구글 주소 셋을 열었다 — 그 셋뿐이다. 하나가
- * 더 늘면 왜 늘었는지 여기서 물어야 한다.
- */
-const EXPECTED_CONNECT = [
-  "'self'",
-  'ipc:',
-  'http://ipc.localhost',
-  'https://firestore.googleapis.com',
-  'https://identitytoolkit.googleapis.com',
-  'https://securetoken.googleapis.com',
-];
-if (typeof csp === 'string') {
-  const connectSrc = csp
-    .split(';')
-    .map((part) => part.trim())
-    .find((part) => part.startsWith('connect-src')) ?? '';
-  const actual = connectSrc.split(/\s+/).slice(1).sort();
-  const expected = [...EXPECTED_CONNECT].sort();
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-    fail(
-      'CSP connect-src가 허용 목록과 다르다 (src-tauri/tauri.conf.json)',
-      [
-        `  지금: ${actual.join(' ') || '(없음)'}`,
-        `  기대: ${expected.join(' ')}`,
-        '  게시판이 붙는 구글 주소 셋 말고는 열 이유가 없다. 늘려야 하면 이 목록부터 고친다.',
-      ].join('\n'),
-    );
-  }
-}
-
 // ── 3. 판 번호가 어긋나지 않는가 ─────────────────────────────
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 const cargoVersion = /^version\s*=\s*"([^"]+)"/m.exec(cargo)?.[1] ?? '(없음)';

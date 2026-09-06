@@ -76,8 +76,6 @@ const DESKTOP_FORBIDDEN = [
   'QuizSessionRelay',
   'LocalSessionRelay',
   'teacher-toolkit:v1:quiz-sessions',
-  // 학급 게시판 학생 화면(joinStore.ts의 저장소 키). 교사 화면·Firebase 구현은 설치형에도 산다.
-  'classroom-suite:v1:classboard-join',
 ];
 
 // 파일 하나를 훑어 표지자별로 있는지 없는지 모을 때 쓰는 전체 표지자 목록.
