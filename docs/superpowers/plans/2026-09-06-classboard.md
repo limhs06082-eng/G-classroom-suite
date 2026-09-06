@@ -56,11 +56,27 @@ boards/{code}/comments/{id}   { postId, text, authorName, authorUid, byTeacher, 
 
 ## 규칙(선생님이 붙여 넣는 것)
 
-진본은 `src/features/classboard/boardSettings.ts`의 `rulesText()`다(설정 화면이 그대로 보여 준다). 요지:
-
-- 게시판 문서: 로그인한 누구나 하나씩 읽기(get), 목록은 주인만, 만들기는 이메일 계정만, 고치기·지우기는 주인만.
-- 글·댓글: 숨긴 것은 주인만 읽는다(학생 쿼리는 `where('hidden','==',false)`). 쓰기는 자기 uid·숨김 아님·`byTeacher`는 주인만·글자 수는 `toUtf8()` 바이트(4,000·1,200)·닫은 게시판엔 주인만. 고치기·지우기는 주인만.
-- `owner()`는 `exists()`로 없는 게시판을 먼저 거른다.
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function owner(code) { return signedIn() && get(/databases/$(database)/documents/boards/$(code)).data.ownerUid == request.auth.uid; }
+    match /boards/{code} {
+      allow get: if signedIn();
+      allow list: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous' && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if owner(code);
+      match /posts/{id} {
+        allow read: if owner(code) || (signedIn() && resource.data.hidden == false);
+        allow create: if signedIn() && request.resource.data.authorUid == request.auth.uid && request.resource.data.hidden == false && request.resource.data.text is string && request.resource.data.text.size() <= 1000;
+        allow update, delete: if owner(code);
+      }
+      match /comments/{id} { (posts와 같되 text 300자) }
+    }
+  }
+}
+```
 
 ---
 
